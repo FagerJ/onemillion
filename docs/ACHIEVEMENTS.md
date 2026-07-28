@@ -4,35 +4,52 @@ Status: **draft for curation.** This is deliberately over-supplied — cut the o
 don't land. Every entry maps to a rule type in
 [ARCHITECTURE.md §6.1](ARCHITECTURE.md#61-rule-vocabulary).
 
+> ### 🍻 The Party Rule
+> **You cannot log a beer alone.** Every session needs at least two people present
+> ([D19](DECISIONS.md#d19--no-solo-logging)). There are no achievements for drinking by
+> yourself, because there is no such thing as a logged beer drunk by yourself.
+
 Design rules:
-- The announcer voice is **arcade FPS** (Unreal Tournament / Quake) crossed with **a
-  European football commentator**. Loud, absurd, affectionate.
-- Multikills fire *during* a session as toasts. Everything else lands after.
+- The announcer voice is **arcade sports** (NBA Jam) crossed with **a European football
+  commentator**. Loud, absurd, affectionate — and never violent. No kill-streak language.
+- **Combos are awarded to the party, not the individual.** See
+  [D20](DECISIONS.md#d20--combos-are-party-scoped).
+- Combos fire *during* a session as toasts. Everything else lands after.
 - Secret achievements are hidden until unlocked. Ratio of about 1 in 6.
 
 ---
 
-## 1. Multikill ladder — beers in a single session
+## 1. The Combo ladder — beers in a single session, counted across the whole party
 
-The arcade announcer stack. These fire live, escalating, in the same session.
+Escalating live toasts. The count is the **session total across everyone present**, and
+the badge goes to **everyone in the party**. Bringing a fifth person is a better route to
+BOOMSHAKALAKA than ordering a fifth beer.
 
-| Code | Title | Trigger | Flavor |
+| Code | Title | Party total | Flavor |
 |---|---|---|---|
-| `DOUBLE_KILL` | DOUBLE KILL | 2 in a session | "Two down." |
-| `TRIPLE_KILL` | TRIPLE KILL | 3 in a session | "TRIPLE KILL!" |
-| `MULTI_KILL` | MULTI KILL | 4 in a session | "Unbelievable!" |
-| `MEGA_KILL` | MEGA KILL | 5 in a session | "M-M-M-MEGA KILL!" |
-| `MONSTER_KILL` | MONSTER KILL | 6 in a session | "MONSTER KILL!!" |
-| `RAMPAGE` | RAMPAGE | 8 in a session | "He's on a RAMPAGE!" |
-| `UNSTOPPABLE` | UNSTOPPABLE | 10 in a session | "UNSTOPPABLE!" |
-| `GODLIKE` | GODLIKE | 12 in a session | "G-G-GODLIKE!" |
-| `WICKED_SICK` | WICKED SICK | 15 in a session | "Wicked. Sick." |
+| `BRACE` | BRACE | 2 | "Two on the board." |
+| `HAT_TRICK` | HAT-TRICK | 3 | "He's got the match ball!" |
+| `HEATING_UP` | HEATING UP | 5 | "He's heating up!" |
+| `ON_FIRE` | ON FIRE | 8 | "HE'S ON FIRE!" |
+| `BOOMSHAKALAKA` | BOOMSHAKALAKA | 12 | "BOOMSHAKALAKA!" |
+| `SCREAMER` | SCREAMER | 16 | "Oh, that is a SCREAMER!" |
+| `WORLDIE` | WORLDIE | 20 | "That is an absolute worldie." |
+| `RAMPAGE` | RAMPAGE | 25 | "The away end has lost its mind." |
 
-> **Balance question (Q9):** where should this ladder stop? 15 beers in a session is a
-> genuinely heavy night, and there's a real question about whether the app should be
-> cheering by that point. Options: cap at MONSTER KILL (6), cap at GODLIKE (12), or run the
-> full ladder. Related: should the top rungs count *across an evening* rather than
-> *per session*?
+Thresholds are set for **party totals**, so they read very differently from per-person
+numbers: BOOMSHAKALAKA at 12 is a party of four having three each — a good Friday, not a
+worrying one. RAMPAGE at 25 is a proper occasion with eight people, not one person in
+trouble.
+
+> **Q15 — are these thresholds right?** They assume typical parties of 3-6. If crews turn
+> out to be mostly pairs, every rung above ON FIRE becomes unreachable and the ladder needs
+> rescaling. Easy to tune post-launch since achievements are data, not code.
+
+### Per-person cap
+
+There is deliberately **no per-person combo ladder**. An individual drinking a lot earns
+nothing extra; the party drinking together earns everything. This is the main lever
+keeping the game pointed at socialising rather than volume.
 
 ---
 
@@ -92,9 +109,10 @@ Fergie time, the Invincibles.
 
 | Code | Title | Trigger |
 |---|---|---|
-| `OVER_9000` | IT'S OVER 9000 | Any scope crosses 9.001 |
+| `OVER_9000` | IT'S OVER 9000 | Any scope crosses 9.001 — Vegeta's scouter, green readout, exploding numbers |
+| `OFF_THE_CHART` | Off the Chart | Any scope crosses 20.000 — *"Even Master Yoda doesn't have a midi-chlorian count that high."* |
 | `LEET` | 1337 | Your 1.337th beer |
-| `FIRST_BLOOD` | First Blood | First beer of a session |
+| `KICK_OFF` | Kick-Off | First beer of a session |
 | `ACHIEVEMENT_UNLOCKED` | Achievement Unlocked | Your first ever achievement |
 | `LEVEL_UP` | Level Up | Any milestone rung |
 | `RESPAWN` | Respawn | Log again after 30+ days away |
@@ -109,10 +127,16 @@ Fergie time, the Invincibles.
 | `NO_SCOPE` | No Scope | *(secret)* Log a session in under 10 seconds |
 | `GG_EZ` | GG EZ | *(secret)* Beat a rival crew to a milestone by <10 beers |
 
-> **Q10 — OVER 9000:** the line is Vegeta's, from Dragon Ball Z, not Star Wars. Three ways
-> to go: (a) keep it DBZ — scouter, exploding numbers, green glow; (b) do the Star Wars
-> visual anyway as a knowing mashup; (c) split into two badges. Worth deciding before art
-> is commissioned, because the two look nothing alike.
+### The two power-level badges
+
+Both are "your number is absurdly high" jokes from different franchises, so they sit at
+different rungs and get completely different art:
+
+- **`OVER_9000` at 9.001** — Dragon Ball Z. Vegeta's scouter, green readout, the numbers
+  spike and the lens cracks.
+- **`OFF_THE_CHART` at 20.000** — Star Wars. *The Phantom Menace*, Qui-Gon takes Anakin's
+  blood sample and Obi-Wan reads back *"over twenty thousand"* — higher than Yoda's.
+  Blue holo-readout, medical scanner aesthetic.
 
 ---
 

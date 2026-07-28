@@ -173,6 +173,30 @@ still counts as "drinking with you" for social achievements, and contributes zer
 counter. Your mockup already implies this: friend chips and per-person tallies are
 distinct interactions.
 
+### 3.4 The Party Rule — enforced in the database
+
+Per [D19](DECISIONS.md#d19--no-solo-logging), **a session must have at least two
+attendees**. This is not a UI convention that a rogue client can skip:
+
+```sql
+-- Deferred so a session and its attendees can be inserted in one transaction,
+-- but the transaction cannot commit with a lone drinker in it.
+create constraint trigger session_requires_party
+  after insert or update on sessions
+  deferrable initially deferred
+  for each row execute function assert_party_of_two();
+```
+
+Consequences worth being explicit about:
+
+- There is no representation in this system for a beer drunk alone. Not "logged and
+  hidden" — genuinely absent.
+- The global counter therefore undercounts real-world beers, deliberately. It counts
+  **shared** beers. That's the number the app is about.
+- Every achievement is implicitly social, which is why the combo ladder can be
+  party-scoped ([D20](DECISIONS.md#d20--combos-are-party-scoped)) without a separate solo
+  path.
+
 ---
 
 ## 4. The Ladder
@@ -240,7 +264,7 @@ achievements (
   title         text not null,
   description   text not null,
   flavor        text,                    -- the announcer line
-  category      text not null,           -- 'multikill'|'football'|'gaming'|'milestone'|'social'|'time'
+  category      text not null,           -- 'combo'|'football'|'gaming'|'milestone'|'social'|'time'
   scope         text not null,           -- 'profile'|'crew'|'guild'|'global'
   tier          int,
   rule          jsonb not null,
@@ -265,7 +289,8 @@ expression language would be a security and correctness liability.
 
 | Rule type | Example | Unlocks |
 |---|---|---|
-| `session_count` | `{min: 6}` | RAMPAGE |
+| `party_session_count` | `{min: 12}` | BOOMSHAKALAKA (session total, all attendees) |
+| `party_size` | `{min: 6}` | Full Squad |
 | `total_count` | `{scope:'profile', min:9001}` | IT'S OVER 9000 |
 | `streak_days` | `{min: 7}` | Session Streak |
 | `time_of_day` | `{after:'23:45', before:'00:00'}` | Fergie Time |
@@ -338,6 +363,11 @@ deliberately rather than by accident. Not moralising — just choosing:
   than pushing them out.
 - **Clean Sheet is an achievement.** A week without logging earns a badge. Rest is part of
   the game, not a failure state.
+- **No solo logging** ([D19](DECISIONS.md#d19--no-solo-logging)). The single most
+  meaningful choice available here: solo drinking is the pattern worth not gamifying, and
+  the app has no representation for it at all.
+- **Combos reward party size, not consumption** ([D20](DECISIONS.md#d20--combos-are-party-scoped)).
+  The route to a big badge is bringing a fifth friend, not ordering a fifth beer.
 - **No "you're behind" nudges.** Push notifications celebrate what happened; they never
   guilt you into drinking. This is a hard product rule, and it constrains Phase 4.
 - **Age gate.** Alcohol content requires a 17+ rating on the App Store and an age

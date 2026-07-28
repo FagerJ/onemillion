@@ -15,10 +15,56 @@ Blocking questions are marked 🔴 — Phase 0 can't start without them.
 | Q4 | v1 scope | **Core loop + game layer** → D13 |
 | Q11 | Do achievement points do anything? | **They rank the guild league table** → D14 |
 | Q12 | Feed scope | **Crew feed default, no global firehose** → D15 |
+| Q5 | Multiple crews per person? | **Schema yes, v1 UI single crew** → D17 |
+| Q8 | Retroactive logging | **Today + yesterday, 24h edits, no revokes** → D16 |
+| Q9 | Where does the combo ladder stop? | **Party-scoped, no kill language** → D18/D20 |
+| Q10 | OVER 9000 | **Both — DBZ at 9.001, midi-chlorians at 20.000** → D21 |
 
 ---
 
-## 🔴 Q3 — Guild join model *(Phase 3, not v1-blocking)*
+## 🔴 Q16 — Who counts as the second person in a party?
+
+[D19](DECISIONS.md#d19--no-solo-logging) says a session needs two attendees. But *who*?
+
+| Option | Behaviour | Trade-off |
+|---|---|---|
+| **A. Anyone, guests included** | Type "Dave" as a guest and log | Zero friction, works with non-app friends. Honour system — a solo drinker can type a name |
+| **B. At least two app users** | Both people need accounts | A constraint with teeth. But you genuinely can't log the pint you had with your non-app mate |
+| **C. Two app users, both in your crew** | Strictest | Cleanest attribution, worst chicken-and-egg for a brand-new crew |
+
+**Recommendation: A for v1, revisit if abused.** The rule's value is largely in what it
+*says* — this app has no concept of drinking alone — and a friction-free version still
+delivers that. Guests also solve S7 for free.
+
+---
+
+## 🔴 Q17 — Does the other person confirm the round?
+
+If I log "me + Mia, 3 each", does Mia get a say?
+
+| Option | Behaviour |
+|---|---|
+| **A. No confirmation** | Logger's word is final. Simplest, zero friction |
+| **B. Notify, allow dispute** | Counts immediately; Mia gets a push and can dispute |
+| **C. Require confirmation** | Nothing counts until Mia taps yes |
+
+**Recommendation: B.** Keeps logging a two-second interaction, creates a nice "Mia
+confirmed your round" moment, and hands anti-cheat a human signal for free. C would strand
+every log where the other person has already gone home.
+
+---
+
+## Q15 — Are the party-combo thresholds right?
+
+BRACE 2 · HAT-TRICK 3 · HEATING UP 5 · ON FIRE 8 · BOOMSHAKALAKA 12 · SCREAMER 16 ·
+WORLDIE 20 · RAMPAGE 25 — all **party totals**, not per-person.
+
+Tuned for parties of 3-6. If crews turn out to be mostly pairs, everything above ON FIRE
+is unreachable. Cheap to retune post-launch since achievements are data ([D7](DECISIONS.md#d7--achievements-are-data-not-code)).
+
+---
+
+## Q3 — Guild join model *(Phase 3)*
 
 | Option | Behaviour |
 |---|---|
@@ -29,19 +75,6 @@ Blocking questions are marked 🔴 — Phase 0 can't start without them.
 
 **My recommendation: D**, defaulting to open. A "Blåvitt Supporter Guild" wants to be
 open — the whole point is scale. A private guild of six office colleagues wants invite-only.
-
----
-
-## Q5 — Multiple crews per person?
-
-Can I be in both "The Thirsty Five" and "Work Lads"?
-
-The schema supports it, and beer attribution stays unambiguous (each beer belongs to one
-session → one crew → one guild). The real question is UX: a crew switcher adds a
-navigation layer to every screen.
-
-**Recommendation:** allow it in the schema, ship v1 with a single active crew, add the
-switcher when someone asks.
 
 ---
 
@@ -69,43 +102,6 @@ Restrict guild-switching to fixed windows (January + summer), football-style?
 
 **Recommendation:** skip for v1, revisit as a seasonal event once there are enough guilds
 for switching to matter.
-
----
-
-## Q8 — Retroactive logging and editing
-
-- How far back can you log? (Yesterday? Last week? Unlimited?)
-- Can you edit or delete a logged session?
-- If you delete, do counters decrement — and do already-unlocked achievements revoke?
-
-**Recommendation:** log up to 7 days back; edits allowed for 24h; deletes decrement
-counters but **never revoke achievements**. Revoking a badge someone celebrated feels
-awful, and permitting it opens a griefing vector.
-
----
-
-## Q9 — Where does the multikill ladder stop?
-
-Currently drafted to WICKED SICK at 15 beers in a session. That's a heavy night, and
-there's a fair question about whether the app should still be cheering.
-
-| Option | |
-|---|---|
-| **A.** Cap at MONSTER KILL (6) |
-| **B.** Cap at GODLIKE (12) |
-| **C.** Full ladder to WICKED SICK (15) |
-| **D.** Full ladder, but top rungs count across a whole evening rather than one session |
-
-**Recommendation: B.** The ladder stays satisfying, and the app stops applauding somewhere
-short of the genuinely grim end.
-
----
-
-## Q10 — OVER 9000
-
-The line is Vegeta's, from Dragon Ball Z — not Star Wars. Options: (a) DBZ treatment —
-scouter, exploding numbers; (b) Star Wars visual as a knowing mashup; (c) two separate
-badges. Worth settling before any art gets made, since the two look nothing alike.
 
 ---
 

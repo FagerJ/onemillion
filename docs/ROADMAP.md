@@ -55,9 +55,9 @@ Estimates are rough build-effort, assuming decisions are already made.
 | ID | Item | Effort | v1 |
 |---|---|---|---|
 | G1 | Achievement engine: schema, rule vocabulary, `evaluate_achievements()` | L | ✅ |
-| G2 | Seed the catalogue (multikill + football + gaming) | M | ✅ |
+| G2 | Seed the catalogue (combos + football + gaming) | M | ✅ |
 | G3 | Achievements screen (grid, locked/unlocked, progress bars) | M | |
-| G4 | **Live multikill toasts** — DOUBLE KILL → RAMPAGE during a session | M | ✅ |
+| G4 | **Live party-combo toasts** — BRACE → HAT-TRICK → ON FIRE during a session | M | ✅ |
 | G5 | Milestone celebration: full-screen takeover, "Golden Goal" attribution | M | ✅ |
 | G6 | Easter-egg rungs (442, 1337, 9001, 1966) | S | |
 | G7 | Sound design — announcer lines (optional, muted by default) | M | |
@@ -88,15 +88,15 @@ Estimates are rough build-effort, assuming decisions are already made.
 
 *Makes people come back without nagging them.*
 
-| ID | Item | Effort |
-|---|---|---|
-| S1 | Push notifications — milestones, achievements, crew activity | L |
-| S2 | Reactions on feed items | S |
-| S3 | Beer photos (Storage + upload + feed rendering) | M |
-| S4 | Venues — search, save, "Groundhopper" support | M |
-| S5 | Beer types / catalogue (enables Perfect Hat-trick, Critical Hit) | M |
-| S6 | Streaks + weekly recap | M |
-| S7 | Guest attendees (drinking with non-users) | S |
+| ID | Item | Effort | Note |
+|---|---|---|---|
+| S1 | Push notifications — milestones, achievements, crew activity | L | |
+| S2 | Reactions on feed items | S | |
+| S3 | Beer photos (Storage + upload + feed rendering) | M | |
+| S4 | Venues — search, save, "Groundhopper" support | M | |
+| S5 | Beer types / catalogue (enables Perfect Hat-trick, Critical Hit) | M | |
+| S6 | Streaks + weekly recap | M | |
+| S7 | Guest attendees (drinking with non-users) | S | ⚠️ moves to v1 if [Q16](OPEN-QUESTIONS.md#-q16--who-counts-as-the-second-person-in-a-party) = A |
 
 > Hard product rule from [ARCHITECTURE.md §9](ARCHITECTURE.md#9-responsible-design): S1
 > notifications celebrate what happened. They never nudge you to drink.

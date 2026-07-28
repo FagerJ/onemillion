@@ -171,16 +171,88 @@ a cheap change in v1.
 
 ---
 
+### D16 — Backdating limited to today and yesterday
+**Decided.** A session can be logged for today or yesterday only. Edit or delete within
+24h. Deletes decrement counters but **never revoke already-unlocked achievements**.
+
+*Why:* keeps the feed live and honest, makes streaks mean something, and closes the
+easiest anti-cheat hole (bulk-importing an invented history). Revoking a badge someone has
+already celebrated feels awful and is a griefing vector.
+
+*Cost:* forget to log Saturday and by Monday it's gone. Accepted — the number is a shared
+joke, not an audit.
+
+---
+
+### D17 — A person may belong to several crews; v1 ships one
+**Decided.** The schema supports multi-crew membership from day one. The v1 UI assumes a
+single active crew; the crew switcher arrives when someone asks.
+
+*Why:* attribution stays unambiguous either way (each beer → one session → one crew → one
+guild), so there's no migration risk in deferring the UI. Avoids putting a "which crew?"
+decision in front of every log while the app is still proving itself.
+
+---
+
+### D18 — No kill-streak language
+**Decided.** The combo ladder is arcade-sports and football flavoured — BRACE, HAT-TRICK,
+HEATING UP, ON FIRE, BOOMSHAKALAKA, SCREAMER, WORLDIE, RAMPAGE. No DOUBLE KILL, MONSTER
+KILL, GODLIKE or WICKED SICK. `FIRST_BLOOD` becomes `KICK_OFF`.
+
+*Why:* the announcer energy is the point, the violence isn't. NBA Jam and a football
+commentator carry the same volume with none of the baggage — and they sit far more
+naturally alongside the guild/supporter-club framing.
+
+---
+
+### D19 — No solo logging
+**Decided.** A session requires **at least two attendees**. Enforced as a database
+constraint, not a UI convention. You cannot log a beer you drank alone.
+
+*Why:* the premise is *"log every beer with your crew"* — this makes that structural
+rather than aspirational. It also happens to be the single most meaningful responsible-design
+choice available: solo drinking is the pattern worth not gamifying, and the app simply
+has no representation for it.
+
+*Cost:* real beers go unlogged, so the counter undercounts reality. That's a feature — it's
+a count of *shared* beers. Open question on who qualifies as the second person (see Q16).
+
+---
+
+### D20 — Combos are party-scoped
+**Decided.** Combo achievements count the **session total across everyone present**, and
+unlock for **every attendee**. There is no per-person combo ladder.
+
+*Why:* this inverts the incentive. Under a per-person ladder the route to a big badge is
+"drink more". Under a party ladder it's "bring more people". Together with
+[D14](#d14--achievement-points-rank-the-guild-league-table), the entire scoring system now
+rewards socialising rather than volume — which is both a better game and a much better
+thing to be encouraging.
+
+*Cost:* thresholds are harder to tune, since they depend on typical party size. Mitigated
+by achievements being data (D7) — retunable without a release.
+
+---
+
+### D21 — Two power-level badges, not one
+**Decided.** `OVER_9000` at 9.001 gets the Dragon Ball Z scouter treatment.
+`OFF_THE_CHART` at 20.000 gets Star Wars — the midi-chlorian reading from *The Phantom
+Menace* ("over twenty thousand... even Master Yoda doesn't have a count that high").
+
+*Why:* both are the same joke from different franchises, so they work better as a matched
+pair at different rungs than as one muddled badge. And 20.000 is a genuinely canonical
+number, not an invented one.
+
+---
+
 ## Open — blocking
 
 These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 
 | ID | Question | Blocks |
 |---|---|---|
-| **Q5** | Can a person be in multiple crews? | C2, C5 navigation |
-| **Q8** | Retroactive logging and editing — allowed, how far back? | F4 schema, C3 logger |
-| **Q9** | Where does the multikill ladder stop? | G2 catalogue seed |
-| **Q10** | OVER 9000 — Dragon Ball Z or Star Wars treatment? | G2 seed, art direction |
+| **Q16** | Who counts as the second person in a party? | F4 schema — the D19 constraint |
+| **Q17** | Does the other person confirm the round? | F4, C3 logger |
 
 ## Open — later phases
 
@@ -191,6 +263,7 @@ These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 | Q7 | Transfer windows — fun gimmick or needless friction? | Phase 3 |
 | Q13 | Distribution — web link, TestFlight, or public app stores? | Phase 5 |
 | Q14 | Who else is following this repo? | — |
+| Q15 | Are the party-combo thresholds right for typical party sizes? | post-launch tuning |
 
 ## Answered
 
@@ -199,5 +272,9 @@ These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 | ~~Q1~~ | Client stack | → D11, Expo + web export |
 | ~~Q2~~ | What is "one beer"? | → D12, tap = 1, volume optional |
 | ~~Q4~~ | v1 scope | → D13, core + game layer |
+| ~~Q5~~ | Multiple crews per person? | → D17, schema yes, v1 UI single |
+| ~~Q8~~ | Retroactive logging and editing | → D16, today + yesterday, 24h edits |
+| ~~Q9~~ | Where does the combo ladder stop? | → D18/D20, party-scoped, no kill language |
+| ~~Q10~~ | OVER 9000 — DBZ or Star Wars? | → D21, both, at 9.001 and 20.000 |
 | ~~Q11~~ | Do achievement points do anything? | → D14, they rank the guild table |
 | ~~Q12~~ | Feed scope | → D15, crew feed, no global firehose |

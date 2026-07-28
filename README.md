@@ -38,6 +38,11 @@ different rungs.
 feels great). The thin bar underneath always shows 0 → 1.000.000 (barely moves, never
 goes away).
 
+**The Party Rule** — **you cannot log a beer alone.** Every session needs at least two
+people, enforced in the database. Combo achievements count the *party's* total and unlock
+for everyone present, so the route to a big badge is bringing a fifth friend, not ordering
+a fifth beer. The counter is a count of *shared* beers, and undercounts reality on purpose.
+
 ## Why guilds exist
 
 At ~5 beers per person per week, a crew of five logs ~1.300 beers a year:
