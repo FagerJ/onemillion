@@ -1,1 +1,68 @@
-# onemillion
+# ONE MILLION BEERS
+
+> Log every beer with your crew. Every round with a friend counts toward one million.
+
+A social beer-logging app built around a single absurd, communal goal: **1.000.000 beers**.
+
+You don't drink a million beers. Nobody does. That's the joke — and the point. You log
+with your crew, your crew climbs its own milestone ladder, your crew joins a **guild**
+(think supporter club), and every pint anyone anywhere logs pushes one shared global
+counter toward seven figures.
+
+## Status
+
+**Pre-build.** We are deliberately spending time on architecture, decisions and
+prioritisation before writing application code.
+
+| Document | What it covers |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, data model, counters, achievement engine, offline, security |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Phased delivery plan — **needs prioritisation** |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
+| [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The achievement catalogue — gaming + football references |
+| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Everything still to be answered — **needs answers** |
+
+## The core concepts
+
+**Crew** — your group of friends. This is where you log. 3-15 people typically.
+
+**Guild** — many crews banded together under a shared banner. Football supporter clubs
+are the intended flavour ("Blåvitt Supporter Guild"). This is the tier where big numbers
+become reachable.
+
+**The Ladder** — a fixed sequence of milestones (10 → 25 → 50 → 100 → 250 → 500 → 1.000 →
+… → 1.000.000). Every scope climbs the same ladder, just starting and ending at
+different rungs.
+
+**The Two Gauges** — the big ring shows progress to your *next milestone* (moves weekly,
+feels great). The thin bar underneath always shows 0 → 1.000.000 (barely moves, never
+goes away).
+
+## Why guilds exist
+
+At ~5 beers per person per week, a crew of five logs ~1.300 beers a year:
+
+| Scope | Realistic output | Ladder rungs it can reach |
+|---|---|---|
+| One person | ~250/year | 10 → 1.000 |
+| Crew of 5 | ~1.300/year | 10 → 5.000 |
+| Guild of 500 crews | ~650.000/year | 1.000 → 500.000 |
+| Global | everyone | → 1.000.000 |
+
+A crew runs out of ladder around 5.000. Guilds are the tier that makes the big rungs
+reachable — without them the top half of the ladder is decorative.
+
+## Design language
+
+Dark, warm, arcade-cabinet-meets-terrace. Numbers are the hero.
+
+| Token | Hex | Use |
+|---|---|---|
+| Stout Black | `#161009` | App background |
+| Cask Brown | `#1D160D` | Cards, surfaces |
+| Gold | `#F5B23A` | Primary accent, progress |
+| Fire | `#FF5B35` | Alerts, rivalries, hot streaks |
+| Hop Green | `#8BD450` | Unlocked, success |
+| Foam | `#FBF4E4` | Text |
+
+Type: **Anton** for scoreboard numbers, **Space Grotesk** for everything else.
