@@ -7,11 +7,11 @@ Superseded decisions are kept, struck through — the history is the point.
 
 ## Settled
 
-### D1 — The million is global, not per-crew
-**Decided.** One shared counter across every user of the app. Crews and guilds are teams
+### D1 — The million is global, not per-party
+**Decided.** One shared counter across every user of the app. Parties and guilds are teams
 inside it, not separate races.
 
-*Why:* a crew of five produces ~1.300 beers/year. A per-crew million takes ~770 years —
+*Why:* a party of five produces ~1.300 beers/year. A per-party million takes ~770 years —
 the gauge would never visibly move, making it dead UI. Globally, ~10.000 semi-active
 users reach a million in months.
 
@@ -29,24 +29,24 @@ to matter. One gauge does dopamine, the other does ambition.
 
 *Cost:* two progress systems to keep in sync, and milestone resolution has to be fast
 enough to render on every dashboard load (solved by caching `next_milestone` on
-`crew_stats`).
+`party_stats`).
 
 ---
 
-### D3 — Crews do not choose a goal
+### D3 — Parties do not choose a goal
 **Decided.** No configurable target. Everyone is on the same ladder, always climbing
 toward the same million.
 
-*Why:* a shared, non-negotiable goal is what makes cross-crew and cross-guild comparison
+*Why:* a shared, non-negotiable goal is what makes cross-party and cross-guild comparison
 meaningful. Custom targets would fragment it.
 
 ---
 
-### D4 — Guilds sit between crews and global
-**Decided.** Hierarchy is `profile → crew → guild → global`. A crew belongs to at most one
+### D4 — Guilds sit between parties and global
+**Decided.** Hierarchy is `profile → party → guild → global`. A party belongs to at most one
 guild. Football supporter clubs are the intended flavour.
 
-*Why:* crews run out of ladder around 5.000. Guilds are the tier at which rungs like
+*Why:* parties run out of ladder around 5.000. Guilds are the tier at which rungs like
 100.000 become reachable, which is what stops the top half of the ladder being decorative.
 
 *Cost:* a whole product surface (Phase 3) and a new class of leaderboard.
@@ -65,9 +65,9 @@ column cannot answer it, and adding it later is a painful migration.
 ---
 
 ### D6 — `guild_id` is snapshotted, not joined
-**Decided.** Sessions and beers store the guild the crew belonged to *at log time*.
+**Decided.** Sessions and beers store the guild the party belonged to *at log time*.
 
-*Why:* a crew transferring guilds must not silently rewrite two guilds' historical totals
+*Why:* a party transferring guilds must not silently rewrite two guilds' historical totals
 and every achievement derived from them.
 
 *Cost:* denormalised column to keep correct on write.
@@ -144,7 +144,7 @@ the number is a shared joke, not an audit.
 (Phase 3) follow immediately after.
 
 *Why:* the core loop alone works but isn't fun; the game layer is what makes it a game.
-Guilds only become interesting once several crews are already active, so shipping to
+Guilds only become interesting once several parties are already active, so shipping to
 friends first generates the very population guilds need.
 
 ---
@@ -162,8 +162,8 @@ immediately legible than a beer count. Mitigated by showing both figures on the 
 
 ---
 
-### D15 — Crew feed is the default; no global firehose
-**Decided.** The activity feed shows your crew. A guild feed arrives as a second tab in
+### D15 — Party feed is the default; no global firehose
+**Decided.** The activity feed shows your party. A guild feed arrives as a second tab in
 Phase 3. There is no global feed.
 
 *Why:* a global firehose is noise and a moderation burden. Reverse if you disagree — it's
@@ -184,12 +184,12 @@ joke, not an audit.
 
 ---
 
-### D17 — A person may belong to several crews; v1 ships one
-**Decided.** The schema supports multi-crew membership from day one. The v1 UI assumes a
-single active crew; the crew switcher arrives when someone asks.
+### D17 — A person may belong to several parties; v1 ships one
+**Decided.** The schema supports multi-party membership from day one. The v1 UI assumes a
+single active party; the party switcher arrives when someone asks.
 
-*Why:* attribution stays unambiguous either way (each beer → one session → one crew → one
-guild), so there's no migration risk in deferring the UI. Avoids putting a "which crew?"
+*Why:* attribution stays unambiguous either way (each beer → one session → one party → one
+guild), so there's no migration risk in deferring the UI. Avoids putting a "which party?"
 decision in front of every log while the app is still proving itself.
 
 ---
@@ -209,7 +209,7 @@ naturally alongside the guild/supporter-club framing.
 **Decided.** A session requires **at least two attendees**. Enforced as a database
 constraint, not a UI convention. You cannot log a beer you drank alone.
 
-*Why:* the premise is *"log every beer with your crew"* — this makes that structural
+*Why:* the premise is *"log every beer with your party"* — this makes that structural
 rather than aspirational. It also happens to be the single most meaningful responsible-design
 choice available: solo drinking is the pattern worth not gamifying, and the app simply
 has no representation for it.
@@ -219,7 +219,7 @@ a count of *shared* beers. Open question on who qualifies as the second person (
 
 ---
 
-### D20 — Combos are party-scoped
+### D20 — Combos are session-scoped
 **Decided.** Combo achievements count the **session total across everyone present**, and
 unlock for **every attendee**. There is no per-person combo ladder.
 
@@ -229,7 +229,7 @@ unlock for **every attendee**. There is no per-person combo ladder.
 rewards socialising rather than volume — which is both a better game and a much better
 thing to be encouraging.
 
-*Cost:* thresholds are harder to tune, since they depend on typical party size. Mitigated
+*Cost:* thresholds are harder to tune, since they depend on typical session size. Mitigated
 by achievements being data (D7) — retunable without a release.
 
 ---
@@ -245,62 +245,121 @@ number, not an invented one.
 
 ---
 
-### D22 — A party is a live, joinable session with an invite code
-**Decided.** To drink with someone they must (1) have the app, (2) join the party by
-entering its code on their own phone, and only then (3) appear in the session. There are
-**no guest attendees**. A party carries a short `join_code`, a `status` of `open` or
-`closed`, and members join themselves.
+### ~~D22 — A party is a live, joinable session with an invite code~~
+**Superseded by [D25](#d25--vocabulary-party-is-the-group-session-is-the-night) and
+[D22a](#d22a--joining-a-party-requires-an-invite-code-supersedes-d22).**
 
-*Why:* it makes [D19](#d19--no-solo-logging) actually enforceable rather than an honour
-system. A name typed into a box proves nothing; an account that entered a code proves
-someone was there. It also turns the party into a live object everyone can watch, and it
-makes the app's growth loop structural — you literally cannot use this app without
-recruiting the people you drink with.
+Put a `join_code` on each *night out*. This was a misreading: "party" meant the group of
+friends all along, so the code belongs on party membership, not on the evening. Kept here
+because the reasoning that produced it — that the second person must be a verified account,
+not a typed name — survived intact into D22a.
+
+---
+
+### ~~D23 — Attribution follows the drinker, not the host~~
+**Superseded by [D23a](#d23a--sessions-live-inside-one-party-supersedes-d23).**
+
+Split attribution (drinker's party) from context (the session) so a night could span
+several parties. Once outsiders join your *party* instead of your *evening*, cross-party
+sessions can't happen and the machinery is unnecessary. Deleted rather than kept — the
+simple chain is better.
+
+---
+
+### ~~D24 — Party membership is enforced by foreign key~~
+**Folded into [D22a](#d22a--joining-a-party-requires-an-invite-code-supersedes-d22).**
+
+Still true, now as a two-link chain: `beers → session_attendees → party_members`. See
+[ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-party-rule--enforced-in-the-database).
+
+---
+
+### D25 — Vocabulary: Party is the group, Session is the night
+**Decided.** A **Party** is the persistent group of friends, joined with an invite code. A
+**Session** is one night out inside a party. A **Guild** is many parties.
+
+*Why:* this was the user's vocabulary from the first message ("one party (group of
+friends) can join together in a Guild"). Earlier drafts renamed it "Party" and then reused
+"Party" for a night out, which collided and produced a per-night join code nobody asked
+for.
+
+*Supersedes:* D22 and D23 in their original form — see D22a and D23a below.
+
+*Cost:* a rename across every document and the not-yet-written schema. Cheap now,
+expensive after the first migration.
+
+---
+
+### D22a — Joining a party requires an invite code *(supersedes D22)*
+**Decided.** To drink with someone they must (1) have the app and (2) join your **party**
+with its invite code. Then they can attend sessions. There are no guest attendees and no
+per-session join codes.
+
+*Why:* the code belongs on the durable thing. Party membership is the persistent
+relationship worth proving; a session is just an evening. One code, one join, and
+everything after it is one tap.
 
 *Cost:* real, and worth naming. Your first night out requires everyone at the table to
-download something. Beers drunk with non-app friends can never be logged. The counter gets
-harder to move, and the app is useless to a lone early adopter. This is the single
-biggest adoption risk in the design, accepted deliberately in exchange for the number
-meaning something.
-
-*Supersedes:* Q16 (guest attendees). Roadmap item S7 is dropped.
+download something. Beers with non-app friends can never be logged, and the app is useless
+to a lone early adopter. Biggest adoption risk in the design, accepted deliberately in
+exchange for the number meaning something.
 
 ---
 
-### D23 — Attribution follows the drinker, not the host
-**Decided.** `beers.crew_id` and `beers.guild_id` are the **drinker's** crew and guild,
-snapshotted at log time from their `party_members` row — never the host's.
+### D23a — Sessions live inside one party *(supersedes D23)*
+**Decided.** A session belongs to exactly one party; all its beers credit that party and
+its guild. The `beer → session → party → guild` chain is restored.
 
-*Why:* D22 makes parties cross-crew by design. Crediting the host's crew would let a crew
-farm totals by hosting outsiders, and would mean your own beers didn't count for your own
-guild. Splitting *attribution* (follows the drinker) from *context* (the party) keeps
-every beer counted exactly once while letting anyone drink with anyone.
+*Why:* D22a routes outsiders through party membership, so cross-party sessions never
+occur. The drinker-scoped attribution machinery in D23 solved a problem that no longer
+exists, and the simple chain is easier to reason about, index and audit.
 
-*Cost:* `beers` carries denormalised crew/guild columns that must be set correctly on
-write; the original single-parent `beer → session → crew` chain is gone.
+*Note:* a person in several parties still has an unambiguous total — each beer belongs to
+exactly one session, hence exactly one party.
 
 ---
 
-### D24 — Party membership is enforced by foreign key
-**Decided.** `beers (party_id, profile_id)` is a foreign key into
-`party_members (party_id, profile_id)`.
+### D26 — Anyone in a session can log for anyone
+**Decided.** Once a session is open, any attendee can tap `+` for any other attendee, or
+`+ ROUND` to add one beer to everyone at once. `−` corrects mistakes. Every beer records
+`added_by`.
 
-*Why:* a beer cannot exist for someone who did not join the party on their own phone. This
-is what makes D19 and D22 structural rather than aspirational, and it collapses most of
-the planned anti-cheat work — inflating the counter now requires recruiting real,
-consenting accounts.
+*Why:* rounds are bought *for* people — pure self-logging fights the actual behaviour and
+strands anyone who's left their phone in a pocket. Shared logging with a visible audit
+trail matches how a table actually works, and among friends the social cost of a bad edit
+is enough enforcement.
+
+*Cost:* a griefing vector in principle. Mitigated by attribution (`added_by`, `voided_by`)
+and by the fact that parties are invite-only groups of friends.
+
+---
+
+### D27 — Sessions auto-close at 06:00 local
+**Decided.** Any attendee may close a session; anything still open at 06:00 local time
+closes itself.
+
+*Why:* people forget. Nobody wants Tuesday's pint landing in Saturday's session, and an
+indefinitely open session makes combo totals meaningless.
+
+---
+
+### D28 — `−` is a soft delete; milestones attribute by counter-crossing
+**Decided.** `−` sets `voided_at` rather than deleting the row. Counters exclude voided
+beers. Milestone attribution comes from `milestone_events` recorded when the live counter
+crosses a rung — **not** from `global_seq`.
+
+*Why:* voiding leaves holes in `global_seq`, so nobody may hold sequence number exactly
+1.000.000. Attributing the millionth beer by sequence would make the single most important
+number in the app unattributable. Counter-crossing events are robust to voids; `global_seq`
+stays as flavour ("you drank beer #428.391").
+
+*Cost:* two mechanisms where a naive design has one.
 
 ---
 
 ## Open — blocking
 
-These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
-
-| ID | Question | Blocks |
-|---|---|---|
-| **Q18** | Who logs the beers — host tallies, or everyone logs their own? | C3 logger, the whole UX |
-| **Q19** | When does a party close? | F4 schema, C3 |
-| **Q20** | Do your own crew mates also need the code, or are they one-tap? | C3 |
+**None. Phase 0 is unblocked.**
 
 ## Open — later phases
 
@@ -311,7 +370,7 @@ These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 | Q7 | Transfer windows — fun gimmick or needless friction? | Phase 3 |
 | Q13 | Distribution — web link, TestFlight, or public app stores? | Phase 5 |
 | Q14 | Who else is following this repo? | — |
-| Q15 | Are the party-combo thresholds right for typical party sizes? | post-launch tuning |
+| Q15 | Are the combo thresholds right for typical session sizes? | post-launch tuning |
 
 ## Answered
 
@@ -320,11 +379,14 @@ These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 | ~~Q1~~ | Client stack | → D11, Expo + web export |
 | ~~Q2~~ | What is "one beer"? | → D12, tap = 1, volume optional |
 | ~~Q4~~ | v1 scope | → D13, core + game layer |
-| ~~Q5~~ | Multiple crews per person? | → D17, schema yes, v1 UI single |
+| ~~Q5~~ | Multiple parties per person? | → D17, schema yes, v1 UI single |
 | ~~Q8~~ | Retroactive logging and editing | → D16, today + yesterday, 24h edits |
 | ~~Q9~~ | Where does the combo ladder stop? | → D18/D20, party-scoped, no kill language |
 | ~~Q10~~ | OVER 9000 — DBZ or Star Wars? | → D21, both, at 9.001 and 20.000 |
 | ~~Q11~~ | Do achievement points do anything? | → D14, they rank the guild table |
-| ~~Q12~~ | Feed scope | → D15, crew feed, no global firehose |
-| ~~Q16~~ | Who counts as the second person? | → D22, an app user who joined via code. No guests |
-| ~~Q17~~ | Does the other person confirm? | → D22, joining *is* the confirmation |
+| ~~Q12~~ | Feed scope | → D15, party feed, no global firehose |
+| ~~Q16~~ | Who counts as the second person? | → D22a, an app user who joined your party by code. No guests |
+| ~~Q17~~ | Does the other person confirm? | → D22a, joining the party *is* the confirmation |
+| ~~Q18~~ | Who logs the beers? | → D26, anyone for anyone, plus `+ ROUND` |
+| ~~Q19~~ | When does a session close? | → D27, manual with 06:00 local auto-close |
+| ~~Q20~~ | Party mates and codes | → D22a/D25, the code joins a *party*, not a session |

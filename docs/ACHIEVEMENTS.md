@@ -5,27 +5,30 @@ don't land. Every entry maps to a rule type in
 [ARCHITECTURE.md §6.1](ARCHITECTURE.md#61-rule-vocabulary).
 
 > ### 🍻 The Party Rule
-> **You cannot log a beer alone.** Every session needs at least two people present
-> ([D19](DECISIONS.md#d19--no-solo-logging)). There are no achievements for drinking by
-> yourself, because there is no such thing as a logged beer drunk by yourself.
+> **You cannot log a beer alone.** Every session needs at least two attendees, each a real
+> account that joined your party with its invite code
+> ([D19](DECISIONS.md#d19--no-solo-logging),
+> [D22a](DECISIONS.md#d22a--joining-a-party-requires-an-invite-code-supersedes-d22)).
+> There are no achievements for drinking by yourself, because there is no such thing as a
+> logged beer drunk by yourself.
 
 Design rules:
 - The announcer voice is **arcade sports** (NBA Jam) crossed with **a European football
   commentator**. Loud, absurd, affectionate — and never violent. No kill-streak language.
-- **Combos are awarded to the party, not the individual.** See
-  [D20](DECISIONS.md#d20--combos-are-party-scoped).
+- **Combos are awarded to everyone at the session, not to the individual.** See
+  [D20](DECISIONS.md#d20--combos-are-session-scoped).
 - Combos fire *during* a session as toasts. Everything else lands after.
 - Secret achievements are hidden until unlocked. Ratio of about 1 in 6.
 
 ---
 
-## 1. The Combo ladder — beers in a single session, counted across the whole party
+## 1. The Combo ladder — beers in a session, counted across everyone there
 
 Escalating live toasts. The count is the **session total across everyone present**, and
-the badge goes to **everyone in the party**. Bringing a fifth person is a better route to
+the badge goes to **every attendee**. Bringing a fifth person is a better route to
 BOOMSHAKALAKA than ordering a fifth beer.
 
-| Code | Title | Party total | Flavor |
+| Code | Title | Session total | Flavor |
 |---|---|---|---|
 | `BRACE` | BRACE | 2 | "Two on the board." |
 | `HAT_TRICK` | HAT-TRICK | 3 | "He's got the match ball!" |
@@ -36,19 +39,19 @@ BOOMSHAKALAKA than ordering a fifth beer.
 | `WORLDIE` | WORLDIE | 20 | "That is an absolute worldie." |
 | `RAMPAGE` | RAMPAGE | 25 | "The away end has lost its mind." |
 
-Thresholds are set for **party totals**, so they read very differently from per-person
-numbers: BOOMSHAKALAKA at 12 is a party of four having three each — a good Friday, not a
+Thresholds are set for **session totals**, so they read very differently from per-person
+numbers: BOOMSHAKALAKA at 12 is four people having three each — a good Friday, not a
 worrying one. RAMPAGE at 25 is a proper occasion with eight people, not one person in
 trouble.
 
-> **Q15 — are these thresholds right?** They assume typical parties of 3-6. If crews turn
-> out to be mostly pairs, every rung above ON FIRE becomes unreachable and the ladder needs
-> rescaling. Easy to tune post-launch since achievements are data, not code.
+> **Q15 — are these thresholds right?** They assume typical sessions of 3-6 people. If
+> sessions turn out to be mostly pairs, every rung above ON FIRE becomes unreachable and
+> the ladder needs rescaling. Easy to tune post-launch since achievements are data.
 
 ### Per-person cap
 
 There is deliberately **no per-person combo ladder**. An individual drinking a lot earns
-nothing extra; the party drinking together earns everything. This is the main lever
+nothing extra; the table drinking together earns everything. This is the main lever
 keeping the game pointed at socialising rather than volume.
 
 ---
@@ -78,11 +81,11 @@ Fergie time, the Invincibles.
 
 | Code | Title | Trigger |
 |---|---|---|
-| `ACE` | ACE | Every member of your crew in one session |
+| `ACE` | ACE | Every member of your party turns up to one session |
 | `SQUAD_ROTATION` | Squad Rotation | Drink with 5 different people in a week |
-| `CLASS_OF_92` | Class of '92 | Be a founding member of a crew that reaches 1.000 |
-| `THE_INVINCIBLES` | The Invincibles | Crew logs every day for a month |
-| `CAPTAINS_ARMBAND` | Captain's Armband | Top of your crew leaderboard for 4 straight weeks |
+| `CLASS_OF_92` | Class of '92 | Be a founding member of a party that reaches 1.000 |
+| `THE_INVINCIBLES` | The Invincibles | Party logs every day for a month |
+| `CAPTAINS_ARMBAND` | Captain's Armband | Top of your party leaderboard for 4 straight weeks |
 | `GOLDEN_BOOT` | Golden Boot | Top scorer in your guild for a season |
 | `THE_TREBLE` | The Treble | Three milestones in one week |
 | `CLEAN_SHEET` | Clean Sheet | A full week with zero logged — rest counts |
@@ -90,7 +93,7 @@ Fergie time, the Invincibles.
 | `DERBY_DAY` | Derby Day | Log during a fixture between two rival guilds |
 | `AWAY_GOAL` | Away Goal | Log in a city that isn't your home city |
 | `GROUNDHOPPER` | Groundhopper | 10 distinct venues |
-| `BOSMAN` | Bosman | Transfer your crew to a new guild |
+| `BOSMAN` | Bosman | Transfer your party to a new guild |
 | `RELEGATION_BATTLE` | Relegation Battle | Bottom 3 of your guild table |
 | `GOLDEN_GOAL` | Golden Goal | Log the beer that crosses a milestone |
 
@@ -99,8 +102,8 @@ Fergie time, the Invincibles.
 | Code | Title | Trigger |
 |---|---|---|
 | `FORMATION` | 4-4-2 | Your 442nd beer |
-| `SIXTY_SIX` | Nineteen Sixty-Six | Crew's 1.966th beer |
-| `NINETY_NINE` | The Treble Season | Crew's 1.999th beer |
+| `SIXTY_SIX` | Nineteen Sixty-Six | Party's 1.966th beer |
+| `NINETY_NINE` | The Treble Season | Party's 1.999th beer |
 | `FULL_TIME` | Full Time | Your 90th beer |
 
 ---
@@ -116,16 +119,16 @@ Fergie time, the Invincibles.
 | `ACHIEVEMENT_UNLOCKED` | Achievement Unlocked | Your first ever achievement |
 | `LEVEL_UP` | Level Up | Any milestone rung |
 | `RESPAWN` | Respawn | Log again after 30+ days away |
-| `SPEEDRUN` | Speedrun | Crew hits a milestone faster than any other crew that month |
+| `SPEEDRUN` | Speedrun | Party hits a milestone faster than any other party that month |
 | `CRITICAL_HIT` | Critical Hit | A beer over 8% ABV |
 | `LOOT_DROP` | Rare Drop | Log a beer type nobody in your guild has logged |
-| `NEW_GAME_PLUS` | New Game+ | Crew passes 10.000 |
+| `NEW_GAME_PLUS` | New Game+ | Party passes 10.000 |
 | `FINAL_BOSS` | Final Boss | Log the 1.000.000th beer globally |
 | `TOUCH_GRASS` | Touch Grass | *(secret)* Log 3 days running, then take a week off |
 | `AFK` | AFK | *(secret)* 90 days without logging, then return |
 | `THE_CAKE_IS_A_LIE` | The Cake Is a Lie | *(secret)* Log an alcohol-free beer at a milestone |
-| `NO_SCOPE` | No Scope | *(secret)* Log a session in under 10 seconds |
-| `GG_EZ` | GG EZ | *(secret)* Beat a rival crew to a milestone by <10 beers |
+| `ROUND_FOR_THE_LADS` | Round for the Lads | Tap `+ ROUND` for 8 or more people at once |
+| `GG_EZ` | GG EZ | *(secret)* Beat a rival party to a milestone by <10 beers |
 
 ### The two power-level badges
 
@@ -144,7 +147,7 @@ different rungs and get completely different art:
 
 Auto-generated from the ladder — one per rung per scope, so they don't need hand-authoring.
 
-| Rung | Crew title | Guild title |
+| Rung | Party title | Guild title |
 |---|---|---|
 | 10 | Opening Round | — |
 | 100 | Century | — |
@@ -163,7 +166,7 @@ Auto-generated from the ladder — one per rung per scope, so they don't need ha
 Every achievement carries `points`. Open question (Q11) whether points do anything:
 
 - **Nothing** — badges are their own reward, simplest.
-- **Crew XP / levels** — points aggregate into a crew level, a second progression axis.
+- **Party XP / levels** — points aggregate into a party level, a second progression axis.
 - **Guild table ranking** — points, not raw beers, order the guild league table. This
   rewards *variety and consistency* over sheer volume, which is a meaningfully healthier
   incentive than "whoever drinks most wins".

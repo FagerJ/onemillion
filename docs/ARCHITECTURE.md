@@ -4,6 +4,22 @@ Status: **draft — pending answers in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)**
 
 ---
 
+## 0. Vocabulary
+
+Fixed in [D25](DECISIONS.md#d25--vocabulary-party-is-the-group-session-is-the-night).
+Used consistently everywhere; earlier drafts called a Party a "Crew".
+
+| Term | Means |
+|---|---|
+| **Profile** | A person with an account |
+| **Party** | A persistent group of friends. Joined with an invite code. This is your team. |
+| **Session** | One night out. Lives inside a Party. Has attendees and beers. |
+| **Guild** | Many Parties under one banner — supporter-club flavoured |
+| **Round** | One tap that adds a beer to every attendee of a session at once |
+| **Ladder** | The shared milestone sequence, 10 → 1.000.000 |
+
+---
+
 ## 1. Shape of the system
 
 ```
@@ -11,7 +27,7 @@ Status: **draft — pending answers in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)**
 │  Client  (Expo / React Native — iOS, Android, web)  │
 │  ┌───────────────┐  ┌──────────────────────────┐    │
 │  │ Offline write │  │ Realtime subscriptions   │    │
-│  │ queue         │  │ (global + crew counters) │    │
+│  │ queue         │  │ (global + party counters)│    │
 │  └───────┬───────┘  └────────────▲─────────────┘    │
 └──────────┼───────────────────────┼──────────────────┘
            │ writes                │ pushes
@@ -32,8 +48,8 @@ Status: **draft — pending answers in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)**
 ```
 
 Everything that determines a score is computed **server-side in Postgres**. The client
-never tells the server "I earned RAMPAGE" — it says "I logged a session", and the
-database decides what that means. This matters because the global counter is public and
+never tells the server "I earned ON FIRE" — it says "I logged a beer", and the database
+decides what that means. This matters because the global counter is public and
 competitive.
 
 ---
@@ -44,10 +60,10 @@ competitive.
 |---|---|---|
 | Database | Supabase Postgres | Aggregations, triggers, RLS, one row per beer scales fine |
 | Auth | Supabase Auth — Apple + Google + magic link | Nobody types a password in a pub |
-| Realtime | Supabase Realtime | The global counter ticking live is the app's best moment |
+| Realtime | Supabase Realtime | Live session tally + the global counter ticking |
 | Storage | Supabase Storage | Beer photos |
 | Server logic | Postgres functions + a few Edge Functions | Achievement eval belongs next to the data |
-| Client | **Expo (React Native) + web export** | One codebase to iOS, Android and web; push + widgets |
+| Client | Expo (React Native) + web export | One codebase to iOS, Android and web; push + widgets |
 | Hosting (web) | Vercel or Cloudflare Pages | Serves the Expo web export |
 
 Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
@@ -59,25 +75,20 @@ Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 ### 3.1 Hierarchy
 
 ```
-                    ┌──> crew ──> guild        (attribution — follows the DRINKER)
-profile ──< beer ───┤
-                    └──> party                 (context — who you were with)
+profile ──< party_members >── party ──> guild
+                                │
+                                └──< session ──< beer
+                                        │
+                                        └──< session_attendees
 ```
 
-A **beer** has two independent parents, and keeping them separate is what makes
-cross-crew parties work:
+A **beer** belongs to exactly one **session**, which belongs to exactly one **party**,
+which belongs to at most one **guild**. Every beer has an unambiguous path up the
+hierarchy — no double counting, ever, even when a person belongs to several parties.
 
-- **Attribution** follows the *drinker*. Your beer credits **your** crew and **your**
-  guild, always — even when you're drinking in someone else's party.
-- **Context** is the party. It records who you were with, where, and when, and it's what
-  combo achievements are computed over.
-
-A party can contain people from three different crews; each person's beers flow up their
-own hierarchy. Nobody farms another crew's total, and no beer is ever counted twice.
-
-> **Superseded:** the original model had `beer → session → crew → guild`, which assumed
-> one crew per session. The party join code ([D22](DECISIONS.md#d22--a-party-is-a-live-joinable-session-with-an-invite-code))
-> makes that assumption false.
+To drink with someone outside your party, **they join your party** with the invite code.
+Multi-party membership ([D17](DECISIONS.md#d17--a-person-may-belong-to-several-crews-v1-ships-one))
+makes that cheap, and it keeps attribution trivially simple.
 
 ### 3.2 Tables
 
@@ -93,12 +104,12 @@ profiles (
   created_at    timestamptz
 )
 
--- Crews (your group of friends) --------------------------------------------
-crews (
+-- Parties (your group of friends) ------------------------------------------
+parties (
   id            uuid pk,
   name          text not null,           -- "The Thirsty Five"
   slug          text unique,
-  invite_code   text unique not null,
+  invite_code   text unique not null,    -- how you join a party
   accent_color  text,
   guild_id      uuid references guilds,  -- nullable; at most one
   guild_joined_at timestamptz,
@@ -106,12 +117,12 @@ crews (
   created_at    timestamptz
 )
 
-crew_members (
-  crew_id       uuid references crews,
+party_members (
+  party_id      uuid references parties,
   profile_id    uuid references profiles,
   role          text not null,           -- 'captain' | 'member'
   joined_at     timestamptz,
-  primary key (crew_id, profile_id)
+  primary key (party_id, profile_id)
 )
 
 -- Guilds (supporter clubs) -------------------------------------------------
@@ -128,12 +139,12 @@ guilds (
   created_at    timestamptz
 )
 
--- Parties (a night out — live, joinable) -----------------------------------
-parties (
+-- Sessions (a night out) ---------------------------------------------------
+sessions (
   id            uuid pk,
-  host_crew_id  uuid references crews not null,   -- whose night it is; context only
-  join_code     text,                             -- 4-char, NULL once closed
-  status        text not null,                    -- 'open' | 'closed'
+  party_id      uuid references parties not null,
+  guild_id      uuid,                    -- SNAPSHOT of party.guild_id at start
+  status        text not null,           -- 'open' | 'closed'
   venue_name    text,
   venue_id      uuid references venues,
   note          text,
@@ -143,129 +154,159 @@ parties (
   created_by    uuid references profiles,
   created_at    timestamptz
 )
--- Codes only need to be unique among OPEN parties, so 4 chars is plenty
--- and they recycle freely once a party closes.
-create unique index on parties (join_code) where status = 'open';
 
-party_members (                           -- includes people who drank zero
-  party_id      uuid references parties,
-  profile_id    uuid references profiles not null,  -- NO GUESTS: app account required
-  crew_id       uuid not null,            -- SNAPSHOT of the member's own crew
-  guild_id      uuid,                     -- SNAPSHOT of that crew's guild
+session_attendees (                       -- includes people who drank zero
+  session_id    uuid references sessions,
+  profile_id    uuid references profiles not null,
+  party_id      uuid not null,            -- denormalised, for the FK below
+  in_rounds     boolean default true,     -- false = skip me on "+ ROUND"
   joined_at     timestamptz,
-  primary key (party_id, profile_id)
+  primary key (session_id, profile_id),
+  -- an attendee must be a member of the session's party
+  foreign key (party_id, profile_id) references party_members (party_id, profile_id)
 )
 
 beers (
   id            uuid pk,
-  party_id      uuid references parties not null,  -- context: who you were with
-  profile_id    uuid references profiles not null, -- the drinker
-  crew_id       uuid not null,            -- the DRINKER's crew, not the host's
-  guild_id      uuid,                     -- the DRINKER's guild, snapshotted
+  session_id    uuid references sessions not null,
+  party_id      uuid not null,           -- denormalised for fast roll-up
+  guild_id      uuid,                    -- denormalised snapshot
+  profile_id    uuid references profiles not null,
+  added_by      uuid references profiles not null,  -- who tapped +
+  round_id      uuid,                    -- set when added via "+ ROUND"
   beer_type     text,
-  volume_ml     int,
+  volume_ml     int,                     -- 330 | 500 | 568 | custom
   abv           numeric(4,2),
   is_alcohol_free boolean default false,
+  photo_url     text,
   logged_at     timestamptz not null,
-  global_seq    bigint unique,            -- "you drank beer #428,391"
-  client_uuid   text unique               -- idempotency key for offline replay
+  voided_at     timestamptz,             -- soft delete; see §3.6
+  voided_by     uuid references profiles,
+  global_seq    bigint,                  -- "you drank beer #428.391"
+  client_uuid   text unique,             -- idempotency key for offline replay
+  -- you can only log a beer for someone actually at the session
+  foreign key (session_id, profile_id) references session_attendees (session_id, profile_id)
 )
 ```
 
-Note `beers.crew_id` is copied from `party_members.crew_id` for that profile — the
-drinker's own crew — never from `parties.host_crew_id`.
-
-### 3.3 Three modelling decisions worth defending
+### 3.3 Modelling decisions worth defending
 
 **One row per beer, not a tally column.** The UI stays the `+`/`−` stepper from the
-mockup; saving a tally of 3 writes 3 rows. A million rows is nothing for Postgres, and it
-buys the thing the entire meme is about: knowing exactly who drank beer number 1.000.000,
-where, and when. `global_seq` is a monotonic sequence that makes that queryable forever.
-A tally column can never answer it, and retrofitting is a painful migration.
+mockup; a tally of 3 writes 3 rows. A million rows is nothing for Postgres, and it buys
+the thing the whole meme is about: knowing exactly who drank beer number 1.000.000, where,
+and when. A tally column can never answer it, and retrofitting is a painful migration.
 
-**`crew_id` and `guild_id` are snapshotted, not joined through.** When a crew transfers
-to a new guild, history stays where it was earned. Without this, a crew switching guilds
-would silently rewrite two guilds' totals — and every achievement derived from them. Same
-argument applies to a person changing crews.
+**`party_id` and `guild_id` are snapshotted onto sessions and beers, not joined through.**
+When a party transfers to a new guild, history stays where it was earned. Without this, a
+party switching guilds would silently rewrite two guilds' totals — and every achievement
+derived from them.
 
-**Party membership is separate from beers.** The designated driver still appears in the
-feed, still counts toward party size for social achievements, and contributes zero to the
-counter.
+**Attendees are separate from beers.** The designated driver still appears in the feed,
+still counts toward session size for social achievements, and contributes zero to the
+counter. `in_rounds = false` also excludes them from the round button.
+
+**`added_by` is recorded on every beer.** Anyone in a session can log for anyone
+([D26](DECISIONS.md#d26--anyone-in-a-session-can-log-for-anyone)), so the audit trail is
+what keeps that civil — every correction is attributable and visible in the session log.
 
 ### 3.4 The Party Rule — enforced in the database
 
-Per [D19](DECISIONS.md#d19--no-solo-logging), **a party must have at least two members**,
-and per [D22](DECISIONS.md#d22--a-party-is-a-live-joinable-session-with-an-invite-code)
-every member is a real app user who chose to join. Not a UI convention a rogue client can
-skip:
+Per [D19](DECISIONS.md#d19--no-solo-logging), **a session needs at least two attendees**,
+and every attendee is a real app user who joined the party with a code. Not a UI
+convention a rogue client can skip:
 
 ```sql
--- Deferred so a party and its members can be inserted in one transaction,
+-- Deferred so a session and its attendees can be inserted in one transaction,
 -- but the transaction cannot commit with a lone drinker in it.
-create constraint trigger party_requires_two
-  after insert or update on parties
+create constraint trigger session_requires_two
+  after insert or update on sessions
   deferrable initially deferred
-  for each row execute function assert_party_of_two();
-
--- A beer can only exist for someone who actually joined the party.
-alter table beers add constraint beer_drinker_is_member
-  foreign key (party_id, profile_id) references party_members (party_id, profile_id);
+  for each row execute function assert_session_of_two();
 ```
 
-That foreign key is the load-bearing one. You cannot log a beer for a person who did not
-enter the code on their own phone, which means the second person in every party is a
-genuine, consenting account — not a name typed into a box.
+Two foreign keys do the real work, and they chain:
+
+```
+beers ──> session_attendees ──> party_members
+  "you can only log a beer     "you can only attend a session
+   for someone at the session"   if you're in the party"
+```
+
+You cannot log a beer for a person who did not join the party with its invite code. The
+second person in every session is a genuine, consenting account — not a name typed into a
+box.
 
 Consequences worth being explicit about:
 
 - There is no representation in this system for a beer drunk alone. Not "logged and
   hidden" — genuinely absent.
 - The global counter undercounts real-world beers, deliberately. It counts **shared**
-  beers, verified by both parties. That's the number the app is about.
+  beers. That's the number the app is about.
 - Every achievement is implicitly social, which is why the combo ladder can be
-  party-scoped ([D20](DECISIONS.md#d20--combos-are-party-scoped)) without a separate solo
-  path.
+  session-scoped ([D20](DECISIONS.md#d20--combos-are-session-scoped)) without a separate
+  solo path.
 - **Anti-cheat is largely solved by the schema.** Inflating the counter requires
-  recruiting real accounts who join real parties. Most of the Phase 5 anti-cheat work
-  (P1) collapses into rate limits.
+  recruiting real accounts into a real party. Most of the Phase 5 anti-cheat work (P1)
+  collapses into rate limits.
 
----
-
-### 3.5 Party lifecycle
+### 3.5 Session lifecycle
 
 ```
-   host starts a party
-           │
-           ▼
-     ┌───────────┐   others enter the 4-char code on their own phone
-     │   OPEN    │◄──────────────────────────────────────────────────┐
-     │           │                                                   │
-     │ · code live                                    join / rejoin ─┘
-     │ · members may join
-     │ · beers may be logged
-     └─────┬─────┘
-           │  host closes it, or auto-close (see Q19)
-           ▼
-     ┌───────────┐
-     │  CLOSED   │  code released · no new members · no new beers
-     └───────────┘  combos finalised · feed entry published
+   someone starts a session in the party
+                 │
+                 ▼
+           ┌───────────┐
+           │   OPEN    │  party members join / are added
+           │           │  anyone taps + for anyone
+           │           │  anyone taps + ROUND for everyone
+           │           │  tally syncs live to every attendee
+           └─────┬─────┘
+                 │  closed manually, or auto-closed at 06:00 local
+                 ▼
+           ┌───────────┐
+           │  CLOSED   │  no new beers · combos finalised
+           └───────────┘  feed entry published
 ```
 
-The join code is short (4 characters) because it only needs to be unique among
-*currently open* parties — the partial unique index enforces exactly that, and codes
-recycle once a party closes. Shown as text and as a QR so nobody types anything in a
-dark pub.
-
-This also makes the party a **live object**: everyone in it can watch the tally climb in
-real time over Realtime, which is a far better experience than one person tallying for
-the table afterwards.
+Manual close with an **06:00 local auto-close backstop**
+([D27](DECISIONS.md#d27--sessions-auto-close-at-0600-local)) — people forget to close a
+session, and nobody wants Tuesday's pint landing in Saturday's party.
 
 > **Tension with [D16](DECISIONS.md#d16--backdating-limited-to-today-and-yesterday):**
-> backdating and live parties pull against each other. A party started for last night still
-> works — the code goes live now, people join now, `started_at` is yesterday — but the
-> live combo toasts never fire, so the night is recorded without ever being celebrated.
-> Acceptable, and worth designing the empty state for: a backdated party should say so
-> rather than pretending it was live.
+> backdating and live sessions pull against each other. A session started for last night
+> still works, but the live combo toasts never fire, so the night gets recorded without
+> ever being celebrated. Worth designing that empty state honestly rather than faking it.
+
+### 3.6 Logging, rounds and corrections
+
+Per [D26](DECISIONS.md#d26--anyone-in-a-session-can-log-for-anyone):
+
+**Per-person `+`** — adds one beer to that attendee.
+
+**`+ ROUND`** — adds one beer to *every* attendee with `in_rounds = true`, sharing a
+`round_id`. This is the primitive that matches how drinking actually works: you buy a
+round, not a beer. Shows a preview of who's included so the designated driver can be
+dropped with one tap.
+
+**Optional detail** — a sheet on the `+`, never required: volume (33cl / 50cl / pint /
+custom), ABV, beer type, photo. The counter is unaffected by any of it
+([D12](DECISIONS.md#d12--one-tap--one-beer-volume-is-optional-metadata)); it feeds stats
+and the volume-dependent achievements.
+
+**`−` corrects errors** via soft delete — set `voided_at`, don't remove the row. Voiding
+the most recent un-voided beer for that person in that session. Soft delete because:
+
+- counters decrement cleanly by excluding voided rows
+- the audit trail survives, so "who removed my beer?" is answerable
+- it composes with [D16](DECISIONS.md#d16--backdating-limited-to-today-and-yesterday)'s
+  rule that deletions never revoke achievements
+
+> **Consequence for `global_seq`:** voided beers leave holes in the sequence, so nobody
+> may hold seq exactly 1.000.000. Milestone attribution therefore comes from
+> **counter-crossing events** recorded in `milestone_events` at the moment the live
+> counter hits a rung — not from `global_seq`, which stays a piece of flavour
+> ("you drank beer #428.391"). Getting this wrong would mean the millionth beer is
+> unattributable, which is the one number that has to work.
 
 ---
 
@@ -283,35 +324,46 @@ milestones (
   threshold     bigint primary key,
   label         text not null,           -- "500" / "HALF A MILLION"
   tier          text not null,           -- 'bronze'|'silver'|'gold'|'legendary'
-  applies_to    text[] not null          -- {'profile','crew','guild','global'}
+  applies_to    text[] not null          -- {'profile','party','guild','global'}
+)
+
+milestone_events (                        -- who crossed what, when
+  id            uuid pk,
+  threshold     bigint references milestones,
+  scope         text not null,
+  scope_id      uuid,                     -- null for global
+  beer_id       uuid references beers,    -- the Golden Goal
+  profile_id    uuid references profiles,
+  crossed_at    timestamptz
 )
 ```
 
-`applies_to` is what keeps it honest — a crew never sees the 250.000 rung dangling
-unreachably, and the global counter isn't cluttered with a "10 beers" celebration.
+`applies_to` keeps it honest — a party never sees the 250.000 rung dangling unreachably,
+and the global counter isn't cluttered with a "10 beers" celebration.
 
 **Easter-egg rungs** fire a toast but don't drive the gauge: `442` (the formation), `1337`
-(leet), `1966`, `9001` (IT'S OVER 9000), `90` (full time), `128 / 256 / 512 / 1024`.
+(leet), `1966`, `9001` (IT'S OVER 9000), `20000` (midi-chlorians), `90` (full time).
 
 ### 4.1 The two gauges
 
 | | Drives | Behaviour |
 |---|---|---|
-| **Primary ring** | Next milestone at the scope you're viewing | Moves weekly. `428/500 = 85.6%`. The dopamine. |
+| **Primary ring** | Next milestone at the scope you're viewing | Moves weekly. `428/500 = 85,6%`. The dopamine. |
 | **Secondary bar** | Always `0 → 1.000.000` global | Barely moves. Always present. The ambition and the joke. |
 
 ---
 
 ## 5. Counters — never `COUNT(*)`
 
-Trigger-maintained roll-up tables, updated inside the same transaction as the insert:
+Trigger-maintained roll-up tables, updated inside the same transaction as the insert, all
+excluding `voided_at is not null`:
 
 ```sql
 global_stats  (id=1, total_beers, total_sessions, total_profiles, updated_at)
-crew_stats    (crew_id pk, total_beers, beers_this_week, current_streak_days,
+party_stats   (party_id pk, total_beers, beers_this_week, current_streak_days,
                last_logged_at, next_milestone, updated_at)
-guild_stats   (guild_id pk, total_beers, crew_count, beers_this_week, ...)
-profile_stats (profile_id pk, total_beers, current_streak_days, longest_session, ...)
+guild_stats   (guild_id pk, total_beers, party_count, achievement_points, ...)
+profile_stats (profile_id pk, total_beers, current_streak_days, biggest_session, ...)
 ```
 
 The client subscribes to Realtime on the `global_stats` row. When a stranger in another
@@ -319,8 +371,10 @@ city logs a pint, the number ticks up on your screen. That single behaviour is t
 compelling thing this app can do — it's what makes it feel communal rather than like a
 private diary.
 
-Weekly figures are maintained by a scheduled `pg_cron` job that rolls the window, not by
-recomputing on read.
+Realtime on the session row does the same job at close range: everyone at the table
+watches the tally climb as rounds land.
+
+Weekly figures are rolled by a scheduled `pg_cron` job, not recomputed on read.
 
 ---
 
@@ -330,12 +384,12 @@ Achievements are **data, not code**. Adding "Fergie Time" must not require an ap
 
 ```sql
 achievements (
-  code          text primary key,        -- 'RAMPAGE'
+  code          text primary key,        -- 'ON_FIRE'
   title         text not null,
   description   text not null,
   flavor        text,                    -- the announcer line
   category      text not null,           -- 'combo'|'football'|'gaming'|'milestone'|'social'|'time'
-  scope         text not null,           -- 'profile'|'crew'|'guild'|'global'
+  scope         text not null,           -- 'profile'|'party'|'guild'|'global'
   tier          int,
   rule          jsonb not null,
   is_secret     boolean default false,   -- hidden until unlocked
@@ -345,10 +399,10 @@ achievements (
 achievement_unlocks (
   id            uuid pk,
   achievement_code text references achievements,
-  profile_id    uuid, crew_id uuid, guild_id uuid,   -- whichever the scope implies
-  session_id    uuid references sessions,            -- what triggered it
+  profile_id    uuid, party_id uuid, guild_id uuid,   -- whichever the scope implies
+  session_id    uuid references sessions,             -- what triggered it
   unlocked_at   timestamptz,
-  unique (achievement_code, coalesce(profile_id, crew_id, guild_id))
+  unique (achievement_code, coalesce(profile_id, party_id, guild_id))
 )
 ```
 
@@ -359,23 +413,23 @@ expression language would be a security and correctness liability.
 
 | Rule type | Example | Unlocks |
 |---|---|---|
-| `party_session_count` | `{min: 12}` | BOOMSHAKALAKA (session total, all attendees) |
-| `party_size` | `{min: 6}` | Full Squad |
+| `session_total` | `{min: 12}` | BOOMSHAKALAKA (all attendees combined) |
+| `session_size` | `{min: 6}` | Full Squad |
+| `round_size` | `{min: 8}` | Getting a round in for eight |
 | `total_count` | `{scope:'profile', min:9001}` | IT'S OVER 9000 |
 | `streak_days` | `{min: 7}` | Session Streak |
 | `time_of_day` | `{after:'23:45', before:'00:00'}` | Fergie Time |
 | `distinct_partners` | `{window:'7d', min:5}` | Squad Rotation |
 | `distinct_venues` | `{window:'all', min:10}` | Groundhopper |
 | `distinct_beer_types` | `{in_session:true, min:3}` | Perfect Hat-trick |
-| `session_duration` | `{min_minutes: 90}` | Full Ninety |
-| `full_squad` | `{scope:'crew'}` | ACE |
-| `crossed_milestone` | `{scope:'crew'}` | Golden Goal |
+| `session_duration` | `{min_minutes: 90}` | The Full Ninety |
+| `full_party` | `{scope:'party'}` | ACE — everyone turned up |
+| `crossed_milestone` | `{scope:'party'}` | Golden Goal |
 | `abstinence` | `{days: 7}` | Clean Sheet |
 
-One function, `evaluate_achievements(session_id uuid)`, runs after a session commits,
-evaluates every rule whose category could possibly be affected, and inserts unlocks.
-Server-authoritative and deterministic — replaying the same session always yields the same
-badges.
+One function, `evaluate_achievements(session_id uuid)`, runs after each beer commits and
+again on session close, evaluates every rule whose category could be affected, and inserts
+unlocks. Server-authoritative and deterministic.
 
 See [ACHIEVEMENTS.md](ACHIEVEMENTS.md) for the catalogue.
 
@@ -388,60 +442,55 @@ later is far more painful than designing for it now.
 
 Not a sync engine — just a durable queue:
 
-1. Log writes to a local store immediately; UI updates optimistically.
-2. Each pending session carries a `client_uuid`.
-3. On reconnect, the queue replays. The `unique` constraint on `client_uuid` makes replay
+1. Taps write to a local store immediately; UI updates optimistically.
+2. Each pending beer carries a `client_uuid`.
+3. On reconnect the queue replays. The `unique` constraint on `client_uuid` makes replay
    idempotent — a double-send is a no-op, not a double count.
 4. Counters and achievements resolve server-side on arrival, so badges may land a moment
-   after the log. Surfaced as a celebratory push rather than an inline update.
+   after the log.
 
-Consequence for design: **the celebration is asynchronous.** The RAMPAGE toast might fire
+Consequence for design: **the celebration is asynchronous.** The ON FIRE toast might fire
 when you get signal back in the taxi. That's fine — arguably better.
+
+Rounds queue as a unit: one `round_id`, N beers, all-or-nothing on replay.
 
 ---
 
 ## 8. Security & fairness
 
-**RLS on everything.** Crew data is visible to crew members; guild aggregates are visible
-to guild members; global aggregates are public.
+**RLS on everything.** Party data is visible to party members; guild aggregates to guild
+members; global aggregates are public.
 
-> **Known trap:** RLS policies on `crew_members` that themselves query `crew_members`
+> **Known trap:** RLS policies on `party_members` that themselves query `party_members`
 > cause infinite recursion. Needs a `SECURITY DEFINER` helper:
-> `is_crew_member(crew_id uuid) returns boolean`. Same for guilds. Cheap if anticipated,
+> `is_party_member(party_id uuid) returns boolean`. Same for guilds. Cheap if anticipated,
 > a bad afternoon if not.
 
-**Anti-cheat** — the global counter is public and competitive, so someone will tap +9999.
-Layered, all server-side:
+**Anti-cheat** is mostly structural now — the FK chain in §3.4 means inflating the counter
+requires recruiting real accounts into a real party. What remains:
 
-- `CHECK` constraints: beers per person per session ≤ N
-- Rate limit: beers per person per hour ≤ N
-- `logged_at` cannot be in the future, nor more than N days in the past
-- Guild-level statistical outlier flagging for leaderboard eligibility
-
-Thresholds are in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) — they need a human call, not a
-default.
+- Rate limit: beers per person per hour
+- `logged_at` cannot be in the future, nor outside the backdating window
+- Guild-level statistical outlier flagging for league-table eligibility
 
 ---
 
 ## 9. Responsible design
 
-An app that gamifies drinking with a badge called RAMPAGE should make a few decisions
-deliberately rather than by accident. Not moralising — just choosing:
+An app that gamifies drinking should make a few decisions deliberately rather than by
+accident. Not moralising — just choosing:
 
-- **Alcohol-free beers count.** `is_alcohol_free` is on the schema. NA beer is a beer, it
-  counts toward the million, and it means the app works for someone taking a break rather
-  than pushing them out.
-- **Clean Sheet is an achievement.** A week without logging earns a badge. Rest is part of
-  the game, not a failure state.
-- **No solo logging** ([D19](DECISIONS.md#d19--no-solo-logging)). The single most
-  meaningful choice available here: solo drinking is the pattern worth not gamifying, and
-  the app has no representation for it at all.
-- **Combos reward party size, not consumption** ([D20](DECISIONS.md#d20--combos-are-party-scoped)).
-  The route to a big badge is bringing a fifth friend, not ordering a fifth beer.
+- **No solo logging** ([D19](DECISIONS.md#d19--no-solo-logging)). Solo drinking is the
+  pattern worth not gamifying, and the app has no representation for it at all.
+- **Combos reward party size, not consumption**
+  ([D20](DECISIONS.md#d20--combos-are-session-scoped)). The route to a big badge is bringing
+  a fifth friend, not ordering a fifth beer.
+- **Alcohol-free beers count** ([D9](DECISIONS.md#d9--alcohol-free-beers-count)). The app
+  should still work for someone taking a break rather than pushing them out.
+- **Clean Sheet is an achievement.** A week off earns a badge. Rest is part of the game.
 - **No "you're behind" nudges.** Push notifications celebrate what happened; they never
-  guilt you into drinking. This is a hard product rule, and it constrains Phase 4.
-- **Age gate.** Alcohol content requires a 17+ rating on the App Store and an age
-  declaration. Affects distribution — see Q13.
+  guilt you into drinking. Hard product rule, constrains Phase 4.
+- **Age gate.** Alcohol content requires a 17+ App Store rating and an age declaration.
 
 ---
 

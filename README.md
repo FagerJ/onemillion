@@ -1,11 +1,11 @@
 # ONE MILLION BEERS
 
-> Log every beer with your crew. Every round with a friend counts toward one million.
+> Log every beer with your party. Every round with a friend counts toward one million.
 
 A social beer-logging app built around a single absurd, communal goal: **1.000.000 beers**.
 
 You don't drink a million beers. Nobody does. That's the joke — and the point. You log
-with your crew, your crew climbs its own milestone ladder, your crew joins a **guild**
+with your party, your party climbs its own milestone ladder, your party joins a **guild**
 (think supporter club), and every pint anyone anywhere logs pushes one shared global
 counter toward seven figures.
 
@@ -24,9 +24,9 @@ prioritisation before writing application code.
 
 ## The core concepts
 
-**Crew** — your group of friends. This is where you log. 3-15 people typically.
+**Party** — your group of friends. This is where you log. 3-15 people typically.
 
-**Guild** — many crews banded together under a shared banner. Football supporter clubs
+**Guild** — many parties banded together under a shared banner. Football supporter clubs
 are the intended flavour ("Blåvitt Supporter Guild"). This is the tier where big numbers
 become reachable.
 
@@ -38,32 +38,31 @@ different rungs.
 feels great). The thin bar underneath always shows 0 → 1.000.000 (barely moves, never
 goes away).
 
-**Party** — a night out. Someone starts one, everyone else joins with a 4-character code
-on their own phone, and the tally climbs live for all of them. Parties can span crews:
-your beers always credit *your* crew and *your* guild, whoever's party you're in.
+**Session** — one night out, inside a party. Anyone present can tap `+` for anyone, or
+`+ ROUND` to add a beer to everyone at once. The tally syncs live to every phone at the
+table. Closes when someone closes it, or at 06:00.
 
-**The Party Rule** — **you cannot log a beer alone.** A party needs at least two members,
-and every member is a real account that chose to join — no guests, no typed-in names.
-Enforced by a foreign key, not by the UI. Combo achievements count the *party's* total and
-unlock for everyone present, so the route to a big badge is bringing a fifth friend, not
-ordering a fifth beer.
+**The Party Rule** — **you cannot log a beer alone.** A session needs at least two
+attendees, and every attendee is a real account that joined your party with its invite
+code — no guests, no typed-in names. Enforced by foreign keys, not by the UI. Combo
+achievements count the *session's* total and unlock for everyone there, so the route to a
+big badge is bringing a fifth friend, not ordering a fifth beer.
 
-The counter is therefore a count of **shared, mutually-confirmed** beers. It undercounts
-reality on purpose, and you cannot use this app without recruiting the people you drink
-with.
+The counter is therefore a count of **shared** beers. It undercounts reality on purpose,
+and you cannot use this app without recruiting the people you drink with.
 
 ## Why guilds exist
 
-At ~5 beers per person per week, a crew of five logs ~1.300 beers a year:
+At ~5 beers per person per week, a party of five logs ~1.300 beers a year:
 
 | Scope | Realistic output | Ladder rungs it can reach |
 |---|---|---|
 | One person | ~250/year | 10 → 1.000 |
-| Crew of 5 | ~1.300/year | 10 → 5.000 |
-| Guild of 500 crews | ~650.000/year | 1.000 → 500.000 |
+| Party of 5 | ~1.300/year | 10 → 5.000 |
+| Guild of 500 parties | ~650.000/year | 1.000 → 500.000 |
 | Global | everyone | → 1.000.000 |
 
-A crew runs out of ladder around 5.000. Guilds are the tier that makes the big rungs
+A party runs out of ladder around 5.000. Guilds are the tier that makes the big rungs
 reachable — without them the top half of the ladder is decorative.
 
 ## Design language
