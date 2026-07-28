@@ -1,10 +1,14 @@
 # Roadmap
 
-Status: **proposed order — needs your prioritisation.**
+Status: **v1 scope agreed** ([D13](DECISIONS.md#d13--v1--core-loop--game-layer)).
+Later phases still open to reordering.
 
-Every item has an ID. To reprioritise, just say e.g. *"move G1 into Phase 1, drop S3"*.
+Every item has an ID. To reprioritise, just say e.g. *"move U5 into v1, drop S3"*.
 
 Estimates are rough build-effort, assuming decisions are already made.
+
+> ### 🎯 v1 = Phase 0 + Phase 1 + G1, G2, G4, G5
+> Everything else is post-v1. Phase 3 (guilds) follows immediately after.
 
 ---
 
@@ -48,18 +52,19 @@ Estimates are rough build-effort, assuming decisions are already made.
 
 *This is what makes it a game rather than a spreadsheet.*
 
-| ID | Item | Effort |
-|---|---|---|
-| G1 | Achievement engine: schema, rule vocabulary, `evaluate_achievements()` | L |
-| G2 | Seed the catalogue (multikill + football + gaming) | M |
-| G3 | Achievements screen (grid, locked/unlocked, progress bars) | M |
-| G4 | **Live multikill toasts** — DOUBLE KILL → RAMPAGE during a session | M |
-| G5 | Milestone celebration: full-screen takeover, "Golden Goal" attribution | M |
-| G6 | Easter-egg rungs (442, 1337, 9001, 1966) | S |
-| G7 | Sound design — announcer lines (optional, muted by default) | M |
+| ID | Item | Effort | v1 |
+|---|---|---|---|
+| G1 | Achievement engine: schema, rule vocabulary, `evaluate_achievements()` | L | ✅ |
+| G2 | Seed the catalogue (multikill + football + gaming) | M | ✅ |
+| G3 | Achievements screen (grid, locked/unlocked, progress bars) | M | |
+| G4 | **Live multikill toasts** — DOUBLE KILL → RAMPAGE during a session | M | ✅ |
+| G5 | Milestone celebration: full-screen takeover, "Golden Goal" attribution | M | ✅ |
+| G6 | Easter-egg rungs (442, 1337, 9001, 1966) | S | |
+| G7 | Sound design — announcer lines (optional, muted by default) | M | |
 
-> G4 and G5 are the emotional payload of the whole product. If Phase 2 gets cut for time,
-> cut G3 and G7 before you cut these.
+> G4 and G5 are the emotional payload of the whole product — hence their place in v1 ahead
+> of the achievements screen itself. Badges you never see a celebration for are just rows
+> in a table.
 
 ---
 
@@ -73,7 +78,7 @@ Estimates are rough build-effort, assuming decisions are already made.
 | U2 | Guild create / browse / join (per chosen join policy) | M |
 | U3 | Club catalogue seed (football clubs w/ crests + colours) | M |
 | U4 | Guild dashboard — guild gauge, contributing crews | M |
-| U5 | **Guild league table** — the Champions League standings view | L |
+| U5 | **Guild league table** — standings ranked on achievement points ([D14](DECISIONS.md#d14--achievement-points-rank-the-guild-league-table)) | L |
 | U6 | Guild-scoped achievements + milestones | M |
 | U7 | Transfer window mechanic (if adopted — see Q7) | M |
 

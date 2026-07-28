@@ -8,7 +8,7 @@ Status: **draft — pending answers in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)**
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Client  (Expo / React Native + web export — TBD)   │
+│  Client  (Expo / React Native — iOS, Android, web)  │
 │  ┌───────────────┐  ┌──────────────────────────┐    │
 │  │ Offline write │  │ Realtime subscriptions   │    │
 │  │ queue         │  │ (global + crew counters) │    │
@@ -47,8 +47,8 @@ competitive.
 | Realtime | Supabase Realtime | The global counter ticking live is the app's best moment |
 | Storage | Supabase Storage | Beer photos |
 | Server logic | Postgres functions + a few Edge Functions | Achievement eval belongs next to the data |
-| Client | **OPEN — see Q1** | Expo (RN + web) vs Next.js PWA |
-| Hosting (web) | Vercel or Cloudflare Pages | Whichever the client choice implies |
+| Client | **Expo (React Native) + web export** | One codebase to iOS, Android and web; push + widgets |
+| Hosting (web) | Vercel or Cloudflare Pages | Serves the Expo web export |
 
 Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 
@@ -348,7 +348,7 @@ deliberately rather than by accident. Not moralising — just choosing:
 ## 10. Repository layout (proposed)
 
 ```
-/apps/mobile          Expo app (or /apps/web for Next.js — pending Q1)
+/apps/app             Expo app — iOS, Android, web export
 /packages/core        Shared types, ladder logic, achievement rule types
 /supabase
   /migrations         Versioned SQL

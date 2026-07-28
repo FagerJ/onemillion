@@ -6,39 +6,19 @@ Blocking questions are marked 🔴 — Phase 0 can't start without them.
 
 ---
 
-## 🔴 Q1 — Client stack
+## ✅ Answered — see [DECISIONS.md](DECISIONS.md)
 
-Both ship to phones; the difference is distribution friction vs. native capability.
-
-| Option | Gets you | Costs |
+| ID | Question | Outcome |
 |---|---|---|
-| **A. Expo (React Native) + web export** | iOS, Android *and* web from one codebase. Native feel matching the iOS-styled mockups. Real push. Home-screen widget showing the counter. | react-native-web setup is fiddlier; $99/yr Apple account for native builds |
-| **B. Next.js PWA (web only)** | Fastest to ship. Share a URL, friends add to home screen. Push works on iOS 16.4+ once installed. No stores, no review. | No widget, no share-sheet; "add to home screen" needs explaining |
-| **C. Expo, native-only first** | Cleanest native experience, no web compromises | Every friend needs a TestFlight invite to try it |
-
-**My recommendation: A.** Push notifications are the retention mechanic here, and a
-home-screen widget showing the counter tick up is exactly the kind of dumb-brilliant thing
-this deserves. But if you want it in friends' hands *this week*, B is the honest answer.
+| Q1 | Client stack | **Expo (React Native) + web export** → D11 |
+| Q2 | What is "one beer"? | **Tap = 1, volume optional metadata** → D12 |
+| Q4 | v1 scope | **Core loop + game layer** → D13 |
+| Q11 | Do achievement points do anything? | **They rank the guild league table** → D14 |
+| Q12 | Feed scope | **Crew feed default, no global firehose** → D15 |
 
 ---
 
-## 🔴 Q2 — What is "one beer"?
-
-This defines the meaning of the entire number, so it's worth getting right.
-
-| Option | Rule | Trade-off |
-|---|---|---|
-| **A. One tap = one beer** | Volume irrelevant. A 33cl lager and a 50cl IPA both = 1. | Purest, simplest, funniest. A million *beers*, not a million litres. Unfair to whoever drinks halves. |
-| **B. Normalised to 50cl** | 33cl = 0,66. Pint = 1,13. | "Fair", but now the counter shows 428.391,4 which kills the scoreboard aesthetic. |
-| **C. Tap = 1, but record volume** | Counter counts taps. Volume stored for stats and achievements only. | Keeps the number clean; still enables Route One, Tiki-Taka, litres-drunk stats. |
-
-**My recommendation: C.** You get the integer scoreboard *and* the data. Volume becomes an
-optional detail, never a required one — critical, because the logger has to stay a
-two-second interaction.
-
----
-
-## 🔴 Q3 — Guild join model
+## 🔴 Q3 — Guild join model *(Phase 3, not v1-blocking)*
 
 | Option | Behaviour |
 |---|---|
@@ -48,23 +28,7 @@ two-second interaction.
 | **D. Mixed** | Guild founder picks per guild (schema supports this — `guilds.join_policy`) |
 
 **My recommendation: D**, defaulting to open. A "Blåvitt Supporter Guild" wants to be
-open — the whole point is scale. A private guild of six offices wants invite-only.
-
----
-
-## 🔴 Q4 — What's in v1?
-
-From [ROADMAP.md](ROADMAP.md#suggested-cut-lines):
-
-| Option | Contents | Feel |
-|---|---|---|
-| **A. Core loop** | Phase 0 + C1-C5, C8 | Works. Not yet fun. |
-| **B. Core + game layer** | A + G1, G2, G4, G5 | Shouts at you. This is the product. |
-| **C. Core + game + guilds** | B + all Phase 3 | Matches the full pitch |
-
-**My recommendation: B**, then Phase 3 immediately after. Guilds only get interesting once
-there are several crews using it, so shipping B to your friends first generates the very
-thing guilds need.
+open — the whole point is scale. A private guild of six office colleagues wants invite-only.
 
 ---
 
@@ -142,30 +106,6 @@ short of the genuinely grim end.
 The line is Vegeta's, from Dragon Ball Z — not Star Wars. Options: (a) DBZ treatment —
 scouter, exploding numbers; (b) Star Wars visual as a knowing mashup; (c) two separate
 badges. Worth settling before any art gets made, since the two look nothing alike.
-
----
-
-## Q11 — Do achievement points do anything?
-
-| Option | |
-|---|---|
-| **A. Nothing** | Badges are their own reward |
-| **B. Crew XP / levels** | A second progression axis alongside beers |
-| **C. Points order the guild league table** | Rewards variety and consistency over raw volume |
-
-**Recommendation: C**, and I'd argue it's the single most important lever in the app. If
-the guild table ranks on raw beers, the optimal strategy is "drink more". If it ranks on
-achievement points, the optimal strategy is "drink varied, log consistently, bring
-friends" — a far better game *and* a far better incentive.
-
----
-
-## Q12 — Feed scope
-
-Crew-only (private), guild-wide (busy, social), or a global firehose (chaotic, fun)?
-
-**Recommendation:** crew feed as the default tab, guild feed as a second tab in Phase 3.
-No global firehose — it's noise, and it's a moderation problem.
 
 ---
 
