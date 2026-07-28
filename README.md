@@ -11,16 +11,16 @@ counter toward seven figures.
 
 ## Status
 
-**Pre-build.** We are deliberately spending time on architecture, decisions and
-prioritisation before writing application code.
+**Pre-build, Phase 0 ready.** 28 decisions recorded, v1 scope agreed, nothing blocking.
+Next up: Supabase project, schema migration, RLS, Expo scaffold.
 
 | Document | What it covers |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, data model, counters, achievement engine, offline, security |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Phased delivery plan — **needs prioritisation** |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Phased delivery plan — v1 scope agreed |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The achievement catalogue — gaming + football references |
-| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Everything still to be answered — **needs answers** |
+| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Remaining questions — none blocking Phase 0 |
 
 ## The core concepts
 

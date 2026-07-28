@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **draft — pending answers in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)**
+Status: **Phase 0 ready.** No open question blocks the schema or the client scaffold.
 
 ---
 
@@ -87,7 +87,7 @@ which belongs to at most one **guild**. Every beer has an unambiguous path up th
 hierarchy — no double counting, ever, even when a person belongs to several parties.
 
 To drink with someone outside your party, **they join your party** with the invite code.
-Multi-party membership ([D17](DECISIONS.md#d17--a-person-may-belong-to-several-crews-v1-ships-one))
+Multi-party membership ([D17](DECISIONS.md#d17--a-person-may-belong-to-several-parties-v1-ships-one))
 makes that cheap, and it keeps attribution trivially simple.
 
 ### 3.2 Tables
