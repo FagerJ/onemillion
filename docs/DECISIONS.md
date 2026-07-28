@@ -359,7 +359,13 @@ stays as flavour ("you drank beer #428.391").
 
 ## Open — blocking
 
-**None. Phase 0 is unblocked.**
+Raised during review of the completed design; all touch the v1 schema or seed data.
+
+| ID | Question | Blocks |
+|---|---|---|
+| **Q21** | Daily streak badge rewards daily drinking — weeks instead? | F4, G2 |
+| **Q22** | What stops a 200-person party farming combos? | F4, G2 |
+| **Q23** | Account deletion vs. the immutable global counter (GDPR) | F4 |
 
 ## Open — later phases
 
@@ -371,6 +377,9 @@ stays as flavour ("you drank beer #428.391").
 | Q13 | Distribution — web link, TestFlight, or public app stores? | Phase 5 |
 | Q14 | Who else is following this repo? | — |
 | Q15 | Are the combo thresholds right for typical session sizes? | post-launch tuning |
+| Q24 | Does the guild league table have seasons? | Phase 3 |
+| Q25 | Party captain powers; what happens when someone leaves | F4 (needs `left_at`) |
+| Q26 | Session timezone, week start, beer-type vocabulary | F4 |
 
 ## Answered
 

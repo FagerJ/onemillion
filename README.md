@@ -11,8 +11,8 @@ counter toward seven figures.
 
 ## Status
 
-**Pre-build, Phase 0 ready.** 28 decisions recorded, v1 scope agreed, nothing blocking.
-Next up: Supabase project, schema migration, RLS, Expo scaffold.
+**Pre-build.** 28 decisions recorded and v1 scope agreed. Three questions (Q21-Q23) still
+touch the v1 schema. Next up: Supabase project, schema migration, RLS, Expo scaffold.
 
 | Document | What it covers |
 |---|---|
@@ -20,7 +20,7 @@ Next up: Supabase project, schema migration, RLS, Expo scaffold.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phased delivery plan — v1 scope agreed |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The achievement catalogue — gaming + football references |
-| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Remaining questions — none blocking Phase 0 |
+| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Remaining questions — 3 still touch the schema |
 
 ## The core concepts
 

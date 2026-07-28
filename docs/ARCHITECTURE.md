@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 0 ready.** No open question blocks the schema or the client scaffold.
+Status: **draft.** Three questions (Q21-Q23) still touch the v1 schema — see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 
 ---
 

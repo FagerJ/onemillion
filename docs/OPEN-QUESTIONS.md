@@ -30,6 +30,114 @@ post-launch tuning.
 
 ---
 
+## 🔴 Q21 — The streak badge contradicts everything else
+
+`SESSION_STREAK` currently unlocks on a **7-day logging streak**. Because you cannot log
+alone ([D19](DECISIONS.md#d19--no-solo-logging)), that badge literally rewards *drinking
+with someone every single day for a week* — and then punishes you for stopping.
+
+That runs directly against [D20](DECISIONS.md#d20--combos-are-session-scoped) (reward party
+size, not consumption) and the whole of
+[ARCHITECTURE §9](ARCHITECTURE.md#9-responsible-design). It's the one mechanic in the
+catalogue that pushes the wrong way, and it's in v1's seed data.
+
+| Option | |
+|---|---|
+| **A. Streaks count weeks with a session, not days** | "12 weeks running" — rewards showing up regularly without implying daily drinking |
+| **B. Drop streaks entirely** | Simplest. `CLEAN_SHEET` already covers the rest side |
+| **C. Keep daily streaks** | Highest engagement pull, and the reason engagement mechanics get criticised |
+
+**Recommendation: A.** Weekly streaks keep the retention value and read as "we're a party
+that actually meets up", which is the behaviour worth reinforcing. This also changes
+`profile_stats.current_streak_days` → `current_streak_weeks`, so it's cheaper to decide
+before F4 than after.
+
+---
+
+## 🔴 Q22 — What stops a 200-person "party" farming combos?
+
+Combo thresholds ([Q15](#q15--are-the-combo-thresholds-right)) assume a session of 3-6.
+Nothing currently caps party size. A party of 200 where everyone attends one session and
+somebody taps `+ ROUND` produces 200 beers instantly — WORLDIE and RAMPAGE unlocked, no
+rule broken, no beers invented.
+
+| Option | |
+|---|---|
+| **A. Cap party size** (~30?) | A party is a group of friends. Simple, and keeps thresholds meaningful |
+| **B. Scale combo thresholds by attendee count** | e.g. RAMPAGE = 3× attendees. Fair at every size, more complex to explain |
+| **C. Cap the round button** | `+ ROUND` limited to N attendees at a time |
+| **D. Nothing — let it happen** | Big parties are legitimately impressive |
+
+**Recommendation: A**, with a generous cap. Guilds already exist for scale; parties should
+stay small enough that the leaderboard is people you know.
+
+---
+
+## 🔴 Q23 — Account deletion vs. the immutable counter
+
+Swedish users, EU hosting, so GDPR erasure is a legal requirement, not a nice-to-have. But
+if deleting an account removes their beers, **the global counter goes down** — which breaks
+the one number the whole app is built on, and retroactively invalidates milestones already
+celebrated.
+
+| Option | |
+|---|---|
+| **A. Anonymise, keep the rows** | Profile becomes "A departed drinker", beers stay counted. Counter never decreases. Standard practice, and defensible: the aggregate is anonymous statistical data |
+| **B. Hard delete everything** | Cleanest privacy story, but the counter drops and milestone history lies |
+| **C. Anonymise, but let the user choose** | Offer "delete my account, keep my beers in the total" as an explicit consent at deletion time |
+
+**Recommendation: A**, with C's wording at the deletion screen so the choice is informed.
+Worth deciding before F4 because it determines whether `beers.profile_id` can be nullable.
+
+---
+
+## Q24 — Does the guild league table have seasons?
+
+[D14](DECISIONS.md#d14--achievement-points-rank-the-guild-league-table) ranks guilds on
+achievement points, but over what window?
+
+| Option | |
+|---|---|
+| **A. All-time** | Simple. But the first big guild leads forever and nobody else can catch up |
+| **B. Seasons** | Table resets (quarterly? annually?), all-time totals preserved separately. Fits the football framing perfectly — promotion, relegation, silverware |
+| **C. Rolling 90 days** | Always current, no reset drama, no season narrative |
+
+**Recommendation: B.** The entire guild concept is borrowed from football; seasons are the
+mechanic that makes a league table worth looking at twice, and they give perpetual
+newcomers a reason to start.
+
+---
+
+## Q25 — Party captains: what can they actually do?
+
+`party_members.role` is `'captain' | 'member'` in the schema but the powers were never
+specified. Also unaddressed: what happens when someone **leaves** a party?
+
+- Can a captain remove a member? Rename the party? Change or leave the guild?
+- Are there multiple captains, or one?
+- On leaving: do that person's beers stay in the party's historical total? *(They must, or
+  totals become rewritable — so `party_members` needs a `left_at` rather than a delete.)*
+- Does a departed member stay on the party leaderboard?
+
+**Recommendation:** captain can rename, manage guild membership, and remove members;
+founder is captain by default and can promote others; leaving sets `left_at` and keeps all
+historical beers. Confirm before F4 — the `left_at` column is a schema change.
+
+---
+
+## Q26 — Three small ones, bundled
+
+- **Whose timezone closes a session at 06:00?** The session creator's, or the venue's?
+  Recommend the creator's profile timezone, stored on `sessions` at start.
+- **When does a week start?** Recommend Monday — European convention, and it makes "this
+  week" match how the crowd actually thinks about a weekend.
+- **Is `beer_type` free text or a controlled list?** Free text is easy but makes
+  `RARE_DROP` and `PERFECT_HAT_TRICK` unreliable (typos fragment the data). Recommend a
+  small curated list (lager, IPA, stout, pilsner, wheat, sour, …) plus free text, with only
+  the curated values feeding achievements.
+
+---
+
 ## Q15 — Are the combo thresholds right?
 
 BRACE 2 · HAT-TRICK 3 · HEATING UP 5 · ON FIRE 8 · BOOMSHAKALAKA 12 · SCREAMER 16 ·
