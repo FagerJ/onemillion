@@ -19,38 +19,56 @@ Blocking questions are marked 🔴 — Phase 0 can't start without them.
 | Q8 | Retroactive logging | **Today + yesterday, 24h edits, no revokes** → D16 |
 | Q9 | Where does the combo ladder stop? | **Party-scoped, no kill language** → D18/D20 |
 | Q10 | OVER 9000 | **Both — DBZ at 9.001, midi-chlorians at 20.000** → D21 |
+| Q16 | Who counts as the second person? | **An app user who joined via code. No guests** → D22 |
+| Q17 | Does the other person confirm? | **Joining *is* the confirmation** → D22 |
 
 ---
 
-## 🔴 Q16 — Who counts as the second person in a party?
+## 🔴 Q18 — Who logs the beers?
 
-[D19](DECISIONS.md#d19--no-solo-logging) says a session needs two attendees. But *who*?
+[D22](DECISIONS.md#d22--a-party-is-a-live-joinable-session-with-an-invite-code) says
+everyone in the party has the app and joined it themselves. So who taps `+`?
 
 | Option | Behaviour | Trade-off |
 |---|---|---|
-| **A. Anyone, guests included** | Type "Dave" as a guest and log | Zero friction, works with non-app friends. Honour system — a solo drinker can type a name |
-| **B. At least two app users** | Both people need accounts | A constraint with teeth. But you genuinely can't log the pint you had with your non-app mate |
-| **C. Two app users, both in your crew** | Strictest | Cleanest attribution, worst chicken-and-egg for a brand-new crew |
+| **A. Everyone logs their own** | Each person taps `+` on their own phone | Most accurate, zero disputes, and the party tally climbing live on everyone's screen is a genuinely great shared moment. But everyone has to actually open the app during the night |
+| **B. Host tallies for the table** | One person runs the `+`/`−` steppers for everyone — the original mockup | Lowest friction in the moment, one person's problem. But it's proxy logging, which D22 was partly meant to eliminate |
+| **C. Hybrid** | Anyone can log for anyone; you can always correct your own count | Forgiving, matches how rounds actually work (you buy a round for four). Slightly more UI |
 
-**Recommendation: A for v1, revisit if abused.** The rule's value is largely in what it
-*says* — this app has no concept of drinking alone — and a friction-free version still
-delivers that. Guests also solve S7 for free.
+**Recommendation: C.** Rounds are inherently bought *for* people, so pure self-logging
+fights the actual behaviour. Letting anyone add and everyone correct keeps the mockup's
+fast tally UI while preserving the "it's my count" principle. A is the purist option and I
+could be argued into it.
 
 ---
 
-## 🔴 Q17 — Does the other person confirm the round?
+## 🔴 Q19 — When does a party close?
 
-If I log "me + Mia, 3 each", does Mia get a say?
+The join code stays live while a party is `open`, and combos finalise on close.
 
-| Option | Behaviour |
+| Option | |
 |---|---|
-| **A. No confirmation** | Logger's word is final. Simplest, zero friction |
-| **B. Notify, allow dispute** | Counts immediately; Mia gets a push and can dispute |
-| **C. Require confirmation** | Nothing counts until Mia taps yes |
+| **A. Host closes it manually** | Explicit, but people forget and go to bed |
+| **B. Auto-close after N hours idle** | Forgiving. What's N — 3h? 6h? |
+| **C. Auto-close at a fixed hour** | Everything closes at 06:00 local. Simple and matches how nights actually end |
+| **D. Manual + auto-close backstop** | Host *can* close; anything still open at 06:00 closes itself |
 
-**Recommendation: B.** Keeps logging a two-second interaction, creates a nice "Mia
-confirmed your round" moment, and hands anti-cheat a human signal for free. C would strand
-every log where the other person has already gone home.
+**Recommendation: D**, with a 06:00 local backstop.
+
+---
+
+## 🔴 Q20 — Do your own crew mates need the code?
+
+Your crew is already a persistent, mutual group. Making them type a code every time is
+friction with no security benefit — but skipping it means two different join paths.
+
+| Option | |
+|---|---|
+| **A. Crew mates are one-tap; outsiders use the code** | Fastest. Keeps the mockup's friend chips for your crew |
+| **B. Everyone uses the code, always** | One path, perfectly consistent, provably consenting every time |
+
+**Recommendation: A**, *if* the tapped crew mate still gets a push they can decline.
+Crew membership already proves mutual consent; a per-night code adds nothing except taps.
 
 ---
 

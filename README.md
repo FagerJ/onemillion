@@ -38,10 +38,19 @@ different rungs.
 feels great). The thin bar underneath always shows 0 → 1.000.000 (barely moves, never
 goes away).
 
-**The Party Rule** — **you cannot log a beer alone.** Every session needs at least two
-people, enforced in the database. Combo achievements count the *party's* total and unlock
-for everyone present, so the route to a big badge is bringing a fifth friend, not ordering
-a fifth beer. The counter is a count of *shared* beers, and undercounts reality on purpose.
+**Party** — a night out. Someone starts one, everyone else joins with a 4-character code
+on their own phone, and the tally climbs live for all of them. Parties can span crews:
+your beers always credit *your* crew and *your* guild, whoever's party you're in.
+
+**The Party Rule** — **you cannot log a beer alone.** A party needs at least two members,
+and every member is a real account that chose to join — no guests, no typed-in names.
+Enforced by a foreign key, not by the UI. Combo achievements count the *party's* total and
+unlock for everyone present, so the route to a big badge is bringing a fifth friend, not
+ordering a fifth beer.
+
+The counter is therefore a count of **shared, mutually-confirmed** beers. It undercounts
+reality on purpose, and you cannot use this app without recruiting the people you drink
+with.
 
 ## Why guilds exist
 

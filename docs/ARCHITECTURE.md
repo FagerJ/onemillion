@@ -59,14 +59,25 @@ Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 ### 3.1 Hierarchy
 
 ```
-profile ──< crew_members >── crew ──> guild
-                              │
-                              └──< session ──< beer
+                    ┌──> crew ──> guild        (attribution — follows the DRINKER)
+profile ──< beer ───┤
+                    └──> party                 (context — who you were with)
 ```
 
-A **beer** belongs to exactly one **session**, which belongs to exactly one **crew**,
-which belongs to at most one **guild**. This gives every beer an unambiguous path up the
-hierarchy — no double counting, ever, even when a person is in several crews.
+A **beer** has two independent parents, and keeping them separate is what makes
+cross-crew parties work:
+
+- **Attribution** follows the *drinker*. Your beer credits **your** crew and **your**
+  guild, always — even when you're drinking in someone else's party.
+- **Context** is the party. It records who you were with, where, and when, and it's what
+  combo achievements are computed over.
+
+A party can contain people from three different crews; each person's beers flow up their
+own hierarchy. Nobody farms another crew's total, and no beer is ever counted twice.
+
+> **Superseded:** the original model had `beer → session → crew → guild`, which assumed
+> one crew per session. The party join code ([D22](DECISIONS.md#d22--a-party-is-a-live-joinable-session-with-an-invite-code))
+> makes that assumption false.
 
 ### 3.2 Tables
 
@@ -117,43 +128,52 @@ guilds (
   created_at    timestamptz
 )
 
--- Logging ------------------------------------------------------------------
-sessions (
+-- Parties (a night out — live, joinable) -----------------------------------
+parties (
   id            uuid pk,
-  crew_id       uuid references crews not null,
-  guild_id      uuid,                    -- SNAPSHOT of crew.guild_id at log time
+  host_crew_id  uuid references crews not null,   -- whose night it is; context only
+  join_code     text,                             -- 4-char, NULL once closed
+  status        text not null,                    -- 'open' | 'closed'
   venue_name    text,
   venue_id      uuid references venues,
   note          text,
   photo_url     text,
   started_at    timestamptz not null,
-  ended_at      timestamptz,
+  closed_at     timestamptz,
   created_by    uuid references profiles,
-  created_at    timestamptz,
-  client_uuid   text unique              -- idempotency key for offline replay
+  created_at    timestamptz
 )
+-- Codes only need to be unique among OPEN parties, so 4 chars is plenty
+-- and they recycle freely once a party closes.
+create unique index on parties (join_code) where status = 'open';
 
-session_attendees (                       -- includes people who drank zero
-  session_id    uuid references sessions,
-  profile_id    uuid references profiles, -- null for guest attendees
-  guest_name    text,
-  primary key (session_id, coalesce(profile_id::text, guest_name))
+party_members (                           -- includes people who drank zero
+  party_id      uuid references parties,
+  profile_id    uuid references profiles not null,  -- NO GUESTS: app account required
+  crew_id       uuid not null,            -- SNAPSHOT of the member's own crew
+  guild_id      uuid,                     -- SNAPSHOT of that crew's guild
+  joined_at     timestamptz,
+  primary key (party_id, profile_id)
 )
 
 beers (
   id            uuid pk,
-  session_id    uuid references sessions not null,
-  crew_id       uuid not null,           -- denormalised for fast roll-up
-  guild_id      uuid,                    -- denormalised snapshot
-  profile_id    uuid references profiles,
+  party_id      uuid references parties not null,  -- context: who you were with
+  profile_id    uuid references profiles not null, -- the drinker
+  crew_id       uuid not null,            -- the DRINKER's crew, not the host's
+  guild_id      uuid,                     -- the DRINKER's guild, snapshotted
   beer_type     text,
   volume_ml     int,
   abv           numeric(4,2),
   is_alcohol_free boolean default false,
   logged_at     timestamptz not null,
-  global_seq    bigint unique            -- "you drank beer #428,391"
+  global_seq    bigint unique,            -- "you drank beer #428,391"
+  client_uuid   text unique               -- idempotency key for offline replay
 )
 ```
+
+Note `beers.crew_id` is copied from `party_members.crew_id` for that profile — the
+drinker's own crew — never from `parties.host_crew_id`.
 
 ### 3.3 Three modelling decisions worth defending
 
@@ -163,39 +183,89 @@ buys the thing the entire meme is about: knowing exactly who drank beer number 1
 where, and when. `global_seq` is a monotonic sequence that makes that queryable forever.
 A tally column can never answer it, and retrofitting is a painful migration.
 
-**`guild_id` is snapshotted onto sessions and beers, not joined through.** When a crew
-transfers to a new guild, history stays where it was earned. Guilds keep the beers they
-were credited. Without this, a crew switching guilds would silently rewrite two guilds'
-totals — and every achievement derived from them.
+**`crew_id` and `guild_id` are snapshotted, not joined through.** When a crew transfers
+to a new guild, history stays where it was earned. Without this, a crew switching guilds
+would silently rewrite two guilds' totals — and every achievement derived from them. Same
+argument applies to a person changing crews.
 
-**Attendees are separate from beers.** The designated driver still appears in the feed,
-still counts as "drinking with you" for social achievements, and contributes zero to the
-counter. Your mockup already implies this: friend chips and per-person tallies are
-distinct interactions.
+**Party membership is separate from beers.** The designated driver still appears in the
+feed, still counts toward party size for social achievements, and contributes zero to the
+counter.
 
 ### 3.4 The Party Rule — enforced in the database
 
-Per [D19](DECISIONS.md#d19--no-solo-logging), **a session must have at least two
-attendees**. This is not a UI convention that a rogue client can skip:
+Per [D19](DECISIONS.md#d19--no-solo-logging), **a party must have at least two members**,
+and per [D22](DECISIONS.md#d22--a-party-is-a-live-joinable-session-with-an-invite-code)
+every member is a real app user who chose to join. Not a UI convention a rogue client can
+skip:
 
 ```sql
--- Deferred so a session and its attendees can be inserted in one transaction,
+-- Deferred so a party and its members can be inserted in one transaction,
 -- but the transaction cannot commit with a lone drinker in it.
-create constraint trigger session_requires_party
-  after insert or update on sessions
+create constraint trigger party_requires_two
+  after insert or update on parties
   deferrable initially deferred
   for each row execute function assert_party_of_two();
+
+-- A beer can only exist for someone who actually joined the party.
+alter table beers add constraint beer_drinker_is_member
+  foreign key (party_id, profile_id) references party_members (party_id, profile_id);
 ```
+
+That foreign key is the load-bearing one. You cannot log a beer for a person who did not
+enter the code on their own phone, which means the second person in every party is a
+genuine, consenting account — not a name typed into a box.
 
 Consequences worth being explicit about:
 
 - There is no representation in this system for a beer drunk alone. Not "logged and
   hidden" — genuinely absent.
-- The global counter therefore undercounts real-world beers, deliberately. It counts
-  **shared** beers. That's the number the app is about.
+- The global counter undercounts real-world beers, deliberately. It counts **shared**
+  beers, verified by both parties. That's the number the app is about.
 - Every achievement is implicitly social, which is why the combo ladder can be
   party-scoped ([D20](DECISIONS.md#d20--combos-are-party-scoped)) without a separate solo
   path.
+- **Anti-cheat is largely solved by the schema.** Inflating the counter requires
+  recruiting real accounts who join real parties. Most of the Phase 5 anti-cheat work
+  (P1) collapses into rate limits.
+
+---
+
+### 3.5 Party lifecycle
+
+```
+   host starts a party
+           │
+           ▼
+     ┌───────────┐   others enter the 4-char code on their own phone
+     │   OPEN    │◄──────────────────────────────────────────────────┐
+     │           │                                                   │
+     │ · code live                                    join / rejoin ─┘
+     │ · members may join
+     │ · beers may be logged
+     └─────┬─────┘
+           │  host closes it, or auto-close (see Q19)
+           ▼
+     ┌───────────┐
+     │  CLOSED   │  code released · no new members · no new beers
+     └───────────┘  combos finalised · feed entry published
+```
+
+The join code is short (4 characters) because it only needs to be unique among
+*currently open* parties — the partial unique index enforces exactly that, and codes
+recycle once a party closes. Shown as text and as a QR so nobody types anything in a
+dark pub.
+
+This also makes the party a **live object**: everyone in it can watch the tally climb in
+real time over Realtime, which is a far better experience than one person tallying for
+the table afterwards.
+
+> **Tension with [D16](DECISIONS.md#d16--backdating-limited-to-today-and-yesterday):**
+> backdating and live parties pull against each other. A party started for last night still
+> works — the code goes live now, people join now, `started_at` is yesterday — but the
+> live combo toasts never fire, so the night is recorded without ever being celebrated.
+> Acceptable, and worth designing the empty state for: a backdated party should say so
+> rather than pretending it was live.
 
 ---
 

@@ -21,7 +21,7 @@ Estimates are rough build-effort, assuming decisions are already made.
 | F1 | Answer [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md); freeze decisions in [DECISIONS.md](DECISIONS.md) | — |
 | F2 | Supabase project (eu-north-1), env/secrets management | S |
 | F3 | Client scaffold + design tokens (palette, Anton/Space Grotesk) | M |
-| F4 | Schema v1 migration: profiles, crews, crew_members, sessions, beers | M |
+| F4 | Schema v1 migration: profiles, crews, crew_members, parties, party_members, beers | M |
 | F5 | RLS policies + `is_crew_member` SECURITY DEFINER helper | M |
 | F6 | CI: lint, typecheck, migration check on PR | S |
 
@@ -35,7 +35,9 @@ Estimates are rough build-effort, assuming decisions are already made.
 |---|---|---|
 | C1 | Auth: Apple + Google + magic link; profile creation | M |
 | C2 | Create a crew / join by invite link | M |
-| C3 | **Session logger** — friend chips, per-person `+`/`−` tallies, save | L |
+| C3 | **Party logger** — per-person `+`/`−` tallies, live party view | L |
+| C10 | **Party create + join by code** — 4-char code, QR, open/closed lifecycle | L |
+| C11 | Realtime party sync — everyone watches the tally climb | M |
 | C4 | Counter roll-up triggers (`global_stats`, `crew_stats`, `profile_stats`) | M |
 | C5 | **Crew dashboard** — dual gauge (milestone ring + 1M bar), stat cards | L |
 | C6 | Crew leaderboard | S |
@@ -96,7 +98,7 @@ Estimates are rough build-effort, assuming decisions are already made.
 | S4 | Venues — search, save, "Groundhopper" support | M | |
 | S5 | Beer types / catalogue (enables Perfect Hat-trick, Critical Hit) | M | |
 | S6 | Streaks + weekly recap | M | |
-| S7 | Guest attendees (drinking with non-users) | S | ⚠️ moves to v1 if [Q16](OPEN-QUESTIONS.md#-q16--who-counts-as-the-second-person-in-a-party) = A |
+| ~~S7~~ | ~~Guest attendees~~ | — | ❌ dropped — [D22](DECISIONS.md#d22--a-party-is-a-live-joinable-session-with-an-invite-code) requires an app account |
 
 > Hard product rule from [ARCHITECTURE.md §9](ARCHITECTURE.md#9-responsible-design): S1
 > notifications celebrate what happened. They never nudge you to drink.
@@ -107,7 +109,7 @@ Estimates are rough build-effort, assuming decisions are already made.
 
 | ID | Item | Effort |
 |---|---|---|
-| P1 | Anti-cheat: constraints, rate limits, outlier flagging | M |
+| P1 | Anti-cheat: rate limits + outlier flagging (mostly solved by [D24](DECISIONS.md#d24--party-membership-is-enforced-by-foreign-key)) | S |
 | P2 | Public global counter page (no auth) — the shareable artefact | M |
 | P3 | Home-screen widget (native only) | M |
 | P4 | App Store / Play Store submission, 17+ rating, age gate | L |
@@ -120,8 +122,10 @@ Estimates are rough build-effort, assuming decisions are already made.
 
 ## Suggested cut lines
 
-**Thinnest thing worth showing friends:** Phase 0 + C1, C2, C3, C4, C5, C8.
-A crew logs beers, the number goes up, it works in a pub with no signal.
+**Thinnest thing worth showing friends:** Phase 0 + C1, C2, C3, C4, C5, C8, C10.
+A crew starts a party, friends join by code, the number goes up, and it works in a pub
+with no signal. C10 is non-negotiable — without the join code there is no legal way to
+log a beer at all.
 
 **Thinnest thing that's actually fun:** the above + G1, G2, G4, G5.
 Now it shouts at you.

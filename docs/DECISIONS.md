@@ -245,14 +245,62 @@ number, not an invented one.
 
 ---
 
+### D22 — A party is a live, joinable session with an invite code
+**Decided.** To drink with someone they must (1) have the app, (2) join the party by
+entering its code on their own phone, and only then (3) appear in the session. There are
+**no guest attendees**. A party carries a short `join_code`, a `status` of `open` or
+`closed`, and members join themselves.
+
+*Why:* it makes [D19](#d19--no-solo-logging) actually enforceable rather than an honour
+system. A name typed into a box proves nothing; an account that entered a code proves
+someone was there. It also turns the party into a live object everyone can watch, and it
+makes the app's growth loop structural — you literally cannot use this app without
+recruiting the people you drink with.
+
+*Cost:* real, and worth naming. Your first night out requires everyone at the table to
+download something. Beers drunk with non-app friends can never be logged. The counter gets
+harder to move, and the app is useless to a lone early adopter. This is the single
+biggest adoption risk in the design, accepted deliberately in exchange for the number
+meaning something.
+
+*Supersedes:* Q16 (guest attendees). Roadmap item S7 is dropped.
+
+---
+
+### D23 — Attribution follows the drinker, not the host
+**Decided.** `beers.crew_id` and `beers.guild_id` are the **drinker's** crew and guild,
+snapshotted at log time from their `party_members` row — never the host's.
+
+*Why:* D22 makes parties cross-crew by design. Crediting the host's crew would let a crew
+farm totals by hosting outsiders, and would mean your own beers didn't count for your own
+guild. Splitting *attribution* (follows the drinker) from *context* (the party) keeps
+every beer counted exactly once while letting anyone drink with anyone.
+
+*Cost:* `beers` carries denormalised crew/guild columns that must be set correctly on
+write; the original single-parent `beer → session → crew` chain is gone.
+
+---
+
+### D24 — Party membership is enforced by foreign key
+**Decided.** `beers (party_id, profile_id)` is a foreign key into
+`party_members (party_id, profile_id)`.
+
+*Why:* a beer cannot exist for someone who did not join the party on their own phone. This
+is what makes D19 and D22 structural rather than aspirational, and it collapses most of
+the planned anti-cheat work — inflating the counter now requires recruiting real,
+consenting accounts.
+
+---
+
 ## Open — blocking
 
 These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 
 | ID | Question | Blocks |
 |---|---|---|
-| **Q16** | Who counts as the second person in a party? | F4 schema — the D19 constraint |
-| **Q17** | Does the other person confirm the round? | F4, C3 logger |
+| **Q18** | Who logs the beers — host tallies, or everyone logs their own? | C3 logger, the whole UX |
+| **Q19** | When does a party close? | F4 schema, C3 |
+| **Q20** | Do your own crew mates also need the code, or are they one-tap? | C3 |
 
 ## Open — later phases
 
@@ -278,3 +326,5 @@ These block Phase 0. Detail in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 | ~~Q10~~ | OVER 9000 — DBZ or Star Wars? | → D21, both, at 9.001 and 20.000 |
 | ~~Q11~~ | Do achievement points do anything? | → D14, they rank the guild table |
 | ~~Q12~~ | Feed scope | → D15, crew feed, no global firehose |
+| ~~Q16~~ | Who counts as the second person? | → D22, an app user who joined via code. No guests |
+| ~~Q17~~ | Does the other person confirm? | → D22, joining *is* the confirmation |
