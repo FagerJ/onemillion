@@ -19,6 +19,7 @@ touch the v1 schema. Next up: Supabase project, schema migration, RLS, Expo scaf
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, data model, counters, achievement engine, offline, security |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phased delivery plan — v1 scope agreed |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
+| [docs/USER-JOURNEYS.md](docs/USER-JOURNEYS.md) | Journey flowcharts + story map of every story by release |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The achievement catalogue — gaming + football references |
 | [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Remaining questions — 3 still touch the schema |
 
