@@ -1,18 +1,83 @@
 # Roadmap
 
-Status: **v1 scope agreed** ([D13](DECISIONS.md#d13--v1--core-loop--game-layer)).
-Later phases still open to reordering.
+Status: **v0 scoped** — smallest genuinely fun thing, no decision that damages guilds later.
 
-Every item has an ID. To reprioritise, just say e.g. *"move U5 into v1, drop S3"*.
+Every item has an ID. To reprioritise, just say e.g. *"move U5 into v0, drop S3"*.
 
-Estimates are rough build-effort, assuming decisions are already made.
-
-> ### 🎯 v1 = Phase 0 + Phase 1 + G1, G2, G4, G5
-> Everything else is post-v1. Phase 3 (guilds) follows immediately after.
+> ### 🍺 v0 — The Lads Build
+> A working, fun app for one friend group. Everything beyond it is additive.
+> See [the irreversibility analysis](#what-is-actually-irreversible) for why this is safe.
 
 ---
 
-## Phase 0 — Foundations
+## What is actually irreversible
+
+**Almost nothing.** Counters, badges, milestones, leaderboards, streaks and stats are all
+*derived* from the `beers` table. One row per beer with correct parents means any aggregate
+can be recomputed, and any deterministic achievement rule can be replayed over history to
+backfill who earned what, at any point in the future.
+
+So the whole "don't paint ourselves into a corner" problem reduces to getting **five tables**
+right:
+
+| Table | The bit that must be right now | Why it can't be fixed later |
+|---|---|---|
+| `parties` | `guild_id` **nullable** | The entire hook for guilds. One column. |
+| `party_members` | a **join table**, not a column on `profiles` | A person in two parties is impossible to retrofit |
+| `sessions` | `party_id`, `guild_id` nullable, `started_at timestamptz` + stored tz | Timezone is not derivable after the fact |
+| `session_attendees` | exists at all | The only record of who was there but drank zero |
+| `beers` | `party_id`, `guild_id` nullable, `profile_id`, `added_by`, `round_id`, `logged_at timestamptz`, `voided_at`, `client_uuid` | None of these can be reconstructed from anything else |
+
+Two nullable `guild_id` columns and one join table cost nothing today and are the complete
+path to guilds. A pre-guild beer correctly keeps `guild_id = null` forever — it was earned
+before the party joined, which is exactly what
+[D6](DECISIONS.md#d6--guild_id-is-snapshotted-not-joined) wants.
+
+**Everything else is additive**: new tables, new screens, no painful migration. That
+includes the achievement rule engine — the `achievement_unlocks` table is what matters, not
+how clever the evaluator is. Start with a handful of hardcoded SQL checks and replace them
+with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
+
+---
+
+## Phase v0 — The Lads Build
+
+*Ship this, drink some beers, see if it is fun.*
+
+| ID | Item | Effort | Cut from the full plan |
+|---|---|---|---|
+| F2 | Supabase project (eu-north-1) | S | — |
+| F3 | Expo scaffold + design tokens (palette, Anton/Space Grotesk) | M | — |
+| F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
+| F5 | RLS: party-scoped + `is_party_member` helper | S | guild policies |
+| C1 | Auth — magic link only | S | Apple + Google |
+| C2 | Create a party · share the invite code · join by code | M | — |
+| C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |
+| C10 | Session start + manual close; stale sessions close on next open | S | the 06:00 `pg_cron` job |
+| C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
+| C4 | Counter roll-ups: `party_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
+| C9 | Milestone ladder table + seed | S | — |
+| C12 | `milestone_events` — crossing attribution | S | — |
+| C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
+| C6 | Party leaderboard (on the dashboard, not its own screen) | S | — |
+| C7 | Feed — a list of closed sessions | S | reactions, photos |
+| G4 | **Live combo toasts** — BRACE → HAT-TRICK → ON FIRE → … | M | — |
+| G5 | **Milestone celebration** + Golden Goal attribution | M | — |
+| G1' | `achievement_unlocks` table + a few hardcoded checks | S | the full `jsonb` rule engine |
+
+**Deliberately out of v0, all additive:** every guild item (`U1`–`U7`), the full rule engine
+and catalogue (`G1`, `G2`), achievements grid (`G3`), easter-egg rungs (`G6`), announcer
+sound (`G7`), the durable offline queue (`C8` — but the `client_uuid` column ships now, so
+adding the queue is client-side only), push (`S1`), reactions (`S2`), photos (`S3`), venues
+(`S4`), beer types (`S5`), streaks and recaps (`S6`), and all of Phase 5.
+
+> **The one thing v0 gives up that hurts:** no durable offline queue. Pubs have no signal,
+> so some taps will fail and need retrying by hand. The `client_uuid` column is there from
+> day one, which is the expensive half — so if it bites, `C8` is a self-contained client-side
+> fix, not a migration.
+
+---
+## Phase 0 — Foundations *(full version, if v0 proves fun)*
 
 *Nothing works until this exists. Not negotiable, not reorderable.*
 

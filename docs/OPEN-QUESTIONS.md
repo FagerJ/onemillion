@@ -1,4 +1,8 @@
-# Open questions
+# Open questions *(superseded)*
+
+> ⚠️ **Answer [QUESTIONS.md](QUESTIONS.md) instead** — it is the editable answer sheet and
+> covers everything here plus the v0 scope questions. This file is kept for its longer
+> write-ups of the already-answered decisions.
 
 Answer inline, or just reply with e.g. *"Q1: Expo. Q2: option B. Q7: skip it."*
 

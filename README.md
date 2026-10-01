@@ -11,17 +11,21 @@ counter toward seven figures.
 
 ## Status
 
-**Pre-build.** 28 decisions recorded and v1 scope agreed. Three questions (Q21-Q23) still
-touch the v1 schema. Next up: Supabase project, schema migration, RLS, Expo scaffold.
+**Pre-build, v0 scoped.** 28 decisions recorded. Next up: build
+[v0 — The Lads Build](docs/ROADMAP.md#phase-v0--the-lads-build), the smallest genuinely fun
+version, with nothing in it that damages guilds later.
+
+👉 **[docs/QUESTIONS.md](docs/QUESTIONS.md) is the answer sheet** — edit the `Answer:` lines.
 
 | Document | What it covers |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, data model, counters, achievement engine, offline, security |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Phased delivery plan — v1 scope agreed |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | v0 scope + the irreversibility analysis |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
 | [docs/USER-JOURNEYS.md](docs/USER-JOURNEYS.md) | Journey flowcharts + story map of every story by release |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The achievement catalogue — gaming + football references |
-| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Remaining questions — 3 still touch the schema |
+| [docs/QUESTIONS.md](docs/QUESTIONS.md) | **Answer sheet — edit this one** |
+| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Original question notes, superseded by QUESTIONS.md |
 
 ## The core concepts
 

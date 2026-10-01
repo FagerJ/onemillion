@@ -5,6 +5,31 @@ Superseded decisions are kept, struck through — the history is the point.
 
 ---
 
+### D29 — Build v0 for one friend group; defer everything additive
+**Decided.** Ship the smallest genuinely fun version for a single party, and defer every
+feature that can be added later without a painful migration.
+
+*Why:* the irreversibility analysis in [ROADMAP](ROADMAP.md#what-is-actually-irreversible)
+shows that counters, badges, milestones, leaderboards and stats are all **derived** from the
+`beers` table. One row per beer with correct parents means any aggregate can be recomputed
+and any deterministic rule replayed over history to backfill unlocks. So the risk of
+deferring is far lower than it looked, and the risk of over-building before anyone has used
+it is real.
+
+Only five tables must be right up front — `parties`, `party_members`, `sessions`,
+`session_attendees`, `beers` — plus two nullable `guild_id` columns and one join table, which
+together are the complete path to guilds.
+
+*Cost:* v0 has no durable offline queue, which genuinely bites in a pub. Mitigated by
+shipping the `client_uuid` column now (the expensive half), leaving the queue as a
+self-contained client-side addition rather than a migration.
+
+*Also deferred deliberately:* the `jsonb` achievement rule engine. `achievement_unlocks` is
+the table that matters; a handful of hardcoded SQL checks can be swapped for the full
+vocabulary later and already-recorded unlocks stay valid.
+
+---
+
 ## Settled
 
 ### D1 — The million is global, not per-party
