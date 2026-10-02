@@ -23,14 +23,22 @@ if ! id -u "$RUNAS" >/dev/null 2>&1; then
 fi
 
 if [[ "${1:-}" == "--fresh" || ! -d "$DATA/base" ]]; then
+  # Stop any cluster already running on this data dir, or initdb refuses and
+  # the old postmaster keeps the socket.
+  if [[ -f "$DATA/postmaster.pid" ]]; then
+    su -s /bin/bash "$RUNAS" -c \
+      "PATH=$PGBIN:\$PATH pg_ctl -D $DATA -m immediate -w -t 20 stop" >/dev/null 2>&1 || true
+  fi
   rm -rf "$DATA"; mkdir -p "$DATA"
   chown "$RUNAS:$RUNAS" "$DATA"; chmod 700 "$DATA"
   su -s /bin/bash "$RUNAS" -c "PATH=$PGBIN:\$PATH initdb -D $DATA -U postgres -A trust" >/dev/null
 fi
 
 if ! pg_isready -h "$DATA" -p "$PORT" -q 2>/dev/null; then
+  # listen_addresses='' means unix socket only: no TCP port to collide with a
+  # stray postmaster left over from an earlier run.
   su -s /bin/bash "$RUNAS" -c \
-    "PATH=$PGBIN:\$PATH pg_ctl -D $DATA -o '-p $PORT -k $DATA' -l $DATA/log start -w -t 20" >/dev/null
+    "PATH=$PGBIN:\$PATH pg_ctl -D $DATA -o \"-p $PORT -k $DATA -c listen_addresses=''\" -l $DATA/log start -w -t 20" >/dev/null
 fi
 chmod 711 "$DATA"   # let the invoking user reach the socket
 
