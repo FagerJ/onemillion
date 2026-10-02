@@ -3,7 +3,8 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (30 ADRs — what's settled and why),
+**Read first:** `docs/SESSION-HANDOFF.md` (session memory — what was reversed and why,
+which recommendations are baked into the schema), `docs/DECISIONS.md` (30 ADRs — what's settled and why),
 `docs/ROADMAP.md` (v0 scope + the irreversibility analysis), `docs/QUESTIONS.md`
 (open questions awaiting the owner's answers).
 

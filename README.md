@@ -27,7 +27,8 @@ To run it locally: **[docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md)**.
 
 | Document | What it covers |
 |---|---|
-| [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md) | **Start here — getting it running on your machine** |
+| [docs/SESSION-HANDOFF.md](docs/SESSION-HANDOFF.md) | **Session memory — reversals, baked-in recommendations, gotchas** |
+| [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md) | Getting it running on your machine |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, data model, counters, achievement engine, offline, security |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | v0 scope + the irreversibility analysis |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
