@@ -21,11 +21,13 @@ supabase/tests/run.sh  spins up a throwaway cluster and asserts the rules hold
 ```
 
 No Supabase project exists yet, and nothing has been applied to a real database.
+To run it locally: **[docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md)**.
 
 👉 **[docs/QUESTIONS.md](docs/QUESTIONS.md) is the answer sheet** — edit the `Answer:` lines.
 
 | Document | What it covers |
 |---|---|
+| [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md) | **Start here — getting it running on your machine** |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack, data model, counters, achievement engine, offline, security |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | v0 scope + the irreversibility analysis |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
