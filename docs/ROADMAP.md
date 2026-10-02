@@ -83,7 +83,7 @@ adding the queue is client-side only), push (`S1`), reactions (`S2`), photos (`S
 
 | ID | Item | Effort |
 |---|---|---|
-| F1 | Answer [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md); freeze decisions in [DECISIONS.md](DECISIONS.md) | — |
+| F1 | Answer [QUESTIONS.md](QUESTIONS.md); freeze decisions in [DECISIONS.md](DECISIONS.md) | — |
 | F2 | Supabase project (eu-north-1), env/secrets management | S |
 | F3 | Client scaffold + design tokens (palette, Anton/Space Grotesk) | M |
 | F4 | Schema v1 migration: profiles, parties, party_members, sessions, session_attendees, beers | M |

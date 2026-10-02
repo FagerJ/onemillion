@@ -1,6 +1,8 @@
 # Architecture
 
-Status: **draft.** Three questions (Q21-Q23) still touch the v1 schema — see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
+Status: **draft.** This describes the full design. v0 builds a subset — see
+[ROADMAP](ROADMAP.md#phase-v0--the-lads-build). Five questions in [QUESTIONS.md](QUESTIONS.md)
+section B still touch the schema.
 
 ---
 
@@ -216,13 +218,19 @@ and every attendee is a real app user who joined the party with a code. Not a UI
 convention a rogue client can skip:
 
 ```sql
--- Deferred so a session and its attendees can be inserted in one transaction,
--- but the transaction cannot commit with a lone drinker in it.
-create constraint trigger session_requires_two
-  after insert or update on sessions
-  deferrable initially deferred
-  for each row execute function assert_session_of_two();
+-- Enforced on beers, not on sessions. A session may briefly hold one attendee
+-- while people arrive; the first BEER is what requires company.
+create trigger beers_02_require_company
+  before insert on beers
+  for each row execute function assert_not_drinking_alone();
 ```
+
+> **Revised by [D30](DECISIONS.md#d30--the-party-rule-is-enforced-on-beers-not-on-sessions).**
+> This originally specified a deferred constraint trigger on `sessions`. That cannot work:
+> a deferred check runs at COMMIT, so a session created with only its host could never be
+> committed, and "start a session, friends join" would be impossible. The check belongs on
+> `beers`, which is truer to the intent — the rule is *no solo logging*, not *no briefly
+> empty session*.
 
 Two foreign keys do the real work, and they chain:
 

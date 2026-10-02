@@ -14,6 +14,26 @@ first migration runs. Everything else can change any time.
 The goal: smallest thing that is genuinely *fun* end to end, with no decision that damages
 guilds later. See [ROADMAP.md](ROADMAP.md#phase-v0--the-lads-build) for the full cut list.
 
+### A7 — I had to make one call to get the schema working. Sanity-check it?
+
+The Party Rule was specified as a check on **sessions** ("a session must have two
+attendees"). That turns out to be impossible to implement as written: you create a session,
+*then* people join, so a check at commit time means a session can never be created at all.
+
+I moved the check to **beers** instead — the first beer requires two attendees, a session
+can briefly hold one person while people arrive. Recorded as
+[D30](DECISIONS.md#d30--the-party-rule-is-enforced-on-beers-not-on-sessions) and tested.
+
+Side effect: an empty session can exist in the data. It holds no beers and counts for
+nothing, but it exists.
+
+- **A.** Fine, keep it *(recommended, and already built)*
+- **B.** Also require two attendees before a session can even be started
+
+**Answer:** _______
+
+---
+
 ### A1 — Does the "no solo logging" rule apply from day one? 🔴
 
 The Party Rule (a session needs two attendees) is the app's identity. But for five friends

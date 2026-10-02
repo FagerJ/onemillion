@@ -11,9 +11,16 @@ counter toward seven figures.
 
 ## Status
 
-**Pre-build, v0 scoped.** 28 decisions recorded. Next up: build
-[v0 — The Lads Build](docs/ROADMAP.md#phase-v0--the-lads-build), the smallest genuinely fun
-version, with nothing in it that damages guilds later.
+**v0 started.** 30 decisions recorded. The schema migration is written and tested — the
+one part that is expensive to get wrong. RLS policies, counter roll-ups, the combo engine
+and the app itself are next, and wait on the answers in `docs/QUESTIONS.md`.
+
+```
+supabase/migrations/   schema (applied + tested against Postgres 16)
+supabase/tests/run.sh  spins up a throwaway cluster and asserts the rules hold
+```
+
+No Supabase project exists yet, and nothing has been applied to a real database.
 
 👉 **[docs/QUESTIONS.md](docs/QUESTIONS.md) is the answer sheet** — edit the `Answer:` lines.
 
@@ -24,8 +31,7 @@ version, with nothing in it that damages guilds later.
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (ADRs) — what's settled, what's open |
 | [docs/USER-JOURNEYS.md](docs/USER-JOURNEYS.md) | Journey flowcharts + story map of every story by release |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The achievement catalogue — gaming + football references |
-| [docs/QUESTIONS.md](docs/QUESTIONS.md) | **Answer sheet — edit this one** |
-| [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Original question notes, superseded by QUESTIONS.md |
+| [docs/QUESTIONS.md](docs/QUESTIONS.md) | **Open questions — the answer sheet** |
 
 ## The core concepts
 

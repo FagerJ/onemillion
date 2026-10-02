@@ -5,6 +5,29 @@ Superseded decisions are kept, struck through — the history is the point.
 
 ---
 
+### D30 — The Party Rule is enforced on `beers`, not on `sessions`
+**Decided.** The "at least two people" check is a `BEFORE INSERT` trigger on `beers`,
+which refuses any beer whose session has fewer than two attendees. `sessions` itself
+carries no minimum.
+
+*Why:* [ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-party-rule--enforced-in-the-database)
+originally specified a deferred constraint trigger on `sessions`. That cannot work with the
+real flow — you start a session, then friends are added. A deferred check runs at COMMIT, so
+a session created with only its host could never be committed, and "start a session and wait
+for the others" would be impossible.
+
+Moving the check to `beers` is truer to the intent anyway: the rule we care about is *no
+solo logging*, not *no briefly-empty session*. A session holding one attendee while people
+arrive is fine; the first beer is what requires company.
+
+*Cost:* an empty or single-attendee session can exist in the data. Harmless — it holds no
+beers, contributes nothing to any counter, and is tidied when closed.
+
+*Verified:* `supabase/tests/schema_test.sql` asserts a solo drinker is refused and that
+adding a second attendee unlocks logging.
+
+---
+
 ### D29 — Build v0 for one friend group; defer everything additive
 **Decided.** Ship the smallest genuinely fun version for a single party, and defer every
 feature that can be added later without a painful migration.

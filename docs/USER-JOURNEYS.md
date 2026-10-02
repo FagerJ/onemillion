@@ -122,7 +122,7 @@ the stories that make that step work, grouped by release.
 | **Later**<br/><sub>Phase 5</sub> | Age gate, 17+ rating `P4` | Several parties + switcher `D17` | Backdate last night `D16` | Rate limits, outlier flagging `P1` | Announcer sound, muted `G7` | Public counter page `P2`<br/>Home-screen widget `P3` | Transfer window `U7` |
 
 **Bold** = load-bearing, the walking skeleton. `Qnn` = waiting on an
-[open question](OPEN-QUESTIONS.md).
+[open question](QUESTIONS.md).
 
 ---
 
