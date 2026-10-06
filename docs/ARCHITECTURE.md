@@ -284,6 +284,11 @@ session, and nobody wants Tuesday's pint landing in Saturday's party.
 > backdating and live sessions pull against each other. A session started for last night
 > still works, but the live combo toasts never fire, so the night gets recorded without
 > ever being celebrated. Worth designing that empty state honestly rather than faking it.
+>
+> The closing time itself no longer fights D16:
+> [D41](DECISIONS.md#d41--sessions-close-on-schedule-and-last-night-can-still-be-logged-today)
+> starts the 09:00 clock from when the session was opened, so last night stays loggable
+> today. A `pg_cron` job closes overdue sessions every 5 minutes.
 
 ### 3.6 Logging, rounds and corrections
 

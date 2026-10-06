@@ -4,13 +4,13 @@ A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
 **Read first:** `docs/SESSION-HANDOFF.md` (session memory — what was reversed and why,
-which recommendations are baked into the schema), `docs/DECISIONS.md` (40 ADRs — what's settled and why),
+which recommendations are baked into the schema), `docs/DECISIONS.md` (41 ADRs — what's settled and why),
 `docs/ROADMAP.md` (v0 scope + the irreversibility analysis), `docs/QUESTIONS.md`
 (open questions awaiting the owner's answers).
 
 ## Where things stand
 
-- **Design: done.** 40 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 41 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
   irreducible tables plus the `beer_types` lookup.
@@ -20,12 +20,15 @@ which recommendations are baked into the schema), `docs/DECISIONS.md` (40 ADRs �
 - **Counters: written and tested** (`C4`, D40). `supabase/migrations/20261006130000_stats.sql`
   — trigger-kept totals in `global_stats` / `party_stats` / `profile_stats`, and
   `profile_summary()` / `party_summary()` for this-week figures and weekly streaks.
+- **Session lifecycle: written and tested** (`C10`, D41).
+  `supabase/migrations/20261006140000_session_lifecycle.sql` — `pg_cron` closes overdue
+  nights every 5 minutes and purges lonely sessions nightly; opening a night closes the
+  party's stale one; D16's today-or-yesterday window is enforced for the app.
 - **Every question that blocks v0 is answered** (QUESTIONS.md, D31–D38). Venues are out of
   v0 again. English UI behind a translation layer. Ships to Android as an app and to iPhones
   as a web app — no App Store yet. Guilds are parked (QUESTIONS.md D5).
-- **Not started:** milestones + combo engine, the session-lifecycle jobs (09:00 auto-close,
-  D36 purge), the Expo app, and the rest of what D35 pulled into v0 (achievements, the
-  offline queue). Nothing has been applied to a hosted Supabase project; none exists yet.
+- **Not started:** milestones + combo engine, achievements, the Expo app, and the offline
+  queue. Nothing has been applied to a hosted Supabase project; none exists yet.
 - Work lives on `claude/million-beers-architecture-inbc70`. `main` has only the initial
   commit. No PR open.
 

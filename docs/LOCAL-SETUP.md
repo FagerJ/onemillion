@@ -87,6 +87,8 @@ refuses to run as root.
 Either way you should see:
 
 ```
+→ lifecycle_test.sql
+NOTICE:  ALL LIFECYCLE TESTS PASSED
 → rls_test.sql
 NOTICE:  ALL RLS TESTS PASSED
 → schema_test.sql
@@ -112,7 +114,7 @@ In order, from `docs/ROADMAP.md`. Every question these depend on is answered.
 
 1. ~~**`F5` RLS policies**~~ — done ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
 2. ~~**`C4` counter roll-ups**~~ — done ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
-3. **`C10` session lifecycle jobs** — the 09:00 auto-close and the D36 purge.
+3. ~~**`C10` session lifecycle jobs**~~ — done ([D41](DECISIONS.md#d41--sessions-close-on-schedule-and-last-night-can-still-be-logged-today)).
 4. **`C9`/`C12`/`G1`/`G4`/`G5`** milestones, the achievement engine and combos.
 5. **`F3`/`C1`–`C11`** the Expo app, web + Android, English behind a translation layer.
 

@@ -20,6 +20,40 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D41 — Sessions close on schedule, and last night can still be logged today
+**Decided.** Session lifecycle (`C10`), in
+`supabase/migrations/20261006140000_session_lifecycle.sql`:
+
+- A `pg_cron` job closes overdue sessions every 5 minutes, stamping `closed_at` with the
+  scheduled `closes_at` rather than the moment the job ran.
+- Opening a new night closes the party's stale one first, so a party is never stuck behind
+  a job that hasn't run (only one session per party may be open).
+- Past `closes_at`, beers and new attendees are refused even before the job gets there.
+- A nightly job deletes single-attendee sessions a week after they closed (D36).
+- `closes_at` counts from the **later of the start and the moment the session was opened**.
+  A live night still closes at 09:00 the next morning; a night logged after the fact stays
+  open until 09:00 the morning after it was opened.
+- D16 is enforced for the app: a session starts no earlier than yesterday (in its own
+  timezone) and not in the future, and a beer's time falls between its session's start and
+  now.
+- Whoever starts a night can add party-mates to it in the same request as themselves.
+
+*Why:* D32 and D16 collided. A session for last night, opened at lunchtime, would have
+been closed on arrival, so D16's "log today or yesterday" couldn't work. Counting from the
+opening fixes that without changing live nights. The safety net matters because one missed
+job would otherwise block the party's next night.
+
+*Cost:* an offline tap (`C8`) that syncs after closing time is refused like any late beer —
+the offline queue has to decide what to tell the user. A night logged after the fact can
+stay open up to 27 hours after it was opened. Cron runs in UTC; the purge is at 04:17 UTC.
+
+*Verified:* `supabase/tests/lifecycle_test.sql` — closing time without the job, the safety
+net, the job's timing, which sessions the purge takes and keeps, the D16 window for
+sessions and beers, and that only the database runs the jobs. Each rule was broken on
+purpose to confirm a test fails.
+
+---
+
 ### D40 — Totals are kept by triggers; weekly figures are computed on read
 **Decided.** Counters (`C4`), in `supabase/migrations/20261006130000_stats.sql`:
 
@@ -58,9 +92,9 @@ may read what. Each was broken on purpose to confirm a test fails.
 - Clients **read** tables directly. You see your parties, their members (past ones
   included), their sessions and beers, and your own beers even after leaving.
 - Clients **write** directly only where the row itself says who may: your own profile,
-  starting a session, checking yourself in (or adding a party-mate once you're there),
-  logging a beer in your own name, voiding one within 24 hours, skipping rounds, and a
-  captain renaming the party.
+  starting a session, checking yourself in (or adding a party-mate once you're there, or
+  to a night you started), logging a beer in your own name, voiding one within 24 hours,
+  skipping rounds, and a captain renaming the party.
 - **Membership and lifecycle** go through functions: `create_party`, `join_party`,
   `leave_party`, `remove_member`, `promote_member`, `regenerate_invite_code`,
   `close_session`.
@@ -178,6 +212,10 @@ when the night ends. The timezone has to be stored anyway because it can't be de
 *Cost:* a session can run up to 27 hours (started at 06:00), and at least 3 (started at
 05:59). Changing the rule later doesn't move `closes_at` on existing sessions, which is
 intended.
+
+*Amended by [D41](#d41--sessions-close-on-schedule-and-last-night-can-still-be-logged-today):*
+the clock starts at the later of the start and the moment the session was opened, so a
+night logged after the fact (D16) isn't closed on arrival.
 
 *Verified:* `schema_test.sql` covers an evening start, an after-midnight start, a breakfast
 start, an explicit timezone overriding the creator's, and the night summer time ends.

@@ -218,37 +218,39 @@ begin
 
   -- ── D32: sessions close at 09:00 the morning after ──────────
   -- Closed sessions, so they don't collide with the one-open-per-party index.
+  -- Dated 2099 so the start stays later than "now": closes_at counts from the
+  -- later of the two (D41). 25 October 2099 is when summer time ends.
   update profiles set timezone = 'Europe/London' where id = u2;
 
   -- evening start, creator's timezone inherited from their profile
   insert into sessions (party_id, status, closed_at, started_at, created_by)
-    values (p, 'closed', now(), '2026-10-07 20:00 Europe/London', u2) returning id into s;
+    values (p, 'closed', now(), '2099-10-07 20:00 Europe/London', u2) returning id into s;
   select count(*) into n from sessions
    where id = s and timezone = 'Europe/London'
-     and closes_at = '2026-10-08 09:00 Europe/London';
+     and closes_at = '2099-10-08 09:00 Europe/London';
   if n <> 1 then raise exception 'TEST FAIL: evening session should close 09:00 next morning, creator tz'; end if;
 
   -- after-midnight start belongs to the night before; an explicit timezone wins
   insert into sessions (party_id, status, closed_at, started_at, timezone, created_by)
-    values (p, 'closed', now(), '2026-10-08 01:30 Europe/Stockholm', 'Europe/Stockholm', u2)
+    values (p, 'closed', now(), '2099-10-08 01:30 Europe/Stockholm', 'Europe/Stockholm', u2)
     returning id into s;
   select count(*) into n from sessions
    where id = s and timezone = 'Europe/Stockholm'
-     and closes_at = '2026-10-08 09:00 Europe/Stockholm';
+     and closes_at = '2099-10-08 09:00 Europe/Stockholm';
   if n <> 1 then raise exception 'TEST FAIL: 01:30 session should close 09:00 the same morning'; end if;
 
   -- breakfast start doesn't close within minutes
   insert into sessions (party_id, status, closed_at, started_at, created_by)
-    values (p, 'closed', now(), '2026-10-08 08:30 Europe/Stockholm', u1) returning id into s;
+    values (p, 'closed', now(), '2099-10-08 08:30 Europe/Stockholm', u1) returning id into s;
   select count(*) into n from sessions
-   where id = s and closes_at = '2026-10-09 09:00 Europe/Stockholm';
+   where id = s and closes_at = '2099-10-09 09:00 Europe/Stockholm';
   if n <> 1 then raise exception 'TEST FAIL: 08:30 session should close 09:00 the next day'; end if;
 
   -- across the end of summer time the wall clock still says 09:00
   insert into sessions (party_id, status, closed_at, started_at, created_by)
-    values (p, 'closed', now(), '2026-10-24 22:00 Europe/Stockholm', u1) returning id into s;
+    values (p, 'closed', now(), '2099-10-24 22:00 Europe/Stockholm', u1) returning id into s;
   select count(*) into n from sessions
-   where id = s and closes_at = '2026-10-25 09:00 Europe/Stockholm'
+   where id = s and closes_at = '2099-10-25 09:00 Europe/Stockholm'
      and closes_at - started_at = interval '12 hours';
   if n <> 1 then raise exception 'TEST FAIL: DST night should still close at 09:00 local'; end if;
 

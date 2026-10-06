@@ -272,8 +272,12 @@ begin
   -- D32: 09:00 local the morning after. A session started before 06:00 belongs
   -- to the night before, so a 01:00 start still closes at 09:00 that morning
   -- and a breakfast start doesn't close within minutes. Range: 3h to 27h.
+  --
+  -- D41: measured from the later of the start and the moment it was opened, so
+  -- last night can still be logged today (D16) instead of closing on arrival.
   new.closes_at :=
-    ((((new.started_at at time zone new.timezone) - interval '6 hours')::date + 1)
+    ((((greatest(new.started_at, new.created_at) at time zone new.timezone)
+        - interval '6 hours')::date + 1)
       + time '09:00') at time zone new.timezone;
 
   return new;
@@ -292,10 +296,11 @@ as $$
 declare
   s record;
 begin
-  select party_id, guild_id, status into s from sessions where id = new.session_id;
+  select party_id, guild_id, status, closes_at into s from sessions where id = new.session_id;
 
-  -- `not found` also covers a session the caller can't see under RLS.
-  if not found or s.status <> 'open' then
+  -- `not found` also covers a session the caller can't see under RLS. Past its
+  -- closing time counts as closed even before the job gets to it (D41).
+  if not found or s.status <> 'open' or now() >= s.closes_at then
     raise exception 'Session % is not open', new.session_id
       using errcode = 'check_violation';
   end if;
@@ -318,10 +323,10 @@ as $$
 declare
   s record;
 begin
-  select party_id, status into s from sessions where id = new.session_id;
+  select party_id, status, closes_at into s from sessions where id = new.session_id;
 
   -- Joining a closed night would hand out its combos after the fact.
-  if not found or s.status <> 'open' then
+  if not found or s.status <> 'open' or now() >= s.closes_at then
     raise exception 'Session % is not open', new.session_id
       using errcode = 'check_violation';
   end if;

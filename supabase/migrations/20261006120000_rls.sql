@@ -166,14 +166,24 @@ create policy sessions_select on public.sessions
   for select to authenticated
   using (public.is_party_member(party_id) or public.is_session_attendee(id));
 
+-- D16: a night can be logged for today or yesterday, never the future — measured in
+-- the session's own timezone, which the BEFORE trigger has stamped by now.
 create policy sessions_insert on public.sessions
   for insert to authenticated
-  with check (created_by = (select auth.uid()) and public.is_party_member(party_id));
+  with check (
+    created_by = (select auth.uid())
+    and public.is_party_member(party_id)
+    and started_at <= now() + interval '5 minutes'
+    and started_at >= (date_trunc('day', now() at time zone timezone) - interval '1 day')
+                        at time zone timezone
+  );
 
--- Attendees: check yourself in, or add a party-mate once you're there yourself
--- (Q17 / D22a — joining the party is the consent). party_id is stamped by the
--- BEFORE trigger, which runs before this check, so it can't be spoofed.
--- No deletes in v0: a mistaken attendee stays, having drunk nothing.
+-- Attendees: check yourself in, or add a party-mate once you're there yourself or
+-- if you started the night (Q17 / D22a — joining the party is the consent). The
+-- starter clause lets "start a night with these four" be one insert: rows earlier
+-- in the same statement aren't visible to is_session_attendee().
+-- party_id is stamped by the BEFORE trigger, which runs before this check, so it
+-- can't be spoofed. No deletes in v0: a mistaken attendee stays, having drunk nothing.
 create policy session_attendees_select on public.session_attendees
   for select to authenticated
   using (profile_id = (select auth.uid()) or public.is_party_member(party_id));
@@ -182,7 +192,12 @@ create policy session_attendees_insert on public.session_attendees
   for insert to authenticated
   with check (
     public.is_party_member(party_id)
-    and (profile_id = (select auth.uid()) or public.is_session_attendee(session_id))
+    and (
+      profile_id = (select auth.uid())
+      or public.is_session_attendee(session_id)
+      or exists (select 1 from public.sessions s
+                  where s.id = session_id and s.created_by = (select auth.uid()))
+    )
   );
 
 create policy session_attendees_update on public.session_attendees
@@ -196,9 +211,17 @@ create policy beers_select on public.beers
   for select to authenticated
   using (profile_id = (select auth.uid()) or public.is_party_member(party_id));
 
+-- A beer's time sits inside its night: not before the session started, not in the
+-- future. An offline tap (C8) keeps its real time within those bounds.
 create policy beers_insert on public.beers
   for insert to authenticated
-  with check (added_by = (select auth.uid()) and public.is_session_attendee(session_id));
+  with check (
+    added_by = (select auth.uid())
+    and public.is_session_attendee(session_id)
+    and logged_at <= now() + interval '5 minutes'
+    and logged_at >= (select s.started_at from public.sessions s where s.id = session_id)
+                       - interval '5 minutes'
+  );
 
 -- "−" (D28): any attendee voids a live beer within 24 hours (D16), in their own name.
 -- USING sees the old row and WITH CHECK the new one, so a void can't be undone.
