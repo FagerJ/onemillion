@@ -50,10 +50,15 @@ createdb omb
 psql -v ON_ERROR_STOP=1 -q -d omb <<'SQL'
 create schema auth;
 create table auth.users (id uuid primary key default gen_random_uuid());
+-- Same contract as Supabase's: the caller's id from the JWT claims PostgREST sets.
+create function auth.uid() returns uuid language sql stable as $fn$
+  select nullif(nullif(current_setting('request.jwt.claims', true), '')::json ->> 'sub', '')::uuid
+$fn$;
 do $$ begin
   if not exists (select 1 from pg_roles where rolname='anon') then create role anon; end if;
   if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if;
 end $$;
+grant usage on schema auth to anon, authenticated;
 SQL
 
 for m in "$REPO"/supabase/migrations/*.sql; do
@@ -61,5 +66,7 @@ for m in "$REPO"/supabase/migrations/*.sql; do
   psql -v ON_ERROR_STOP=1 -q -d omb -f "$m"
 done
 
-echo "→ tests"
-psql -v ON_ERROR_STOP=1 -q -d omb -f "$REPO/supabase/tests/schema_test.sql"
+for t in "$REPO"/supabase/tests/*_test.sql; do
+  echo "→ $(basename "$t")"
+  { echo 'begin;'; cat "$t"; echo 'rollback;'; } | psql -v ON_ERROR_STOP=1 -q -d omb -f -
+done

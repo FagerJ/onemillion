@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings or bash fails with "\r: command not found",
+# which Git for Windows (core.autocrlf=true) would otherwise introduce on checkout.
+*.sh   text eol=lf
+*.sql  text eol=lf
