@@ -4,34 +4,11 @@
 -- nothing about access. Here each step switches to the `authenticated` role with a
 -- JWT `sub` claim, which is exactly what PostgREST does for a request from the app.
 --
--- Run by ./supabase/tests/run-supabase.sh inside begin … rollback, so the helper
--- schema below disappears with everything else.
+-- Run by the test runners inside begin … rollback, after helpers.sql
+-- (test_helpers.sign_in / sign_out).
 
 \set ON_ERROR_STOP on
 set client_min_messages = notice;
-
-create schema test_helpers;
-
-create function test_helpers.sign_in(u uuid) returns void
-language plpgsql as $$
-begin
-  reset role;
-  perform set_config('request.jwt.claims',
-    json_build_object('sub', u, 'role', 'authenticated')::text, true);
-  perform set_config('role', 'authenticated', true);
-end;
-$$;
-
-create function test_helpers.sign_out() returns void
-language plpgsql as $$
-begin
-  reset role;
-  perform set_config('request.jwt.claims', '', true);
-end;
-$$;
-
-grant usage on schema test_helpers to authenticated, anon;
-grant execute on all functions in schema test_helpers to authenticated, anon;
 
 do $$
 declare

@@ -4,26 +4,28 @@ A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
 **Read first:** `docs/SESSION-HANDOFF.md` (session memory — what was reversed and why,
-which recommendations are baked into the schema), `docs/DECISIONS.md` (39 ADRs — what's settled and why),
+which recommendations are baked into the schema), `docs/DECISIONS.md` (40 ADRs — what's settled and why),
 `docs/ROADMAP.md` (v0 scope + the irreversibility analysis), `docs/QUESTIONS.md`
 (open questions awaiting the owner's answers).
 
 ## Where things stand
 
-- **Design: done.** 39 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 40 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
   irreducible tables plus the `beer_types` lookup.
 - **RLS: written and tested** (`F5`, D39). `supabase/migrations/20261006120000_rls.sql` —
   policies, column grants, and the membership/lifecycle functions (`create_party`,
   `join_party`, `close_session`, …). `rls_test.sql` checks them as real signed-in users.
+- **Counters: written and tested** (`C4`, D40). `supabase/migrations/20261006130000_stats.sql`
+  — trigger-kept totals in `global_stats` / `party_stats` / `profile_stats`, and
+  `profile_summary()` / `party_summary()` for this-week figures and weekly streaks.
 - **Every question that blocks v0 is answered** (QUESTIONS.md, D31–D38). Venues are out of
   v0 again. English UI behind a translation layer. Ships to Android as an app and to iPhones
   as a web app — no App Store yet. Guilds are parked (QUESTIONS.md D5).
-- **Not started:** counter roll-up triggers (`C4`), milestones + combo engine, the
-  session-lifecycle jobs (09:00 auto-close, D36 purge), the Expo app, and the rest of what
-  D35 pulled into v0 (achievements, offline queue, streaks). Nothing has been applied to a
-  hosted Supabase project; none exists yet.
+- **Not started:** milestones + combo engine, the session-lifecycle jobs (09:00 auto-close,
+  D36 purge), the Expo app, and the rest of what D35 pulled into v0 (achievements, the
+  offline queue). Nothing has been applied to a hosted Supabase project; none exists yet.
 - Work lives on `claude/million-beers-architecture-inbc70`. `main` has only the initial
   commit. No PR open.
 
@@ -86,10 +88,14 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 - **Trigger names are numbered** (`beers_01_stamp_parents`, `beers_02_require_company`)
   because Postgres fires BEFORE triggers in alphabetical order and the stamping must run
   first.
-- **`schema_test.sql` bypasses RLS** — it runs as the table owner, which is exempt. Anything
-  about access belongs in `rls_test.sql`, which signs in with
-  `test_helpers.sign_in(uuid)` (sets the `authenticated` role plus a JWT `sub`). When adding
-  a policy, loosen it once on purpose and check a test fails, or the test proves nothing.
+- **`schema_test.sql` bypasses RLS** — it runs as the table owner, which is exempt. Access
+  checks sign in with `test_helpers.sign_in(uuid)` (the `authenticated` role plus a JWT
+  `sub`), defined in `supabase/tests/helpers.sql`, which both runners load before every
+  `*_test.sql`. When adding a rule, break it once on purpose and check a test fails, or the
+  test proves nothing.
+- **Upserts check the insert row first.** `insert … on conflict do update` with a value that
+  breaks a CHECK constraint fails even when the row exists — Postgres validates the
+  proposed insert before looking for the conflict. Decrement counters with a plain `update`.
 - **RLS recursion.** A policy on `party_members` that queries `party_members` hangs. Use the
   `SECURITY DEFINER` helpers (`is_party_member`, `is_party_captain`, `is_session_attendee`,
   `shares_party_with`).

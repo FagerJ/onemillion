@@ -20,6 +20,38 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D40 — Totals are kept by triggers; weekly figures are computed on read
+**Decided.** Counters (`C4`), in `supabase/migrations/20261006130000_stats.sql`:
+
+- `global_stats`, `party_stats` and `profile_stats` hold live totals, voids excluded. An
+  `AFTER` trigger on `beers` keeps them in the same transaction as the beer, and
+  `recompute_stats()` rebuilds all three from `beers`.
+- Beers this week and streaks are computed when asked, by `profile_summary()` and
+  `party_summary()` — one call per dashboard.
+- A **streak week** is a Monday-start week in which you were at a session holding at least
+  one live beer. The designated driver keeps their streak; a night whose beers were all
+  voided doesn't count. A streak survives until a whole week passes without a session.
+- The global total is visible to everyone signed in, party numbers to members, and a
+  person's numbers to them and their party-mates.
+
+*Why:* totals are what milestones cross and what every dashboard shows, so they must be
+exact and cheap to read. Weekly figures change when time passes, not only when beers land.
+Storing them would need a `pg_cron` job to break streaks on Monday morning, kept in step with
+voids; computed on read they are simply right.
+
+*Cost:* supersedes ARCHITECTURE §5's "weekly figures are rolled by `pg_cron`". A summary
+walks the person's or party's sessions — trivial for a friend group for years, worth
+revisiting at guild scale. Every beer write updates the single `global_stats` row, so beer
+writes queue behind each other (fine to hundreds a second; shard the row if guilds ever get
+there). A person's total includes their other parties, so party-mates see that in aggregate.
+
+*Verified:* `supabase/tests/stats_test.sql` covers single beers, rounds, voids, un-voids,
+deletes and beers born voided across all three scopes; that a fresh recompute matches the
+triggers; eight weeks of nights with known streaks, the designated driver included; and who
+may read what. Each was broken on purpose to confirm a test fails.
+
+---
+
 ### D39 — Access rules: read tables directly, change membership through functions
 **Decided.** Row level security (`F5`), in `supabase/migrations/20261006120000_rls.sql`:
 

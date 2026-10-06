@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rebuild the local Supabase database from the migrations, then run the
 # behavioural tests against it inside a transaction that is rolled back.
+# helpers.sql (test_helpers.sign_in / sign_out) is loaded before each test file.
 #
 #   ./supabase/tests/run-supabase.sh             # reset + test
 #   ./supabase/tests/run-supabase.sh --no-reset  # test the current database
@@ -28,6 +29,6 @@ DB="supabase_db_$(sed -n 's/^project_id *= *"\(.*\)"/\1/p' supabase/config.toml)
 
 for t in supabase/tests/*_test.sql; do
   echo "→ $(basename "$t")"
-  { echo 'begin;'; cat "$t"; echo 'rollback;'; } \
+  { echo 'begin;'; cat supabase/tests/helpers.sql "$t"; echo 'rollback;'; } \
     | docker exec -i "$DB" psql -U postgres -v ON_ERROR_STOP=1 -q -f -
 done

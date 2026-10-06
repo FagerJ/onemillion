@@ -367,12 +367,14 @@ Trigger-maintained roll-up tables, updated inside the same transaction as the in
 excluding `voided_at is not null`:
 
 ```sql
-global_stats  (id=1, total_beers, total_sessions, total_profiles, updated_at)
-party_stats   (party_id pk, total_beers, beers_this_week, current_streak_weeks,
-               last_logged_at, next_milestone, updated_at)
-guild_stats   (guild_id pk, total_beers, party_count, achievement_points, ...)
-profile_stats (profile_id pk, total_beers, current_streak_weeks, biggest_session, ...)
+global_stats  (id=1, total_beers, updated_at)
+party_stats   (party_id pk, total_beers, last_logged_at, updated_at)
+profile_stats (profile_id pk, total_beers, last_logged_at, updated_at)
+guild_stats   (guild_id pk, total_beers, ...)                -- Phase 3
 ```
+
+As built in `20261006130000_stats.sql` ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
+`recompute_stats()` rebuilds them from `beers`, which is the proof they are derived.
 
 The client subscribes to Realtime on the `global_stats` row. When a stranger in another
 city logs a pint, the number ticks up on your screen. That single behaviour is the most
@@ -382,7 +384,9 @@ private diary.
 Realtime on the session row does the same job at close range: everyone at the table
 watches the tally climb as rounds land.
 
-Weekly figures are rolled by a scheduled `pg_cron` job, not recomputed on read.
+Weekly figures — beers this week, streaks — are computed on read by `profile_summary()` and
+`party_summary()`. They change when a week ends, not only when a beer lands, so storing them
+would need a job to break streaks on Monday morning ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
 
 ---
 

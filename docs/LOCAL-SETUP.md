@@ -91,6 +91,8 @@ Either way you should see:
 NOTICE:  ALL RLS TESTS PASSED
 → schema_test.sql
 NOTICE:  ALL SCHEMA TESTS PASSED
+→ stats_test.sql
+NOTICE:  ALL STATS TESTS PASSED
 ```
 
 ## 5. Point Claude Code at it
@@ -109,8 +111,7 @@ claude
 In order, from `docs/ROADMAP.md`. Every question these depend on is answered.
 
 1. ~~**`F5` RLS policies**~~ — done ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
-2. **`C4` counter roll-ups** — `party_stats`, `global_stats`, `profile_stats` (weekly streaks,
-   Monday-start weeks).
+2. ~~**`C4` counter roll-ups**~~ — done ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
 3. **`C10` session lifecycle jobs** — the 09:00 auto-close and the D36 purge.
 4. **`C9`/`C12`/`G1`/`G4`/`G5`** milestones, the achievement engine and combos.
 5. **`F3`/`C1`–`C11`** the Expo app, web + Android, English behind a translation layer.

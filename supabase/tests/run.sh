@@ -68,5 +68,6 @@ done
 
 for t in "$REPO"/supabase/tests/*_test.sql; do
   echo "→ $(basename "$t")"
-  { echo 'begin;'; cat "$t"; echo 'rollback;'; } | psql -v ON_ERROR_STOP=1 -q -d omb -f -
+  { echo 'begin;'; cat "$REPO/supabase/tests/helpers.sql" "$t"; echo 'rollback;'; } \
+    | psql -v ON_ERROR_STOP=1 -q -d omb -f -
 done
