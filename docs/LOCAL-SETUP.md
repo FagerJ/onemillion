@@ -29,14 +29,25 @@ git checkout claude/million-beers-architecture-inbc70
 | **Supabase CLI** | migrations, local Postgres + Auth + Realtime | `brew install supabase/tap/supabase` |
 | **Claude Code** | picks up `CLAUDE.md` automatically | `npm install -g @anthropic-ai/claude-code` |
 
+### On Windows
+
+What it took on the owner's Windows 11 machine:
+
+1. In a terminal opened **as Administrator**: `wsl --install --no-distribution`, then
+   restart. Docker Desktop needs WSL2 but not a Linux distribution of its own.
+2. `winget install Docker.DockerDesktop`, open it, accept the agreement, wait for
+   "Engine running".
+3. No Supabase CLI install — `npx supabase …` fetches it on first use.
+4. Run the scripts from **Git Bash**. Shells opened before Docker was installed don't have
+   `docker` on PATH; the test script falls back to Docker's install folder.
+
 ## 3. Start the local Supabase stack
 
-The repo has `supabase/migrations/` but no `config.toml` yet, so initialise once:
+`supabase/config.toml` is committed, so there is nothing to initialise:
 
 ```bash
-supabase init     # creates supabase/config.toml next to the existing migrations
-supabase start    # boots Postgres, Auth, Realtime, Storage in Docker
-supabase db reset # applies every migration from scratch
+npx supabase start    # boots Postgres, Auth, Realtime, Storage in Docker (first run downloads several GB of images)
+npx supabase db reset # applies every migration from scratch
 ```
 
 `supabase start` prints the local API URL and keys — those go in `.env` for the Expo app
@@ -45,22 +56,24 @@ supabase db reset # applies every migration from scratch
 The local stack provides `auth.users` and the `anon` / `authenticated` roles, which is why
 this is better than the bare-Postgres fallback below.
 
-**Note:** RLS is currently enabled on every table with **no policies**, which denies all
-access through the `anon` and `authenticated` roles. That's deliberate — the schema fails
-closed. Until the policy migration is written, queries from a client will return nothing.
+**Note:** signed-out visitors (`anon`) can't read or write anything — there is no public
+surface yet. Signed-in users see their own parties only, and change membership through the
+functions in `20261006120000_rls.sql` ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
 
 ## 4. Run the tests
 
-With Docker:
+With Docker (any OS, including Git Bash on Windows):
 
 ```bash
-supabase db reset                                    # migrations
-psql "$(supabase status -o env | grep DB_URL | cut -d= -f2-)" \
-  -f supabase/tests/schema_test.sql                  # assertions
+./supabase/tests/run-supabase.sh             # db reset, then every *_test.sql
+./supabase/tests/run-supabase.sh --no-reset  # just the tests
 ```
 
-Without Docker, the fallback runner builds a throwaway Postgres cluster and stubs the
-Supabase-provided pieces:
+It runs `psql` inside the database container, so nothing needs installing on the host, and
+wraps each test file in `begin … rollback` so the dev database stays clean.
+
+Without Docker, on **Linux only**, the fallback runner builds a throwaway Postgres cluster
+and stubs the Supabase-provided pieces:
 
 ```bash
 ./supabase/tests/run.sh
@@ -74,6 +87,9 @@ refuses to run as root.
 Either way you should see:
 
 ```
+→ rls_test.sql
+NOTICE:  ALL RLS TESTS PASSED
+→ schema_test.sql
 NOTICE:  ALL SCHEMA TESTS PASSED
 ```
 
@@ -85,22 +101,19 @@ claude
 
 `CLAUDE.md` loads automatically, so it starts oriented. If you want to be explicit:
 
-> Read CLAUDE.md and docs/QUESTIONS.md. We're at the start of v0 — the schema is written
-> and tested, RLS policies and the Expo app are next.
+> Read CLAUDE.md. We're building v0 — the schema and RLS are written and tested; counters,
+> the game layer and the Expo app are next.
 
 ## 6. What's next
 
-In order, from `docs/ROADMAP.md`:
+In order, from `docs/ROADMAP.md`. Every question these depend on is answered.
 
-1. **`F5` RLS policies** — party-scoped, with the `is_party_member` SECURITY DEFINER helper.
-   Doesn't depend on any open question. Needs a test that connects as a non-owner role,
-   since the current tests run as the table owner and bypass RLS entirely.
-2. **`C4` counter roll-ups** — `party_stats`, `global_stats`, `profile_stats` triggers.
-3. **`G1'`/`G4`/`G5`** milestones + the combo engine.
-4. **`F3`/`C1`–`C11`** the Expo app.
-
-Answers in `docs/QUESTIONS.md` affect steps 2 and 3 (streak units, party cap, GDPR
-nullability, timezone, week start, beer-type vocabulary). Step 1 can start now.
+1. ~~**`F5` RLS policies**~~ — done ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
+2. **`C4` counter roll-ups** — `party_stats`, `global_stats`, `profile_stats` (weekly streaks,
+   Monday-start weeks).
+3. **`C10` session lifecycle jobs** — the 09:00 auto-close and the D36 purge.
+4. **`C9`/`C12`/`G1`/`G4`/`G5`** milestones, the achievement engine and combos.
+5. **`F3`/`C1`–`C11`** the Expo app, web + Android, English behind a translation layer.
 
 ## A hosted project, eventually
 

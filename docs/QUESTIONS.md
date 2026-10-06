@@ -9,6 +9,79 @@ first migration runs. Everything else can change any time.
 
 ---
 
+# ✅ Round 2 — follow-ups from your answers
+
+Your section B answers are built into the schema and tested (D31–D36 in
+[DECISIONS.md](DECISIONS.md)). Six small things came out of the rest.
+
+### F1 — Big parties: "A, B and D together" (from B2)
+
+**A** is in: parties cap at 50. But **B** and **D** pull against each other. **D** says a
+big party hitting 100 is legitimately impressive. **B** says a big party should need *more*
+beers for the same badge, which means each person drinking more. That works against the
+rule the whole design is built on: the way to a big badge is bringing a friend, not
+drinking more.
+
+- **A.** Cap at 50 + fixed totals 10 / 25 / 50 / 100 — big nights are big *(recommended)*
+- **B.** Fixed totals, plus a second ladder for "everyone at the table had N"
+- **C.** Thresholds grow with headcount
+
+**Answer:** No objection — taking A: cap 50, fixed totals 10 / 25 / 50 / 100. *(2026-10-06)*
+
+### F2 — Combo names for the four rungs (from C1 + C3)
+
+C3 was about the **badge names**. In the first chat you asked for gaming + European football
+references and no "kill" words, which gave us: BRACE, HAT-TRICK, HEATING UP, ON FIRE,
+BOOMSHAKALAKA, SCREAMER, WORLDIE, RAMPAGE. You've now asked for four rungs, so four names:
+
+| Session total | Suggested |
+|---|---|
+| 10 | ON FIRE |
+| 25 | BOOMSHAKALAKA |
+| 50 | WORLDIE |
+| 100 | RAMPAGE |
+
+**Answer:** No objection — taking the suggestion. Renaming later is free. *(2026-10-06)*
+
+### F3 — Venues (from A6)
+
+You pulled venues into v0. How should they work?
+
+- **A.** Each party keeps its own list of pubs. A session has a *current* pub, and every beer
+  remembers where it was drunk, so a pub crawl is recorded *(recommended)*
+- **B.** One shared list for everyone in the app (needs duplicate-cleaning, or a maps API)
+- **C.** Just type the pub name on the session (what the schema has today)
+
+**Answer:** Later — venues are out of v0 again. *(2026-10-06)*
+
+### F4 — Android without the Play Store (from A3)
+
+TestFlight for iPhone needs the Apple Developer account ($99/yr). For Android, a web app
+works, but Expo can also build a real installable Android app for free and share it as a
+download link. No Play Store needed.
+
+- **A.** Real Android app via a download link *(recommended — same app as the iPhones)*
+- **B.** Web app for Android, as you said
+
+**Answer:** A — a real installable app. And no App Store / TestFlight yet: test on web and Android first. *(2026-10-06)*
+
+### F5 — D1 got cut off
+
+"The captain of a …" — finish the thought whenever. It's guild stuff, so no rush.
+
+### F6 — Which language is the app in?
+
+Nothing decides it yet, and it touches every screen.
+
+- **A.** English, built so Swedish can be added later *(recommended — the badge voice,
+  BOOMSHAKALAKA / WORLDIE / HAT-TRICK, is English football commentary)*
+- **B.** Swedish, with the badge names left in English
+- **C.** Both from day one, following the phone's language
+
+**Answer:** A — English, built so it is easy to translate later. *(2026-10-06)*
+
+---
+
 # A · v0 — the version for you and your mates
 
 The goal: smallest thing that is genuinely *fun* end to end, with no decision that damages
@@ -30,7 +103,7 @@ nothing, but it exists.
 - **A.** Fine, keep it *(recommended, and already built)*
 - **B.** Also require two attendees before a session can even be started
 
-**Answer:** _______
+**Answer:** A - thought, run a purge every now and then to clean the database from old "+7 days old single ateendee sessions?"
 
 ---
 
@@ -47,7 +120,7 @@ direction is to ship strict.
 - **B.** Allow solo sessions in v0, tighten later *(not really reversible — see above)*
 - **C.** Strict, but add a "drinking alone" flag that doesn't count toward the million
 
-**Answer:** _______
+**Answer:** A!
 
 ---
 
@@ -57,7 +130,7 @@ direction is to ship strict.
 - **B.** Google as well — one tap for most people, a bit more setup
 - **C.** Apple too — needed eventually for the App Store, but needs the $99/yr account now
 
-**Answer:** _______
+**Answer:** Sign up with email and password. Magic link also!!
 
 ---
 
@@ -70,7 +143,7 @@ direction is to ship strict.
 Nothing here is a one-way door. The client is Expo either way, so native builds stay
 available ([D11](DECISIONS.md#d11--client-is-expo-react-native-with-web-export)).
 
-**Answer:** _______
+**Answer:** I don't know. I want it to be an app on iOS and Android. But testflight for Apple and then a web app for ANdroid for now?
 
 ---
 
@@ -86,13 +159,15 @@ shouldn't hit everything at once.
 
 **Rough beers per person per week:** _______
 
+Hmm! Good question. We are 10+ in our group and maybe it's 40 beers for a night. But I think we should have a generic scale to this. 10 beers, 100 beers, 500 beers, 1000 beers 2500 beers etc. The ones that "feel right". And we could also add some fun an stupid milestones. 67 "The kids think this is fun" 69 "hehehe" "I would drink 500 beers" that references the 500 miles and "And I would drink 500 more" for the thousand? etc.
+
 ---
 
 ### A5 — What's the party called?
 
 Goes in the seed data so the app isn't empty on first run.
 
-**Answer:** _______
+**Answer:** My friendghroup? Onsdagar!
 
 ---
 
@@ -106,7 +181,7 @@ Kept in v0: party + invite code, sessions, `+` / `+ ROUND` / `−`, live tally o
 phone, combo toasts, milestone ring + the 1M bar, a simple leaderboard, a feed of past
 sessions.
 
-**Pull back in:** _______
+**Pull back in:** Achivements! Venues, Offline Queue, Streaks!
 
 **Also cut:** _______
 
@@ -127,7 +202,7 @@ stopping. It runs against everything else the scoring system does
 
 Changes `profile_stats.current_streak_days` → `current_streak_weeks`.
 
-**Answer:** _______
+**Answer:** A
 
 ---
 
@@ -139,12 +214,12 @@ WORLDIE and RAMPAGE unlocked, no rule broken, no beers invented.
 
 Probably irrelevant for your mates, but it's a cheap column now and a nasty retrofit later.
 
-- **A.** Cap party size *(recommended)* — **what number?** _______ (I'd suggest 30)
+- **A.** Cap party size *(recommended)* — **what number?** 50 (I'd suggest 30)
 - **B.** Scale thresholds by attendee count, e.g. RAMPAGE = 3× attendees
 - **C.** Cap how many people one `+ ROUND` can cover
 - **D.** Nothing — big parties are legitimately impressive
 
-**Answer:** _______
+**Answer:** A,B,D all together somehow?
 
 ---
 
@@ -160,7 +235,7 @@ celebrated become lies.
 
 Decides whether `beers.profile_id` can be nullable, which is why it's here and not later.
 
-**Answer:** _______
+**Answer:** A -
 
 ---
 
@@ -177,7 +252,7 @@ specified.
 **Recommended:** captain can rename, manage guild membership and remove members; the
 founder is captain and can promote others; leaving sets `left_at` and keeps all history.
 
-**Answer:** _______
+**Answer:** Agreed
 
 ---
 
@@ -186,18 +261,18 @@ founder is captain and can promote others; leaving sets `left_at` and keeps all 
 **Whose timezone closes a session at 06:00?** Recommend the session creator's, stored on the
 session row at start. (Not derivable later if you don't store it.)
 
-**Answer:** _______
+**Answer:** Close at 9 the morning after, the session creators
 
 **When does a week start?** Recommend Monday.
 
-**Answer:** _______
+**Answer:** Monday
 
 **Is `beer_type` free text or a fixed list?** Free text is easy but makes `RARE_DROP` and
 `PERFECT_HAT_TRICK` unreliable, because typos fragment the data. Recommend a short curated
 list (lager, IPA, stout, pilsner, wheat, sour, …) plus free text, with only the curated
 values feeding achievements.
 
-**Answer:** _______
+**Answer:** Short curated List, no free text.
 
 ---
 
@@ -221,7 +296,7 @@ All **session totals** across everyone present, not per person:
 Answer A4 and I'll retune these to your actual group. Cheap to change forever, since
 achievements are data ([D7](DECISIONS.md#d7--achievements-are-data-not-code)).
 
-**Answer:** _______
+**Answer:** Hmm! THees are not really good. As you said before, if it's a big group it screws this up! Let's have 10-25-50-100 combo instead. (The 67 and 69 thing we discuseed earlier comes as achivements anyway?)
 
 ---
 
@@ -231,7 +306,7 @@ achievements are data ([D7](DECISIONS.md#d7--achievements-are-data-not-code)).
 gags, somebody's reputation — this is the stuff that makes it actually funny for your group,
 and I can't invent it.
 
-**Answer:**
+**Answer:** I'll look into achivements at a later stage!
 
 ```
 e.g.  THE BERGMAN      — Jonas orders a round and vanishes for 40 minutes
@@ -245,8 +320,7 @@ e.g.  THE BERGMAN      — Jonas orders a round and vanishes for 40 minutes
 The voice is NBA Jam announcer crossed with a football commentator. If any of it feels
 forced, say so — it's seed data, not architecture.
 
-**Answer:** _______
-
+**Answer:** I dont even know what we are talking about now.
 ---
 
 # D · Guild questions — not needed until you decide to go further
@@ -262,7 +336,7 @@ picks per guild.
 **Recommended:** founder picks, defaulting to open. A Blåvitt supporter guild wants scale;
 six colleagues want it private.
 
-**Answer:** _______
+**Answer:** The captain of a 
 
 ---
 
@@ -293,6 +367,29 @@ Restrict guild-switching to January and summer, football-style. Delightful, them
 perfect, and real friction when someone just wants to join their mates.
 
 **Recommended:** skip for now, revisit as a seasonal event.
+
+**Answer:** _______
+
+---
+
+### D5 — Who joins a guild: the party, or the person? *(parked by you, 2026-10-05)*
+
+The question that decides most of section D. Three models were mapped out:
+
+- **Team** — a party joins one guild; everything it drinks counts there. Approved once,
+  when the party joins. Weak spot: AIK fans in a party that joined Blåvitt drink for Blåvitt.
+- **Supporter** — each person supports one guild; each beer counts for its drinker's guild,
+  if a guild-mate is at the table. Approved once per person. One night can feed two guilds,
+  but each beer only one. Weak spot: a lone fan in the group feeds nobody.
+- **Matchday** — each session is declared for a guild and counts if 2+ members are there.
+  Approved every night. Not recommended: a decision (and an argument) every night out.
+
+In every model a beer counts for **at most one** guild — `beers.guild_id` is one column.
+The crux: is a guild a club you *support* (→ supporter) or a league of friend groups
+(→ team)? Claude's lean is supporter.
+
+Nothing in v0 depends on this. The schema supports team and supporter as-is, because the
+guild is stamped on each beer, not looked up.
 
 **Answer:** _______
 

@@ -5,6 +5,166 @@ Superseded decisions are kept, struck through — the history is the point.
 
 ---
 
+### D36 — Single-attendee sessions are purged after 7 days
+**Decided** (owner, A7). A session that never got a second attendee is deleted once it is
+closed and more than 7 days old. Runs alongside the auto-close job (`C10`). Not built yet.
+
+*Why:* [D30](#d30--the-party-rule-is-enforced-on-beers-not-on-sessions) lets a session hold
+one person while friends arrive, so abandoned ones accumulate. They are clutter in the feed
+and in every query that walks sessions.
+
+*Cost:* the only hard delete in the design. Safe because such a session cannot hold a beer:
+the `beers` trigger refuses any beer in a session with fewer than two attendees. A session
+with two or more attendees and zero beers is **kept** — it is the record of who showed up
+(`ACE` needs it).
+
+---
+
+### D39 — Access rules: read tables directly, change membership through functions
+**Decided.** Row level security (`F5`), in `supabase/migrations/20261006120000_rls.sql`:
+
+- Clients **read** tables directly. You see your parties, their members (past ones
+  included), their sessions and beers, and your own beers even after leaving.
+- Clients **write** directly only where the row itself says who may: your own profile,
+  starting a session, checking yourself in (or adding a party-mate once you're there),
+  logging a beer in your own name, voiding one within 24 hours, skipping rounds, and a
+  captain renaming the party.
+- **Membership and lifecycle** go through functions: `create_party`, `join_party`,
+  `leave_party`, `remove_member`, `promote_member`, `regenerate_invite_code`,
+  `close_session`.
+- **Column grants** back the policies: no client can write `global_seq`, `party_id`,
+  `status` or `max_members`. Signed-out visitors get nothing.
+
+Calls made where the docs were silent — each is a line to change if the owner disagrees:
+
+- Someone who left, or was removed, can rejoin with the current invite code. To keep
+  someone out, a captain regenerates the code.
+- If the last captain leaves, the longest-standing member becomes captain.
+- Attendees can't be removed in v0. Someone added by mistake stays, with zero beers.
+- The party cap can't be changed from the app.
+
+*Why:* reading is the common case, and Supabase's API reads tables directly. The risky
+writes are state changes — joining, leaving, closing — and RLS can't compare a row's old
+value with its new one, so those go through functions that can.
+
+*Cost:* seven functions to maintain beside the policies. `join_party` lets anyone signed in
+guess invite codes (32⁶ ≈ 1 billion of them) with no rate limit yet. `logged_at` is
+client-writable so offline taps keep their time; sanity bounds on it come with `C8`.
+Anyone at the table can add any party-mate, who then shares the night's combos — the risk
+D22a already accepted.
+
+*Verified:* `supabase/tests/rls_test.sql` runs 44 assertions as real signed-in users, the
+way the app's requests arrive. Each policy was loosened on purpose to confirm a test fails.
+
+---
+
+### D38 — v0 ships to Android as an installable app and to iPhones as a web app
+**Decided** (owner, A3 + F4). Android friends install a real app from a download link
+(an Expo internal-distribution build, no Play Store). Everyone else, iPhones included, uses
+the web build. No App Store and no TestFlight until v0 has proved fun.
+
+*Why:* the owner wants a real app, but not the Apple Developer account (99 USD/year) or
+store review yet. Expo builds Android and web from the same code
+([D11](#d11--client-is-expo-react-native-with-web-export)), so TestFlight later is a build
+target, not a rewrite.
+
+*Cost:* iPhone users get the web app. They should add it to the home screen — Safari can
+clear a website's stored data after a few weeks unused, which would lose queued offline taps
+(`C8`); home-screen web apps keep theirs. Android installs from outside the Play Store need
+"install unknown apps" allowed once per phone.
+
+---
+
+### D37 — The app is in English, with every string translatable
+**Decided** (owner, F6). All UI text is English. Every user-facing string goes through a
+translation layer from the first screen, so Swedish later is a translation file, not a
+rewrite. Badge names stay English in any language.
+
+*Why:* the announcer voice (BOOMSHAKALAKA, WORLDIE, HAT-TRICK) is English football
+commentary, and retrofitting translation onto hard-coded strings means touching every
+screen.
+
+*Cost:* every string is a key lookup instead of a literal — slightly slower to write.
+Number formatting is fixed to the European style (`428.391`, `42,8%`) regardless of
+language.
+
+---
+
+### D35 — v0 pulls back in achievements, the offline queue and streaks
+**Decided** (owner, A6). Added to v0: the achievement engine and catalogue (`G1`, `G2`),
+the achievements grid (`G3`), the durable offline queue (`C8`) and weekly streaks (the
+streak half of `S6`; the recap stays out).
+
+*Amended 2026-10-06 (owner, F3):* venues (`S4`) were pulled in too, then deferred again.
+
+*Why:* the owner's call. `C8` was already flagged as "the one thing v0 gives up that hurts",
+and achievements are most of the fun.
+
+*Cost:* v0 gains four items and the minimal `G1'` grows into the full `G1` — roughly 40%
+more work than the original cut. None of it touches the five irreducible tables, so the D29
+safety argument still holds.
+
+---
+
+### D34 — `beer_type` is a curated list, no free text
+**Decided** (owner, B5). `beers.beer_type` references a `beer_types` lookup table seeded
+with lager, pilsner, pale ale, IPA, wheat, stout, porter, sour and other. Free text is
+refused.
+
+*Why:* typos fragment the data, which makes every type-based achievement
+(`PERFECT_HAT_TRICK`, `LOOT_DROP`) unreliable. A lookup table rather than an enum, because
+adding a type is an insert and an enum value can never be removed.
+
+*Cost:* nobody can log a beer by name. `other` catches what doesn't fit and is ignored by
+distinct-type achievements, so it can't be farmed. The list is a first guess; editing it is
+data, not a migration.
+
+---
+
+### D33 — Parties are capped at 50 members
+**Decided** (owner, B2). `parties.max_members` defaults to 50 (30 was recommended). Enforced
+by a trigger on `party_members`.
+
+*Why:* caps how far one `+ ROUND` can inflate a session total, which keeps combos from being
+farmed by sheer headcount. 50 leaves room for the owner's 10+ group to grow.
+
+*Open:* the owner also picked "scale thresholds by attendee count" and "big parties are
+legitimately impressive", which pull in opposite directions. Follow-up F1 in QUESTIONS.md.
+
+---
+
+### D32 — Sessions auto-close at 09:00 the morning after, in the creator's timezone *(supersedes D27)*
+**Decided** (owner, B5). Each session stores the creator's timezone and a `closes_at`,
+stamped at insert: 09:00 local on the morning after the session's night. A session started
+before 06:00 belongs to the night before. Any attendee can still close it earlier.
+
+*Why:* the owner moved the close from 06:00 to 09:00 the next morning. The 06:00 night
+boundary exists so a session started between 06:00 and 09:00 doesn't close within minutes.
+Storing `closes_at` on the row makes the close job a one-line `update` and lets the UI say
+when the night ends. The timezone has to be stored anyway because it can't be derived later.
+
+*Cost:* a session can run up to 27 hours (started at 06:00), and at least 3 (started at
+05:59). Changing the rule later doesn't move `closes_at` on existing sessions, which is
+intended.
+
+*Verified:* `schema_test.sql` covers an evening start, an after-midnight start, a breakfast
+start, an explicit timezone overriding the creator's, and the night summer time ends.
+
+---
+
+### D31 — Sign-in is email and password, with magic link as well
+**Decided** (owner, A2). Users sign up with email and password, and can also sign in by
+magic link. Both are built-in Supabase Auth email flows. Apple and Google stay deferred.
+
+*Why:* the owner's call. Magic link alone was recommended on the grounds that nobody types a
+password in a pub, but sign-up happens once and the session then persists, so it barely
+applies.
+
+*Cost:* v0 needs a set-password screen and a reset-password flow, so `C1` grows from S to M.
+Supabase stores and hashes the passwords; our code never handles them.
+
+---
+
 ### D30 — The Party Rule is enforced on `beers`, not on `sessions`
 **Decided.** The "at least two people" check is a `BEFORE INSERT` trigger on `beers`,
 which refuses any beer whose session has fewer than two attendees. `sessions` itself
@@ -382,8 +542,10 @@ and by the fact that parties are invite-only groups of friends.
 
 ---
 
-### D27 — Sessions auto-close at 06:00 local
-**Decided.** Any attendee may close a session; anything still open at 06:00 local time
+### ~~D27 — Sessions auto-close at 06:00 local~~
+**Superseded by [D32](#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)** — 09:00 the morning after.
+
+Any attendee may close a session; anything still open at 06:00 local time
 closes itself.
 
 *Why:* people forget. Nobody wants Tuesday's pint landing in Saturday's session, and an
@@ -407,27 +569,20 @@ stays as flavour ("you drank beer #428.391").
 
 ## Open — blocking
 
-Raised during review of the completed design; all touch the v1 schema or seed data.
-
-| ID | Question | Blocks |
-|---|---|---|
-| **Q21** | Daily streak badge rewards daily drinking — weeks instead? | F4, G2 |
-| **Q22** | What stops a 200-person party farming combos? | F4, G2 |
-| **Q23** | Account deletion vs. the immutable global counter (GDPR) | F4 |
+Nothing. Section B of [QUESTIONS.md](QUESTIONS.md) is answered and built into the schema.
 
 ## Open — later phases
 
 | ID | Question | Needed by |
 |---|---|---|
+| D5 | Who joins a guild — the party (team), the person (supporter), or each session (matchday)? Parked by the owner; see QUESTIONS.md D5 | Phase 3 |
 | Q3 | Guild join model — open, approval, or invite | Phase 3 |
 | Q6 | Pre-seeded club catalogue, user-created guilds, or both? | Phase 3 |
 | Q7 | Transfer windows — fun gimmick or needless friction? | Phase 3 |
 | Q13 | Distribution — web link, TestFlight, or public app stores? | Phase 5 |
 | Q14 | Who else is following this repo? | — |
-| Q15 | Are the combo thresholds right for typical session sizes? | post-launch tuning |
+| Q15 | Combo thresholds — owner wants 10 / 25 / 50 / 100; names and B2 scaling still open | G4 |
 | Q24 | Does the guild league table have seasons? | Phase 3 |
-| Q25 | Party captain powers; what happens when someone leaves | F4 (needs `left_at`) |
-| Q26 | Session timezone, week start, beer-type vocabulary | F4 |
 
 ## Answered
 
@@ -445,5 +600,10 @@ Raised during review of the completed design; all touch the v1 schema or seed da
 | ~~Q16~~ | Who counts as the second person? | → D22a, an app user who joined your party by code. No guests |
 | ~~Q17~~ | Does the other person confirm? | → D22a, joining the party *is* the confirmation |
 | ~~Q18~~ | Who logs the beers? | → D26, anyone for anyone, plus `+ ROUND` |
-| ~~Q19~~ | When does a session close? | → D27, manual with 06:00 local auto-close |
+| ~~Q19~~ | When does a session close? | → ~~D27~~ D32, manual with 09:00-next-morning auto-close |
+| ~~Q21~~ | Daily streak badge rewards daily drinking? | → streaks count **weeks** with a session (B1) |
+| ~~Q22~~ | What stops a 200-person party farming combos? | → D33, cap at 50 |
+| ~~Q23~~ | Account deletion vs. the immutable global counter | → anonymise in place, keep the beers (B3) |
+| ~~Q25~~ | Party captain powers; leaving | → as recommended: captain renames, removes, manages guild; founder is captain and can promote; leaving sets `left_at` (B4) |
+| ~~Q26~~ | Session timezone, week start, beer types | → D32 creator's timezone, weeks start **Monday**, D34 curated list |
 | ~~Q20~~ | Party mates and codes | → D22a/D25, the code joins a *party*, not a session |

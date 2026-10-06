@@ -54,7 +54,7 @@ goes away).
 
 **Session** — one night out, inside a party. Anyone present can tap `+` for anyone, or
 `+ ROUND` to add a beer to everyone at once. The tally syncs live to every phone at the
-table. Closes when someone closes it, or at 06:00.
+table. Closes when someone closes it, or at 09:00 the next morning.
 
 **The Party Rule** — **you cannot log a beer alone.** A session needs at least two
 attendees, and every attendee is a real account that joined your party with its invite

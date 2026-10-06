@@ -26,9 +26,9 @@ declare
   failed boolean;
 begin
   -- ── fixtures ────────────────────────────────────────────────
-  insert into auth.users default values returning id into u1;
-  insert into auth.users default values returning id into u2;
-  insert into auth.users default values returning id into u3;
+  insert into auth.users (id) values (gen_random_uuid()) returning id into u1;
+  insert into auth.users (id) values (gen_random_uuid()) returning id into u2;
+  insert into auth.users (id) values (gen_random_uuid()) returning id into u3;
 
   insert into profiles (id, display_name, initials) values (u1, 'Jonas', 'J');
   insert into profiles (id, display_name, initials) values (u2, 'Mia',   'M');
@@ -124,6 +124,15 @@ begin
   end;
   if not failed then raise exception 'TEST FAIL: a closed session accepted a beer'; end if;
 
+  -- ...or a new attendee, who would otherwise collect its combos after the fact
+  failed := false;
+  begin
+    insert into session_attendees (session_id, profile_id) values (s, u3);
+  exception when check_violation then
+    failed := true;
+  end;
+  if not failed then raise exception 'TEST FAIL: someone joined a closed session'; end if;
+
   -- closing requires a timestamp
   failed := false;
   begin
@@ -150,11 +159,11 @@ begin
 
   -- ── B2: party size cap ──────────────────────────────────────
   update parties set max_members = 3 where id = p;   -- u1, u2 live; u3 left
-  insert into auth.users default values returning id into u3;
+  insert into auth.users (id) values (gen_random_uuid()) returning id into u3;
   insert into profiles (id, display_name, initials) values (u3, 'Alex', 'A');
   insert into party_members (party_id, profile_id) values (p, u3);  -- 3rd live member, ok
 
-  insert into auth.users default values returning id into u3;
+  insert into auth.users (id) values (gen_random_uuid()) returning id into u3;
   insert into profiles (id, display_name, initials) values (u3, 'Priya', 'P');
   failed := false;
   begin
@@ -163,6 +172,16 @@ begin
     failed := true;
   end;
   if not failed then raise exception 'TEST FAIL: party cap was not enforced'; end if;
+
+  -- rejoining (clearing left_at) respects the cap too
+  failed := false;
+  begin
+    update party_members set left_at = null
+     where party_id = p and profile_id = (select id from profiles where display_name = 'Sam');
+  exception when check_violation then
+    failed := true;
+  end;
+  if not failed then raise exception 'TEST FAIL: a rejoin went past the party cap'; end if;
 
   -- ── D8: client_uuid makes replay idempotent ─────────────────
   insert into session_attendees (session_id, profile_id) values (s, u1), (s, u2);
@@ -180,6 +199,58 @@ begin
   -- ── global_seq is assigned and monotonic ────────────────────
   select count(*) into n from beers where global_seq is null;
   if n <> 0 then raise exception 'TEST FAIL: a beer has no global_seq'; end if;
+
+  -- ── D34: beer_type is a curated list, no free text ──────────
+  insert into beers (session_id, profile_id, added_by, beer_type) values (s, u1, u1, 'ipa');
+  failed := false;
+  begin
+    insert into beers (session_id, profile_id, added_by, beer_type)
+      values (s, u1, u1, 'Hazy double IPA lol');
+  exception when foreign_key_violation then
+    failed := true;
+  end;
+  if not failed then raise exception 'TEST FAIL: a free-text beer_type was accepted'; end if;
+
+  -- ── D33: parties default to 50 members ──────────────────────
+  insert into parties (name, created_by) values ('Onsdagar', u1) returning id into p;
+  select count(*) into n from parties where id = p and max_members = 50;
+  if n <> 1 then raise exception 'TEST FAIL: party cap does not default to 50'; end if;
+
+  -- ── D32: sessions close at 09:00 the morning after ──────────
+  -- Closed sessions, so they don't collide with the one-open-per-party index.
+  update profiles set timezone = 'Europe/London' where id = u2;
+
+  -- evening start, creator's timezone inherited from their profile
+  insert into sessions (party_id, status, closed_at, started_at, created_by)
+    values (p, 'closed', now(), '2026-10-07 20:00 Europe/London', u2) returning id into s;
+  select count(*) into n from sessions
+   where id = s and timezone = 'Europe/London'
+     and closes_at = '2026-10-08 09:00 Europe/London';
+  if n <> 1 then raise exception 'TEST FAIL: evening session should close 09:00 next morning, creator tz'; end if;
+
+  -- after-midnight start belongs to the night before; an explicit timezone wins
+  insert into sessions (party_id, status, closed_at, started_at, timezone, created_by)
+    values (p, 'closed', now(), '2026-10-08 01:30 Europe/Stockholm', 'Europe/Stockholm', u2)
+    returning id into s;
+  select count(*) into n from sessions
+   where id = s and timezone = 'Europe/Stockholm'
+     and closes_at = '2026-10-08 09:00 Europe/Stockholm';
+  if n <> 1 then raise exception 'TEST FAIL: 01:30 session should close 09:00 the same morning'; end if;
+
+  -- breakfast start doesn't close within minutes
+  insert into sessions (party_id, status, closed_at, started_at, created_by)
+    values (p, 'closed', now(), '2026-10-08 08:30 Europe/Stockholm', u1) returning id into s;
+  select count(*) into n from sessions
+   where id = s and closes_at = '2026-10-09 09:00 Europe/Stockholm';
+  if n <> 1 then raise exception 'TEST FAIL: 08:30 session should close 09:00 the next day'; end if;
+
+  -- across the end of summer time the wall clock still says 09:00
+  insert into sessions (party_id, status, closed_at, started_at, created_by)
+    values (p, 'closed', now(), '2026-10-24 22:00 Europe/Stockholm', u1) returning id into s;
+  select count(*) into n from sessions
+   where id = s and closes_at = '2026-10-25 09:00 Europe/Stockholm'
+     and closes_at - started_at = interval '12 hours';
+  if n <> 1 then raise exception 'TEST FAIL: DST night should still close at 09:00 local'; end if;
 
   raise notice 'ALL SCHEMA TESTS PASSED';
 end;

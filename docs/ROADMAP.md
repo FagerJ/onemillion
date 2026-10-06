@@ -47,34 +47,39 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ID | Item | Effort | Cut from the full plan |
 |---|---|---|---|
 | F2 | Supabase project (eu-north-1) | S | — |
-| F3 | Expo scaffold + design tokens (palette, Anton/Space Grotesk) | M | — |
+| F3 | Expo scaffold + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
 | F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
 | F5 | RLS: party-scoped + `is_party_member` helper | S | guild policies |
-| C1 | Auth — magic link only | S | Apple + Google |
+| C1 | Auth — email + password, and magic link ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)) | M | Apple + Google |
 | C2 | Create a party · share the invite code · join by code | M | — |
 | C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |
-| C10 | Session start + manual close; stale sessions close on next open | S | the 06:00 `pg_cron` job |
+| C10 | Session start + manual close; 09:00-next-morning auto-close ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)); purge of single-attendee sessions ([D36](DECISIONS.md#d36--single-attendee-sessions-are-purged-after-7-days)) | S | — |
 | C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
+| C8 | **Offline write queue** + idempotent replay *(pulled in, D35)* | L | — |
 | C4 | Counter roll-ups: `party_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
 | C9 | Milestone ladder table + seed | S | — |
 | C12 | `milestone_events` — crossing attribution | S | — |
 | C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
 | C6 | Party leaderboard (on the dashboard, not its own screen) | S | — |
 | C7 | Feed — a list of closed sessions | S | reactions, photos |
-| G4 | **Live combo toasts** — BRACE → HAT-TRICK → ON FIRE → … | M | — |
+| G4 | **Live combo toasts** — 10 / 25 / 50 / 100 session totals | M | — |
 | G5 | **Milestone celebration** + Golden Goal attribution | M | — |
-| G1' | `achievement_unlocks` table + a few hardcoded checks | S | the full `jsonb` rule engine |
+| G1 | Achievement engine — `achievement_unlocks` + rule evaluation *(pulled in, D35)* | L | — |
+| G2 | Seed the catalogue *(pulled in, D35)* | M | — |
+| G3 | Achievements grid — locked / unlocked, progress *(pulled in, D35)* | M | — |
+| S6' | Weekly streaks, Monday-start weeks *(pulled in, D35)* | S | the weekly recap |
 
-**Deliberately out of v0, all additive:** every guild item (`U1`–`U7`), the full rule engine
-and catalogue (`G1`, `G2`), achievements grid (`G3`), easter-egg rungs (`G6`), announcer
-sound (`G7`), the durable offline queue (`C8` — but the `client_uuid` column ships now, so
-adding the queue is client-side only), push (`S1`), reactions (`S2`), photos (`S3`), venues
-(`S4`), beer types (`S5`), streaks and recaps (`S6`), and all of Phase 5.
+**Deliberately out of v0, all additive:** every guild item (`U1`–`U7`), easter-egg rungs
+(`G6`), announcer sound (`G7`), push (`S1`), reactions (`S2`), photos (`S3`), venues (`S4`
+— pulled in, then deferred again, D35), the beer-type picker in the logger (`S5` — the
+curated `beer_types` list already exists,
+[D34](DECISIONS.md#d34--beer_type-is-a-curated-list-no-free-text)), the weekly recap, the
+App Store and TestFlight ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)),
+and all of Phase 5.
 
-> **The one thing v0 gives up that hurts:** no durable offline queue. Pubs have no signal,
-> so some taps will fail and need retrying by hand. The `client_uuid` column is there from
-> day one, which is the expensive half — so if it bites, `C8` is a self-contained client-side
-> fix, not a migration.
+> The offline queue (`C8`) used to be "the one thing v0 gives up that hurts". It is now in
+> ([D35](DECISIONS.md#d35--v0-pulls-back-in-achievements-the-offline-queue-and-streaks)),
+> which makes v0 roughly 40% more work than the original cut.
 
 ---
 ## Phase 0 — Foundations *(full version, if v0 proves fun)*
@@ -98,10 +103,10 @@ adding the queue is client-side only), push (`S1`), reactions (`S2`), photos (`S
 
 | ID | Item | Effort |
 |---|---|---|
-| C1 | Auth: Apple + Google + magic link; profile creation | M |
+| C1 | Auth: email + password, magic link, then Apple + Google; profile creation | M |
 | C2 | Create a party / join by invite code | M |
 | C3 | **Session logger** — per-person `+`, `+ ROUND`, `−` corrections, detail sheet | L |
-| C10 | **Session lifecycle** — start, attendees, close, 06:00 auto-close job | M |
+| C10 | **Session lifecycle** — start, attendees, close, 09:00-next-morning auto-close job | M |
 | C11 | Realtime session sync — everyone at the table watches the tally climb | M |
 | C4 | Counter roll-up triggers (`global_stats`, `party_stats`, `profile_stats`) | M |
 | C5 | **Party dashboard** — dual gauge (milestone ring + 1M bar), stat cards | L |

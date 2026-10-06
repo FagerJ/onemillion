@@ -61,7 +61,7 @@ competitive.
 | Layer | Choice | Why |
 |---|---|---|
 | Database | Supabase Postgres | Aggregations, triggers, RLS, one row per beer scales fine |
-| Auth | Supabase Auth — Apple + Google + magic link | Nobody types a password in a pub |
+| Auth | Supabase Auth — email + password and magic link; Apple + Google later | Built in; sign-up happens once, at home ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)) |
 | Realtime | Supabase Realtime | Live session tally + the global counter ticking |
 | Storage | Supabase Storage | Beer photos |
 | Server logic | Postgres functions + a few Edge Functions | Achievement eval belongs next to the data |
@@ -269,15 +269,15 @@ Consequences worth being explicit about:
            │           │  anyone taps + ROUND for everyone
            │           │  tally syncs live to every attendee
            └─────┬─────┘
-                 │  closed manually, or auto-closed at 06:00 local
+                 │  closed manually, or auto-closed 09:00 next morning
                  ▼
            ┌───────────┐
            │  CLOSED   │  no new beers · combos finalised
            └───────────┘  feed entry published
 ```
 
-Manual close with an **06:00 local auto-close backstop**
-([D27](DECISIONS.md#d27--sessions-auto-close-at-0600-local)) — people forget to close a
+Manual close with a **09:00-next-morning auto-close backstop**
+([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)) — people forget to close a
 session, and nobody wants Tuesday's pint landing in Saturday's party.
 
 > **Tension with [D16](DECISIONS.md#d16--backdating-limited-to-today-and-yesterday):**
@@ -368,10 +368,10 @@ excluding `voided_at is not null`:
 
 ```sql
 global_stats  (id=1, total_beers, total_sessions, total_profiles, updated_at)
-party_stats   (party_id pk, total_beers, beers_this_week, current_streak_days,
+party_stats   (party_id pk, total_beers, beers_this_week, current_streak_weeks,
                last_logged_at, next_milestone, updated_at)
 guild_stats   (guild_id pk, total_beers, party_count, achievement_points, ...)
-profile_stats (profile_id pk, total_beers, current_streak_days, biggest_session, ...)
+profile_stats (profile_id pk, total_beers, current_streak_weeks, biggest_session, ...)
 ```
 
 The client subscribes to Realtime on the `global_stats` row. When a stranger in another
@@ -425,7 +425,7 @@ expression language would be a security and correctness liability.
 | `session_size` | `{min: 6}` | Full Squad |
 | `round_size` | `{min: 8}` | Getting a round in for eight |
 | `total_count` | `{scope:'profile', min:9001}` | IT'S OVER 9000 |
-| `streak_days` | `{min: 7}` | Session Streak |
+| `streak_weeks` | `{min: 12}` | Session Streak — 12 weeks running (B1) |
 | `time_of_day` | `{after:'23:45', before:'00:00'}` | Fergie Time |
 | `distinct_partners` | `{window:'7d', min:5}` | Squad Rotation |
 | `distinct_venues` | `{window:'all', min:10}` | Groundhopper |

@@ -44,9 +44,10 @@ numbers: BOOMSHAKALAKA at 12 is four people having three each — a good Friday,
 worrying one. RAMPAGE at 25 is a proper occasion with eight people, not one person in
 trouble.
 
-> **Q15 — are these thresholds right?** They assume typical sessions of 3-6 people. If
-> sessions turn out to be mostly pairs, every rung above ON FIRE becomes unreachable and
-> the ladder needs rescaling. Easy to tune post-launch since achievements are data.
+> **Q15 — owner's answer: too low.** With 10+ people doing ~40 beers a night, this ladder
+> would empty in an hour. The owner wants four rungs at session totals **10 / 25 / 50 / 100**.
+> Which names go on those four, and whether they scale with headcount (B2), is a follow-up
+> in [QUESTIONS.md](QUESTIONS.md). The table above is kept until that's settled.
 
 ### Per-person cap
 
@@ -105,6 +106,10 @@ Fergie time, the Invincibles.
 | `SIXTY_SIX` | Nineteen Sixty-Six | Party's 1.966th beer |
 | `NINETY_NINE` | The Treble Season | Party's 1.999th beer |
 | `FULL_TIME` | Full Time | Your 90th beer |
+| `SIX_SEVEN` | The Kids Think This Is Fun | Your 67th beer *(owner, A4)* |
+| `NICE` | hehehe | Your 69th beer *(owner, A4)* |
+| `FIVE_HUNDRED` | I Would Drink 500 Beers | Your 500th beer *(owner, A4)* |
+| `FIVE_HUNDRED_MORE` | And I Would Drink 500 More | Your 1.000th beer *(owner, A4)* |
 
 ---
 
@@ -153,6 +158,7 @@ Auto-generated from the ladder — one per rung per scope, so they don't need ha
 | 100 | Century | — |
 | 500 | Half a Grand | — |
 | 1.000 | 1K Legend | Promotion |
+| 2.500 | 2.5K | — |
 | 5.000 | Five Star | — |
 | 10.000 | Ten Thousand Club | Continental |
 | 100.000 | — | Six Figures |

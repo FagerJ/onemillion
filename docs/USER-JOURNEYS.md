@@ -75,8 +75,8 @@ five phones at once instead of only the one that tapped.
 
 Two details that live here:
 
-- The session closes manually, or auto-closes at **06:00 local**
-  ([D27](DECISIONS.md#d27--sessions-auto-close-at-0600-local)). Then the feed entry
+- The session closes manually, or auto-closes at **09:00 the next morning**, creator's time
+  ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)). Then the feed entry
   publishes and combos finalise.
 - A `−` tap **voids** the most recent beer: counters fall, the audit trail stays, and
   badges are never taken back
@@ -116,7 +116,7 @@ the stories that make that step work, grouped by release.
 
 | | 01 Get in | 02 Form a party | 03 Start a night | 04 Log beers | 05 Celebrate | 06 Track progress | 07 Compete |
 |---|---|---|---|---|---|---|---|
-| **v1**<br/><sub>Phase 0+1 & game layer</sub> | **Sign in** — Apple, Google, magic link `C1`<br/>Pick name, initials, colour `C1` | **Create a party** `C2`<br/>**Share the invite code** `C2`<br/>**Join with a code** `C2` | **Start a session** `C10`<br/>Mark who is here `C3`<br/>Close it, or 06:00 auto-close `C10` | **Tap + for one person** `C3`<br/>**Tap + ROUND for everyone** `C3`<br/>Skip the driver on rounds `C3`<br/>Tap − to fix a mistake `C3`<br/>**Log with no signal** `C8` | **Live combo toasts** `G4`<br/>**Milestone takeover, Golden Goal named** `G5`<br/>Tally climbs on every phone `C11`<br/>Rules engine + catalogue `G1` `G2` | **Milestone ring + 1M bar** `C5`<br/>Week, streak, rank tiles `C5`<br/>Party leaderboard `C6`<br/>Activity feed `C7`<br/>Global counter ticking `C4` | *nothing in v1 — competition needs a population first* |
+| **v1**<br/><sub>Phase 0+1 & game layer</sub> | **Sign in** — email + password, magic link `C1`<br/>Pick name, initials, colour `C1` | **Create a party** `C2`<br/>**Share the invite code** `C2`<br/>**Join with a code** `C2` | **Start a session** `C10`<br/>Mark who is here `C3`<br/>Close it, or 09:00 auto-close `C10` | **Tap + for one person** `C3`<br/>**Tap + ROUND for everyone** `C3`<br/>Skip the driver on rounds `C3`<br/>Tap − to fix a mistake `C3`<br/>**Log with no signal** `C8` | **Live combo toasts** `G4`<br/>**Milestone takeover, Golden Goal named** `G5`<br/>Tally climbs on every phone `C11`<br/>Rules engine + catalogue `G1` `G2` | **Milestone ring + 1M bar** `C5`<br/>Week, streak, rank tiles `C5`<br/>Party leaderboard `C6`<br/>Activity feed `C7`<br/>Global counter ticking `C4` | *nothing in v1 — competition needs a population first* |
 | **Next**<br/><sub>Phase 4</sub> | Onboarding polish, empty states `P6` | Captain can rename/remove `Q25`<br/>Leave a party, history stays `Q25` | Set the venue `S4`<br/>Save the regular haunts `S4` | Add volume, ABV, type `S5`<br/>Add a photo `S3` | Push when the party logs `S1`<br/>React to feed items `S2` | Achievements grid `G3`<br/>Streaks + weekly recap `S6`<br/>Easter-egg rungs `G6` | — |
 | **Guilds**<br/><sub>Phase 3</sub> | — | Party joins one guild `U1`<br/>Open/approval/invite `Q3` | — | — | Guild-scoped badges `U6` | Guild dashboard + gauge `U4` | **Browse and search guilds** `U2`<br/>**League table, ranked on points** `U5`<br/>Seeded club catalogue `Q6`<br/>Seasons, silverware `Q24` |
 | **Later**<br/><sub>Phase 5</sub> | Age gate, 17+ rating `P4` | Several parties + switcher `D17` | Backdate last night `D16` | Rate limits, outlier flagging `P1` | Announcer sound, muted `G7` | Public counter page `P2`<br/>Home-screen widget `P3` | Transfer window `U7` |
