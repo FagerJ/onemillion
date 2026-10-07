@@ -20,6 +20,31 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D42 — The client is a React web app with Tailwind and shadcn/ui *(supersedes D11)*
+**Decided** (owner, 2026-10-07). The app is React + TypeScript on Vite, styled with
+Tailwind and shadcn/ui (Radix underneath), in `app/`. It talks to Supabase directly —
+reads under RLS, writes as D39 allows — and runs in any browser. Android installs it from
+Chrome as an app; iPhones add it to the home screen. A native store build later wraps the
+same code (Capacitor) rather than rewriting it.
+
+Design: evolve the original mockup rather than start over (owner's choice). Stout-black and
+gold, Anton for scoreboard numbers, Space Grotesk for the rest, dark only. Its own motifs:
+everyone is a **bottle cap**; the milestone gauge is a **pint** that fills toward the next
+rung; the million sits on **split-flap scoreboard tiles**; a night has a broadcast **LIVE**
+bug with a match clock; the leaderboard is **the table**. Copy goes through i18next (D37).
+
+*Why:* the owner asked for Tailwind and shadcn/ui and "React or something similar", and
+shadcn only exists for the web. D11 picked Expo for native builds, but D38 already put v0
+on the web and Android-by-link — a web app covers both, and installs on Android without a
+store.
+
+*Cost:* no native-only features in v0 (widgets, background push). An Android install from
+Chrome needs HTTPS, so it only works once the app is hosted; on the local Wi-Fi it's a web
+page. The bundle is ~300 KB gzipped before any code splitting. D38's "download link" APK
+becomes a Capacitor build, if it's wanted at all.
+
+---
+
 ### D41 — Sessions close on schedule, and last night can still be logged today
 **Decided.** Session lifecycle (`C10`), in
 `supabase/migrations/20261006140000_session_lifecycle.sql`:
@@ -138,6 +163,11 @@ target, not a rewrite.
 clear a website's stored data after a few weeks unused, which would lose queued offline taps
 (`C8`); home-screen web apps keep theirs. Android installs from outside the Play Store need
 "install unknown apps" allowed once per phone.
+
+*Amended by [D42](#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)
+(2026-10-07):* there is no Expo build. Android installs the web app from Chrome as an
+installable app (it needs the hosted, HTTPS version); a download-link APK, if still wanted,
+would be a Capacitor wrapper of the same code.
 
 ---
 
@@ -392,8 +422,10 @@ the live-ticking global counter; existing org already in that region.
 
 ---
 
-### D11 — Client is Expo (React Native) with web export
-**Decided.** One codebase to iOS, Android and web via react-native-web.
+### ~~D11 — Client is Expo (React Native) with web export~~
+**Superseded by [D42](#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)** — a React web app with Tailwind and shadcn/ui; native later via Capacitor.
+
+One codebase to iOS, Android and web via react-native-web.
 
 *Why:* push notifications are the retention mechanic for this app, and a home-screen
 widget showing the global counter tick up is a signature feature that a PWA can't do. The

@@ -26,7 +26,7 @@ Used consistently everywhere; earlier drafts called a Party a "Crew".
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Client  (Expo / React Native — iOS, Android, web)  │
+│  Client  (React web app — installable; D42)         │
 │  ┌───────────────┐  ┌──────────────────────────┐    │
 │  │ Offline write │  │ Realtime subscriptions   │    │
 │  │ queue         │  │ (global + party counters)│    │
@@ -65,8 +65,8 @@ competitive.
 | Realtime | Supabase Realtime | Live session tally + the global counter ticking |
 | Storage | Supabase Storage | Beer photos |
 | Server logic | Postgres functions + a few Edge Functions | Achievement eval belongs next to the data |
-| Client | Expo (React Native) + web export | One codebase to iOS, Android and web; push + widgets |
-| Hosting (web) | Vercel or Cloudflare Pages | Serves the Expo web export |
+| Client | React + Vite + Tailwind + shadcn/ui ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) | Installable on Android and iPhone home screens; Capacitor later for stores |
+| Hosting (web) | Vercel or Cloudflare Pages | Serves the static build of `app/` |
 
 Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 
@@ -514,7 +514,7 @@ accident. Not moralising — just choosing:
 ## 10. Repository layout (proposed)
 
 ```
-/apps/app             Expo app — iOS, Android, web export
+/app                  React web app (Vite) — D42
 /packages/core        Shared types, ladder logic, achievement rule types
 /supabase
   /migrations         Versioned SQL

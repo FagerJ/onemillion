@@ -4,13 +4,13 @@ A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
 **Read first:** `docs/SESSION-HANDOFF.md` (session memory — what was reversed and why,
-which recommendations are baked into the schema), `docs/DECISIONS.md` (41 ADRs — what's settled and why),
+which recommendations are baked into the schema), `docs/DECISIONS.md` (42 ADRs — what's settled and why),
 `docs/ROADMAP.md` (v0 scope + the irreversibility analysis), `docs/QUESTIONS.md`
 (open questions awaiting the owner's answers).
 
 ## Where things stand
 
-- **Design: done.** 41 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 42 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
   irreducible tables plus the `beer_types` lookup.
@@ -27,8 +27,14 @@ which recommendations are baked into the schema), `docs/DECISIONS.md` (41 ADRs �
 - **Every question that blocks v0 is answered** (QUESTIONS.md, D31–D38). Venues are out of
   v0 again. English UI behind a translation layer. Ships to Android as an app and to iPhones
   as a web app — no App Store yet. Guilds are parked (QUESTIONS.md D5).
-- **Not started:** milestones + combo engine, achievements, the Expo app, and the offline
-  queue. Nothing has been applied to a hosted Supabase project; none exists yet.
+- **App: first version running** (D42). `app/` — React + Vite + TypeScript, Tailwind v4,
+  shadcn/ui (Radix), TanStack Query, React Router, motion, i18next. Sign-up/in, profile,
+  create/join party, kick-off, + / + ROUND / −, live updates, home, feed, party, me.
+  `supabase/migrations/20261007120000_app_reads.sql` adds `party_leaderboard()`,
+  `party_feed()` and the Realtime publication. `supabase/seed.sql` loads a demo party.
+- **Not started:** milestones + combo engine, achievements, the offline queue, PWA install
+  (manifest/icons — needs hosting for HTTPS anyway). Nothing has been applied to a hosted
+  Supabase project; none exists yet.
 - Work lives on `claude/million-beers-architecture-inbc70`. `main` has only the initial
   commit. No PR open.
 
@@ -74,6 +80,17 @@ npx supabase start                    # once per boot; Docker Desktop must be ru
 Tests run inside `begin … rollback`, so they leave the dev database clean. Studio is at
 http://127.0.0.1:54323.
 
+The app (see `docs/LOCAL-SETUP.md` § 4½):
+
+```bash
+npm --prefix app run dev              # http://localhost:5173 — demo logins in supabase/seed.sql
+npm --prefix app run build            # type-check + build
+```
+
+In Claude Code, `.claude/launch.json` starts the same dev server in the browser pane. A
+pane that is open but not on screen paints no animation frames, so motion freezes on its
+first frame — add `?raf-shim` to the URL (dev only; see `app/vite.config.ts`).
+
 `./supabase/tests/run.sh` is the bare-Postgres fallback from the cloud session. It is
 Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 
@@ -108,6 +125,23 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 - **New tables start locked.** Supabase grants everything to `anon`/`authenticated` by
   default; the RLS migration revokes it and grants back column by column. A new table needs
   its own `revoke`, `grant`, `enable row level security` and policies.
+
+## App conventions
+
+- **Design language** (D42): stout-black and gold, Anton for numbers/headlines (uppercase,
+  `.display`), Space Grotesk for UI, dark only. People are bottle caps (`Cap`), the
+  milestone gauge is a pint (`PintGauge`), big counts sit on flaps (`FlapNumber`), cards
+  are beer mats (`.mat`). Tokens live in `app/src/index.css`. Reuse these; don't add a
+  second visual vocabulary.
+- **Every string goes through i18next** (`app/src/i18n/en.ts`, typed keys) — no literals in
+  JSX, including aria-labels and placeholders.
+- **Data access lives in `app/src/data/queries.ts`.** Party-scoped query keys start with
+  `['party', id]` so one Realtime event refreshes a party. Columns that BEFORE triggers stamp
+  (`party_id`, `closes_at`, `timezone`) are left out of inserts — clients aren't granted them.
+- **Regenerate DB types** after a migration:
+  `npx supabase gen types typescript --local --schema public > app/src/lib/database.types.ts`.
+- No `crypto.randomUUID` or clipboard without a fallback: a phone on the LAN dev server
+  is not a secure context. Use `lib/uuid.ts`.
 
 ## Conventions
 

@@ -24,7 +24,7 @@ git checkout claude/million-beers-architecture-inbc70
 
 | Tool | Why | Install |
 |---|---|---|
-| **Node 20+** | Expo | [nodejs.org](https://nodejs.org) or `brew install node` |
+| **Node 20+** | the app (`app/`, Vite) | [nodejs.org](https://nodejs.org) or `brew install node` |
 | **Docker Desktop** | runs the local Supabase stack | [docker.com](https://docker.com) |
 | **Supabase CLI** | migrations, local Postgres + Auth + Realtime | `brew install supabase/tap/supabase` |
 | **Claude Code** | picks up `CLAUDE.md` automatically | `npm install -g @anthropic-ai/claude-code` |
@@ -50,8 +50,8 @@ npx supabase start    # boots Postgres, Auth, Realtime, Storage in Docker (first
 npx supabase db reset # applies every migration from scratch
 ```
 
-`supabase start` prints the local API URL and keys — those go in `.env` for the Expo app
-(`.gitignore` already covers `.env`).
+`supabase start` prints the local API URL and keys — those go in `app/.env.local`
+(see "Run the app" below; Git ignores it).
 
 The local stack provides `auth.users` and the `anon` / `authenticated` roles, which is why
 this is better than the bare-Postgres fallback below.
@@ -97,6 +97,38 @@ NOTICE:  ALL SCHEMA TESTS PASSED
 NOTICE:  ALL STATS TESTS PASSED
 ```
 
+## 4½. Run the app
+
+The app lives in `app/` (React + Vite + Tailwind + shadcn/ui, [D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)).
+It needs the local Supabase stack running (step 3) and an `app/.env.local` pointing at it.
+Write that file once from `supabase status`:
+
+```bash
+npx supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=' | sed -e 's/^API_URL=/VITE_SUPABASE_URL=/' -e 's/^PUBLISHABLE_KEY=/VITE_SUPABASE_PUBLISHABLE_KEY=/' > app/.env.local
+```
+
+Then install and start it:
+
+```bash
+npm --prefix app install
+npm --prefix app run dev
+```
+
+Open **http://localhost:5173**. Sign in with any demo account from
+`supabase/seed.sql` (the password is in its header), or create your own account and join
+the demo party with the code `SKAL42`.
+
+**On your phone:** same Wi-Fi as the PC, open `http://<the PC's IP>:5173` (Vite prints it
+as "Network"). The app points itself at the PC's database automatically. The first time,
+Windows asks whether Node.js may accept connections — allow it for private networks.
+Installing it as an app needs HTTPS, which comes with hosting; locally it runs as a web page.
+
+**Emails** (magic links, password resets) don't leave the PC: they land in Mailpit at
+http://127.0.0.1:54324.
+
+`npm --prefix app run build` type-checks and builds; `npx --prefix app oxlint app/src`
+lints.
+
 ## 5. Point Claude Code at it
 
 ```bash
@@ -106,7 +138,7 @@ claude
 `CLAUDE.md` loads automatically, so it starts oriented. If you want to be explicit:
 
 > Read CLAUDE.md. We're building v0 — the schema and RLS are written and tested; counters,
-> the game layer and the Expo app are next.
+> the app runs; the game layer is next.
 
 ## 6. What's next
 
@@ -116,7 +148,7 @@ In order, from `docs/ROADMAP.md`. Every question these depend on is answered.
 2. ~~**`C4` counter roll-ups**~~ — done ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
 3. ~~**`C10` session lifecycle jobs**~~ — done ([D41](DECISIONS.md#d41--sessions-close-on-schedule-and-last-night-can-still-be-logged-today)).
 4. **`C9`/`C12`/`G1`/`G4`/`G5`** milestones, the achievement engine and combos.
-5. **`F3`/`C1`–`C11`** the Expo app, web + Android, English behind a translation layer.
+5. ~~**`F3`/`C1`–`C11`** the app~~ — first version running ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)). Still to come: the offline queue (`C8`).
 
 ## A hosted project, eventually
 

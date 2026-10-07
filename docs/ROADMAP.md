@@ -47,7 +47,7 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ID | Item | Effort | Cut from the full plan |
 |---|---|---|---|
 | F2 | Supabase project (eu-north-1) | S | — |
-| F3 | Expo scaffold + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
+| F3 | React + Vite + Tailwind + shadcn/ui app ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
 | F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
 | F5 | RLS: party-scoped + `is_party_member` helper | S | guild policies |
 | C1 | Auth — email + password, and magic link ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)) | M | Apple + Google |
