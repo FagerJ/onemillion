@@ -1,8 +1,5 @@
 -- ONE MILLION BEERS — counters (C4, D40)
 --
--- ⚠ DRAFT, NOT YET APPLIED TO ANY HOSTED PROJECT. Only ever run against throwaway
---   local databases, so editing it in place is still free.
---
 -- Two kinds of number:
 --
 --   * Running totals — global, per party, per profile — are kept by a trigger on

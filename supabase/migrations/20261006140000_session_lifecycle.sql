@@ -1,8 +1,5 @@
 -- ONE MILLION BEERS — session lifecycle jobs (C10, D41)
 --
--- ⚠ DRAFT, NOT YET APPLIED TO ANY HOSTED PROJECT. Only ever run against throwaway
---   local databases, so editing it in place is still free.
---
 -- Two scheduled jobs and one safety net:
 --
 --   * every 5 minutes, close sessions whose closes_at has passed (D32)

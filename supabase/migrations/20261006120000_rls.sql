@@ -1,8 +1,5 @@
 -- ONE MILLION BEERS — row level security (F5, D39)
 --
--- ⚠ DRAFT, NOT YET APPLIED TO ANY HOSTED PROJECT. Only ever run against throwaway
---   local databases, so editing it in place is still free.
---
 -- How access works (D39):
 --   * Clients READ tables directly; the policies below decide which rows they see.
 --   * Clients WRITE directly only where "may I?" is a fact about the row itself:

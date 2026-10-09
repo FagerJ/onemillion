@@ -1,8 +1,5 @@
 -- ONE MILLION BEERS — reads for the app (C6, C7, C11)
 --
--- ⚠ DRAFT, NOT YET APPLIED TO ANY HOSTED PROJECT. Only ever run against throwaway
---   local databases, so editing it in place is still free.
---
 -- Two functions the screens call, and the Realtime publication.
 --
 -- Both functions are SECURITY INVOKER: they read through the caller's RLS like any

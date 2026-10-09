@@ -1,10 +1,6 @@
 -- ONE MILLION BEERS — v0 schema
 --
--- ⚠ DRAFT, NOT YET APPLIED TO ANY HOSTED PROJECT. Only ever run against throwaway
---   local databases (`supabase db reset`), so editing it in place is still free.
---   This file implements the owner's answers to section B of docs/QUESTIONS.md
---   (D31–D34). Later migrations (RLS policies, counter roll-ups, milestones and the
---   combo engine) are not written yet.
+-- Implements the owner's answers to section B of docs/QUESTIONS.md (D31–D34).
 --
 -- Row level security is enabled on every table at the bottom of this file with
 -- NO policies attached, which denies all access. That is deliberate: if this
