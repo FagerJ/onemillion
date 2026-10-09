@@ -35,8 +35,9 @@ which recommendations are baked into the schema), `docs/DECISIONS.md` (42 ADRs �
 - **Not started:** milestones + combo engine, achievements, the offline queue, PWA install
   (manifest/icons — needs hosting for HTTPS anyway). Nothing has been applied to a hosted
   Supabase project; none exists yet.
-- Work lives on `claude/million-beers-architecture-inbc70`. `main` has only the initial
-  commit. No PR open.
+- **Everything is on `main`** (merged 2026-10-09, so the repo can be shared). The owner
+  shares it with friends, so `main` should always run: do new work on a branch and merge
+  when it's tested.
 
 ## Vocabulary — get this right
 

@@ -1,24 +1,16 @@
 # Local setup
 
-Everything so far was built in a cloud session. This is how to pick it up on your own
-machine. Nothing needs recreating — it's all in git.
+How to get the project running on your own machine. Nothing needs recreating — the
+database is built from the migrations and the demo data from `supabase/seed.sql`.
 
 ## 1. Get the code
 
 ```bash
 git clone https://github.com/FagerJ/onemillion.git
 cd onemillion
-git checkout claude/million-beers-architecture-inbc70
 ```
 
-`main` has only the initial commit. All the work is on that branch.
-
-Already have a clone?
-
-```bash
-git fetch origin
-git checkout claude/million-beers-architecture-inbc70
-```
+Everything is on `main`. Already have a clone? `git pull` on `main`.
 
 ## 2. Install the tools
 

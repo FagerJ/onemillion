@@ -420,4 +420,4 @@ document needs to carry.
 Everything so far sits on `claude/million-beers-architecture-inbc70`, unmerged, no PR. A PR
 would let your friends read and comment before any code exists.
 
-**Answer:** _______
+**Answer:** Merged straight into `main` instead, so the repo can be shared as-is. *(2026-10-09)*
