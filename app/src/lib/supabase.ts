@@ -12,6 +12,13 @@ function apiUrl(): string {
   return url.origin
 }
 
-export const supabase = createClient<Database>(apiUrl(), import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
+export const apiOrigin = apiUrl()
+export const publishableKey: string = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+
+// An email link that failed — expired, or already used — comes back with the reason in
+// the URL hash. Read it now: the router redirects to /welcome and the hash is lost.
+export const linkError: string | null = new URLSearchParams(window.location.hash.slice(1)).get('error_code')
+
+export const supabase = createClient<Database>(apiOrigin, publishableKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 })

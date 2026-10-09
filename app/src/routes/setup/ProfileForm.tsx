@@ -15,10 +15,18 @@ function initialsFor(name: string): string {
   return (words[0] ?? '').slice(0, 2).toUpperCase()
 }
 
-export function ProfileForm({ profile, onDone }: { profile?: Profile | null; onDone?: () => void }) {
+export function ProfileForm({
+  profile,
+  suggestedName,
+  onDone,
+}: {
+  profile?: Profile | null
+  suggestedName?: string
+  onDone?: () => void
+}) {
   const { t } = useTranslation()
   const save = useSaveProfile()
-  const [name, setName] = useState(profile?.display_name ?? '')
+  const [name, setName] = useState(profile?.display_name ?? suggestedName ?? '')
   const [initials, setInitials] = useState(profile?.initials ?? '')
   const [initialsTouched, setInitialsTouched] = useState(!!profile)
   const [colour, setColour] = useState<string>(

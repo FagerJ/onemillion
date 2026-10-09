@@ -1,26 +1,58 @@
 import { MailCheck } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlapNumber } from '@/components/brand/Flaps'
 import { PintGauge } from '@/components/brand/PintGauge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { supabase } from '@/lib/supabase'
+import { useAuthSettings } from '@/data/queries'
+import { linkError, supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 type Mode = 'signIn' | 'signUp'
 
+/** What we just emailed, so the inbox panel can say so — and send it again. */
+type Sent = 'link' | 'confirm' | 'reset'
+
+// Supabase's error codes we can say something useful about. Anything else gets the
+// general "that didn't work".
+const ERRORS = {
+  invalid_credentials: 'welcome.wrongPassword',
+  email_not_confirmed: 'welcome.unconfirmed',
+  user_already_exists: 'welcome.exists',
+  email_exists: 'welcome.exists',
+  over_email_send_rate_limit: 'welcome.rateLimited',
+  over_request_rate_limit: 'welcome.rateLimited',
+  signup_disabled: 'welcome.signupClosed',
+  email_address_invalid: 'welcome.badEmail',
+  weak_password: 'welcome.passwordHint',
+} as const
+
+function errorKey(code: string | undefined) {
+  return code && code in ERRORS ? ERRORS[code as keyof typeof ERRORS] : 'welcome.failed'
+}
+
+function throwIf({ error }: { error: unknown }) {
+  if (error) throw error
+}
+
 export function Welcome() {
   const { t } = useTranslation()
+  const settings = useAuthSettings()
+  const emailInput = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<Mode>('signIn')
   const [magic, setMagic] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState<Sent | null>(null)
+  const [resent, setResent] = useState(false)
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [error, setError] = useState<string | null>(() =>
+    linkError ? t(linkError === 'otp_expired' ? 'welcome.linkExpired' : 'welcome.linkFailed') : null,
+  )
   const [target, setTarget] = useState(0)
   const [pour, setPour] = useState(0)
 
@@ -30,32 +62,101 @@ export function Welcome() {
     return () => [a, b].forEach(window.clearTimeout)
   }, [])
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
+  // Every link comes back to wherever it was asked for: the live site, a preview
+  // deployment, or this PC. Supabase only honours addresses on its redirect list.
+  const origin = window.location.origin
+
+  function send(kind: Sent) {
+    switch (kind) {
+      case 'link':
+        return supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: origin } })
+      case 'confirm':
+        return supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: origin } })
+      case 'reset':
+        return supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/new-password` })
+    }
+  }
+
+  async function run(action: () => Promise<void>) {
     setBusy(true)
     setError(null)
-    const redirect = window.location.origin
+    setUnconfirmed(false)
     try {
-      if (magic) {
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect } })
-        if (error) throw error
-        setSent(true)
-      } else if (mode === 'signIn') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirect } })
-        if (error) throw error
-      }
+      await action()
     } catch (err) {
       const code = (err as { code?: string }).code
-      setError(code === 'weak_password' ? t('welcome.passwordHint') : t('welcome.failed'))
+      if (code === 'user_already_exists' || code === 'email_exists') setMode('signIn')
+      setUnconfirmed(code === 'email_not_confirmed')
+      setError(t(errorKey(code)))
     } finally {
       setBusy(false)
     }
   }
 
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    void run(async () => {
+      if (magic) {
+        throwIf(await send('link'))
+        setSent('link')
+      } else if (mode === 'signIn') {
+        throwIf(await supabase.auth.signInWithPassword({ email, password }))
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: origin } })
+        if (error) throw error
+        if (data.session) return // no confirmation needed: the gates take it from here
+        // An address that already has an account is refused outright, or — where
+        // Supabase hides which emails exist — comes back as a user with no identities
+        // and nothing sent. Either way, say so rather than "check your inbox".
+        if (data.user?.identities?.length === 0) {
+          throw Object.assign(new Error('exists'), { code: 'user_already_exists' })
+        }
+        setSent('confirm')
+      }
+    })
+  }
+
+  function forgot() {
+    if (!emailInput.current?.checkValidity()) {
+      setError(t('welcome.needEmail'))
+      emailInput.current?.focus()
+      return
+    }
+    void run(async () => {
+      throwIf(await send('reset'))
+      setSent('reset')
+    })
+  }
+
+  function resendConfirmation() {
+    void run(async () => {
+      throwIf(await send('confirm'))
+      setSent('confirm')
+    })
+  }
+
+  function sendAgain() {
+    if (!sent) return
+    void run(async () => {
+      throwIf(await send(sent))
+      setResent(true)
+    })
+  }
+
+  function google() {
+    void run(async () => {
+      throwIf(await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: origin } }))
+    })
+  }
+
+  function startOver() {
+    setSent(null)
+    setResent(false)
+    setError(null)
+  }
+
   const mailpit = `${window.location.protocol}//${window.location.hostname}:54324`
+  const sentText = { link: 'welcome.sentLink', confirm: 'welcome.sentConfirm', reset: 'welcome.sentReset' } as const
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-5 pt-[max(env(safe-area-inset-top),28px)] pb-10">
@@ -94,11 +195,29 @@ export function Welcome() {
         transition={{ delay: 0.25, duration: 0.5 }}
       >
         {sent ? (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="flex flex-col items-center gap-3 py-3 text-center">
             <span className="grid size-14 place-items-center rounded-full bg-hop/15 text-hop">
               <MailCheck className="size-7" />
             </span>
-            <p className="text-[15px] text-foam/80">{t('welcome.linkSent')}</p>
+            <h2 className="display text-[30px] text-foam">{t('welcome.sentTitle')}</h2>
+            <p className="text-[15px] leading-relaxed text-pretty text-foam/75">{t(sentText[sent], { email })}</p>
+            {error ? (
+              <p role="alert" className="rounded-xl bg-fire/10 px-3 py-2 text-[14px] text-fire">
+                {error}
+              </p>
+            ) : (
+              resent && <p className="text-[14px] text-hop">{t('welcome.sentAgain')}</p>
+            )}
+            <Button variant="secondary" className="mt-2" disabled={busy || resent} onClick={sendAgain}>
+              {t('welcome.sendAgain')}
+            </Button>
+            <button
+              type="button"
+              onClick={startOver}
+              className="text-[14px] font-medium text-foam/55 underline-offset-4 hover:text-gold hover:underline"
+            >
+              {t('welcome.otherEmail')}
+            </button>
             {import.meta.env.DEV && (
               <a href={mailpit} target="_blank" rel="noreferrer" className="text-sm text-gold underline underline-offset-4">
                 {t('welcome.devMailpit')}
@@ -107,13 +226,34 @@ export function Welcome() {
           </div>
         ) : (
           <form onSubmit={submit} className="flex flex-col gap-4">
-            {!magic && <ModeSwitch mode={mode} onChange={setMode} />}
+            {settings.data?.external.google && (
+              <>
+                <GoogleButton onClick={google} disabled={busy} />
+                <div className="flex items-center gap-3">
+                  <span className="h-px flex-1 bg-foam/10" />
+                  <span className="kicker">{t('welcome.or')}</span>
+                  <span className="h-px flex-1 bg-foam/10" />
+                </div>
+              </>
+            )}
+
+            {!magic && (
+              <ModeSwitch
+                mode={mode}
+                onChange={(m) => {
+                  setMode(m)
+                  setError(null)
+                  setUnconfirmed(false)
+                }}
+              />
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="email" className="kicker">
                 {t('welcome.email')}
               </Label>
               <Input
+                ref={emailInput}
                 id="email"
                 type="email"
                 autoComplete="email"
@@ -127,9 +267,21 @@ export function Welcome() {
 
             {!magic && (
               <div className="grid gap-2">
-                <Label htmlFor="password" className="kicker">
-                  {t('welcome.password')}
-                </Label>
+                <div className="flex items-baseline justify-between gap-3">
+                  <Label htmlFor="password" className="kicker">
+                    {t('welcome.password')}
+                  </Label>
+                  {mode === 'signIn' && (
+                    <button
+                      type="button"
+                      onClick={forgot}
+                      disabled={busy}
+                      className="text-[13px] font-medium text-foam/55 underline-offset-4 hover:text-gold hover:underline"
+                    >
+                      {t('welcome.forgot')}
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -144,9 +296,19 @@ export function Welcome() {
             )}
 
             {error && (
-              <p role="alert" className="rounded-xl bg-fire/10 px-3 py-2 text-[14px] text-fire">
-                {error}
-              </p>
+              <div role="alert" className="rounded-xl bg-fire/10 px-3 py-2 text-[14px] text-fire">
+                <p>{error}</p>
+                {unconfirmed && (
+                  <button
+                    type="button"
+                    onClick={resendConfirmation}
+                    disabled={busy}
+                    className="mt-1 font-semibold underline underline-offset-4"
+                  >
+                    {t('welcome.resendConfirm')}
+                  </button>
+                )}
+              </div>
             )}
 
             <Button type="submit" size="lg" disabled={busy} className="mt-1 w-full">
@@ -158,6 +320,7 @@ export function Welcome() {
               onClick={() => {
                 setMagic((m) => !m)
                 setError(null)
+                setUnconfirmed(false)
               }}
               className="text-[14px] font-medium text-foam/55 underline-offset-4 hover:text-gold hover:underline"
             >
@@ -195,5 +358,41 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
         </button>
       ))}
     </div>
+  )
+}
+
+// Google's own dark button — their colours and their "G" — so it reads as theirs, not
+// ours. The gold stays for our own actions.
+function GoogleButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="lg"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full border border-[#8e918f] bg-[#131314] text-[#e3e3e3] hover:bg-[#1f1f20]"
+    >
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path
+          fill="#EA4335"
+          d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+        />
+        <path
+          fill="#4285F4"
+          d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+        />
+        <path
+          fill="#FBBC05"
+          d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+        />
+        <path
+          fill="#34A853"
+          d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+        />
+      </svg>
+      {t('welcome.google')}
+    </Button>
   )
 }

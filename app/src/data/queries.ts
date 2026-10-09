@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthProvider'
 import type { Database, Tables, TablesInsert } from '@/lib/database.types'
-import { supabase } from '@/lib/supabase'
+import { apiOrigin, publishableKey, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/uuid'
 
 // Every read and write the screens make. Reads go straight at the tables and the
@@ -49,6 +49,30 @@ function maybe<R extends Response>(result: R): R['data'] {
 type TableName = keyof Database['public']['Tables']
 type Stamped<T extends TableName, K extends string> = Omit<TablesInsert<T>, K>
 const stamped = <T extends TableName>(rows: unknown) => rows as TablesInsert<T>[]
+
+// ── auth ──────────────────────────────────────────────────────
+
+/** What the auth server offers: which sign-in providers are switched on, and whether
+ *  a new account must confirm its email first. Public, like the sign-in screen. */
+export type AuthSettings = {
+  external: Record<string, boolean>
+  disable_signup: boolean
+  mailer_autoconfirm: boolean
+}
+
+// The welcome screen shows "Continue with Google" only once the provider is switched
+// on in Supabase, so the button can't appear before it works.
+export function useAuthSettings() {
+  return useQuery({
+    queryKey: ['auth', 'settings'],
+    staleTime: Infinity,
+    queryFn: async (): Promise<AuthSettings> => {
+      const res = await fetch(`${apiOrigin}/auth/v1/settings`, { headers: { apikey: publishableKey } })
+      if (!res.ok) throw new Error(`auth settings: ${res.status}`)
+      return res.json()
+    },
+  })
+}
 
 // ── me ────────────────────────────────────────────────────────
 

@@ -10,6 +10,7 @@ import { Toaster } from '@/components/ui/sonner'
 import '@/i18n'
 import { Home } from '@/routes/Home'
 import { Me } from '@/routes/Me'
+import { NewPassword } from '@/routes/NewPassword'
 import { Night } from '@/routes/Night'
 import { Nights } from '@/routes/Nights'
 import { PartyPage } from '@/routes/PartyPage'
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      { path: '/new-password', element: <NewPassword /> },
       { path: '/setup/profile', element: <ProfileSetup /> },
       {
         element: <RequireProfile />,
