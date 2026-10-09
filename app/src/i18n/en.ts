@@ -118,6 +118,9 @@ export const en = {
     takeBack: 'Take one back from {{name}}',
     oneMore: 'One more for {{name}}',
     failed: "Couldn't log that. Check your connection and try again.",
+    notAtTable: "Join the table first — only people at it can log.",
+    watching: "You're watching this one. Join the table to start logging.",
+    joinTable: "I'm here — join the table",
     roundPoured: 'Round poured · {{count}} beers',
   },
   feed: {

@@ -1,4 +1,4 @@
-import { Car, Flag, Minus, Plus, UserPlus } from 'lucide-react'
+import { Car, Eye, Flag, Minus, Plus, UserPlus } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -135,6 +135,7 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
   const { data: beers = [] } = useLiveBeers(night.id)
   const log = useLogBeers(night.id)
   const takeBack = useTakeBack(night.id)
+  const checkIn = useAddAttendees(night.id)
   const [pours, setPours] = useState(0)
 
   const counts = useMemo(() => {
@@ -145,14 +146,19 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
 
   const inRounds = attendees.filter((a) => a.in_rounds)
   const alone = attendees.length < 2
+  // Only people at the table may log (D39). Someone else may have started the night,
+  // so a party member who isn't here yet watches until they check in.
+  const here = attendees.some((a) => a.profile_id === user!.id)
+  const refused = (e: unknown) => (e as { code?: string } | null)?.code === '42501'
+  const failed = (e: unknown) => toast.error(t(refused(e) ? 'night.notAtTable' : 'night.failed'))
   const closes = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(night.closes_at))
 
   const pour = (ids: string[], round = false) => {
-    if (ids.length === 0 || alone) return
+    if (ids.length === 0 || alone || !here) return
     buzz(round ? [12, 30, 12, 30, 12] : 12)
     log.mutate(
       { profileIds: ids, rows: makeBeers(ids, user!.id, round) },
-      { onError: () => toast.error(t('night.failed')) },
+      { onError: failed },
     )
   }
 
@@ -160,14 +166,14 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
     const latest = [...beers].reverse().find((b) => b.profile_id === profileId)
     if (!latest) return
     buzz(6)
-    takeBack.mutate(latest, { onError: () => toast.error(t('common.somethingWrong')) })
+    takeBack.mutate(latest, { onError: failed })
   }
 
   return (
     <div className="pb-32">
       <div className="flex items-center justify-between">
         <LiveBadge startedAt={night.started_at} />
-        <FullTime partyId={partyId} sessionId={night.id} />
+        {here && <FullTime partyId={partyId} sessionId={night.id} />}
       </div>
 
       <section className="relative mt-5 text-center">
@@ -179,10 +185,16 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
         </div>
       </section>
 
-      {alone && (
-        <p className="mt-5 rounded-2xl border border-gold/25 bg-gold/8 px-4 py-3 text-center text-[14px] text-gold">
-          {t('night.alone')}
+      {!here ? (
+        <p className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-foam/10 bg-foam/5 px-4 py-3 text-center text-[14px] text-foam/70">
+          <Eye className="size-4 shrink-0" /> {t('night.watching')}
         </p>
+      ) : (
+        alone && (
+          <p className="mt-5 rounded-2xl border border-gold/25 bg-gold/8 px-4 py-3 text-center text-[14px] text-gold">
+            {t('night.alone')}
+          </p>
+        )
       )}
 
       <ul className="mat mt-6 divide-y divide-foam/6 overflow-hidden">
@@ -193,44 +205,61 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
             sessionId={night.id}
             count={counts.get(a.profile_id) ?? 0}
             me={a.profile_id === user!.id}
-            disabled={alone}
+            disabled={alone || !here}
+            canEdit={here}
             onPlus={() => pour([a.profile_id])}
             onMinus={() => undo(a.profile_id)}
           />
         ))}
       </ul>
 
-      <div className="mt-4 flex justify-center">
-        <AddSomeone partyId={partyId} sessionId={night.id} present={attendees} />
-      </div>
+      {here && (
+        <div className="mt-4 flex justify-center">
+          <AddSomeone partyId={partyId} sessionId={night.id} present={attendees} />
+        </div>
+      )}
 
       <StickyAction>
-        <button
-          type="button"
-          disabled={alone || inRounds.length === 0}
-          onClick={() => {
-            setPours((p) => p + 1)
-            pour(
-              inRounds.map((a) => a.profile_id),
-              true,
-            )
-          }}
-          className={cn(
-            'relative flex h-[68px] w-full items-center justify-between overflow-hidden rounded-full px-7',
-            'bg-[linear-gradient(180deg,#ffc95f_0%,#f5b23a_45%,#d98f1c_100%)] text-stout',
-            'shadow-[inset_0_1px_0_rgb(255_255_255/0.5),inset_0_-3px_0_rgb(0_0_0/0.2),0_18px_36px_-12px_rgb(245_178_58/0.6)]',
-            'transition-transform active:scale-[0.97] disabled:opacity-40',
-          )}
-        >
-          <span key={pours} className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-pour bg-[linear-gradient(90deg,transparent,rgb(255_255_255/0.55),transparent)]" />
-          <span className="relative flex items-center gap-2 font-display text-[30px] leading-none tracking-[0.03em] uppercase">
-            <Plus className="size-7" strokeWidth={3.4} />
-            {t('night.round')}
-          </span>
-          <span className="relative rounded-full bg-stout/15 px-3 py-1 text-[13px] font-bold">
-            {t('night.roundIn', { count: inRounds.length })}
-          </span>
-        </button>
+        {!here ? (
+          <Button
+            size="xl"
+            className="w-full"
+            disabled={checkIn.isPending}
+            onClick={() => {
+              buzz([10, 40, 10])
+              checkIn.mutate([user!.id], { onError: () => toast.error(t('common.somethingWrong')) })
+            }}
+          >
+            {t('night.joinTable')}
+          </Button>
+        ) : (
+          <button
+            type="button"
+            disabled={alone || inRounds.length === 0}
+            onClick={() => {
+              setPours((p) => p + 1)
+              pour(
+                inRounds.map((a) => a.profile_id),
+                true,
+              )
+            }}
+            className={cn(
+              'relative flex h-[68px] w-full items-center justify-between overflow-hidden rounded-full px-7',
+              'bg-[linear-gradient(180deg,#ffc95f_0%,#f5b23a_45%,#d98f1c_100%)] text-stout',
+              'shadow-[inset_0_1px_0_rgb(255_255_255/0.5),inset_0_-3px_0_rgb(0_0_0/0.2),0_18px_36px_-12px_rgb(245_178_58/0.6)]',
+              'transition-transform active:scale-[0.97] disabled:opacity-40',
+            )}
+          >
+            <span key={pours} className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-pour bg-[linear-gradient(90deg,transparent,rgb(255_255_255/0.55),transparent)]" />
+            <span className="relative flex items-center gap-2 font-display text-[30px] leading-none tracking-[0.03em] uppercase">
+              <Plus className="size-7" strokeWidth={3.4} />
+              {t('night.round')}
+            </span>
+            <span className="relative rounded-full bg-stout/15 px-3 py-1 text-[13px] font-bold">
+              {t('night.roundIn', { count: inRounds.length })}
+            </span>
+          </button>
+        )}
       </StickyAction>
     </div>
   )
@@ -242,6 +271,7 @@ function DrinkerRow({
   count,
   me,
   disabled,
+  canEdit,
   onPlus,
   onMinus,
 }: {
@@ -250,6 +280,8 @@ function DrinkerRow({
   count: number
   me: boolean
   disabled: boolean
+  /** at the table: may void beers and mark drivers */
+  canEdit: boolean
   onPlus: () => void
   onMinus: () => void
 }) {
@@ -260,7 +292,7 @@ function DrinkerRow({
     <li className="flex items-center gap-3 px-3.5 py-3">
       <Cap initials={p.initials} color={p.avatar_color} size="md" ring={me} />
       <DropdownMenu>
-        <DropdownMenuTrigger className="min-w-0 flex-1 text-left outline-none">
+        <DropdownMenuTrigger disabled={!canEdit} className="min-w-0 flex-1 text-left outline-none">
           <span className="block truncate text-[16px] font-semibold text-foam">{p.display_name}</span>
           {!attendee.in_rounds && (
             <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.1em] text-hop uppercase">
@@ -280,7 +312,7 @@ function DrinkerRow({
       <button
         type="button"
         onClick={onMinus}
-        disabled={count === 0}
+        disabled={count === 0 || !canEdit}
         aria-label={t('night.takeBack', { name: p.display_name })}
         className="grid size-10 place-items-center rounded-full border border-foam/12 text-foam/60 transition-transform active:scale-90 disabled:opacity-25"
       >
