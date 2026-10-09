@@ -1,5 +1,9 @@
 # Session handoff — paste this into your local Claude Code chat
 
+> **History.** Written on 2026-10-02 to carry the cloud session over to a local one, and
+> kept for its record of what was reversed and why. Where things stand now is in
+> [CLAUDE.md](../../CLAUDE.md) and the [roadmap](../ROADMAP.md).
+
 Everything below is context from a cloud session that designed and started building this
 project. The repo already contains `CLAUDE.md` and `docs/`, which cover the design. This
 file is the **session memory**: the things that happened, the reversals and why, and what

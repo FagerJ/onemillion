@@ -3,6 +3,8 @@
 How to get the project running on your own machine. Nothing needs recreating — the
 database is built from the migrations and the demo data from `supabase/seed.sql`.
 
+The live app is a different matter: [DEPLOY.md](DEPLOY.md).
+
 ## 1. Get the code
 
 ```bash
@@ -18,7 +20,7 @@ Everything is on `main`. Already have a clone? `git pull` on `main`.
 |---|---|---|
 | **Node 20+** | the app (`app/`, Vite) | [nodejs.org](https://nodejs.org) or `brew install node` |
 | **Docker Desktop** | runs the local Supabase stack | [docker.com](https://docker.com) |
-| **Supabase CLI** | migrations, local Postgres + Auth + Realtime | `brew install supabase/tap/supabase` |
+| **Supabase CLI** | migrations, local Postgres + Auth + Realtime | `brew install supabase/tap/supabase`, or just `npx supabase` |
 | **Claude Code** | picks up `CLAUDE.md` automatically | `npm install -g @anthropic-ai/claude-code` |
 
 ### On Windows
@@ -39,11 +41,11 @@ What it took on the owner's Windows 11 machine:
 
 ```bash
 npx supabase start    # boots Postgres, Auth, Realtime, Storage in Docker (first run downloads several GB of images)
-npx supabase db reset # applies every migration from scratch
+npx supabase db reset # applies every migration from scratch, then the demo data
 ```
 
-`supabase start` prints the local API URL and keys — those go in `app/.env.local`
-(see "Run the app" below; Git ignores it).
+`supabase start` prints the local API URL and keys — those go in `app/.env.local` (next
+step; Git ignores it).
 
 The local stack provides `auth.users` and the `anon` / `authenticated` roles, which is why
 this is better than the bare-Postgres fallback below.
@@ -52,7 +54,48 @@ this is better than the bare-Postgres fallback below.
 surface yet. Signed-in users see their own parties only, and change membership through the
 functions in `20261006120000_rls.sql` ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
 
-## 4. Run the tests
+## 4. Run the app
+
+The app lives in `app/` (React + Vite + Tailwind + shadcn/ui, [D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)).
+It needs the local Supabase stack running (step 3) and an `app/.env.local` pointing at it.
+Write that file once from `supabase status`:
+
+```bash
+npx supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=' | sed -e 's/^API_URL=/VITE_SUPABASE_URL=/' -e 's/^PUBLISHABLE_KEY=/VITE_SUPABASE_PUBLISHABLE_KEY=/' > app/.env.local
+```
+
+Then install and start it:
+
+```bash
+npm --prefix app install
+npm --prefix app run dev
+```
+
+Open **http://localhost:5173**. Sign in with any demo account from
+`supabase/seed.sql` (the password is in its header), or create your own account and join
+the demo party with the code `SKAL42`.
+
+**On your phone:** same Wi-Fi as the PC, open `http://<the PC's IP>:5173` (Vite prints it
+as "Network"). The app points itself at the PC's database automatically. The first time,
+Windows asks whether Node.js may accept connections — allow it for private networks.
+Installing it as an app needs HTTPS, which only the live version has.
+
+`npm --prefix app run build` type-checks and builds; `npm --prefix app run lint` lints.
+
+### Signing in locally
+
+It works like the live app ([D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)),
+except that no email leaves the PC:
+
+- **Emails** — sign-up confirmations, magic links, password resets — land in Mailpit at
+  http://127.0.0.1:54324, using the same templates as production (`supabase/templates/`).
+  A new account has to confirm its email before it can sign in; the demo accounts already
+  have.
+- **Google** is off locally: it needs a Google OAuth client of its own, and the app hides
+  the button while the provider is off. To try it, see the `[auth.external.google]` block
+  in `supabase/config.toml`.
+
+## 5. Run the tests
 
 With Docker (any OS, including Git Bash on Windows):
 
@@ -81,6 +124,8 @@ Either way you should see:
 ```
 → lifecycle_test.sql
 NOTICE:  ALL LIFECYCLE TESTS PASSED
+→ reads_test.sql
+NOTICE:  ALL READS TESTS PASSED
 → rls_test.sql
 NOTICE:  ALL RLS TESTS PASSED
 → schema_test.sql
@@ -89,68 +134,12 @@ NOTICE:  ALL SCHEMA TESTS PASSED
 NOTICE:  ALL STATS TESTS PASSED
 ```
 
-## 4½. Run the app
-
-The app lives in `app/` (React + Vite + Tailwind + shadcn/ui, [D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)).
-It needs the local Supabase stack running (step 3) and an `app/.env.local` pointing at it.
-Write that file once from `supabase status`:
-
-```bash
-npx supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=' | sed -e 's/^API_URL=/VITE_SUPABASE_URL=/' -e 's/^PUBLISHABLE_KEY=/VITE_SUPABASE_PUBLISHABLE_KEY=/' > app/.env.local
-```
-
-Then install and start it:
-
-```bash
-npm --prefix app install
-npm --prefix app run dev
-```
-
-Open **http://localhost:5173**. Sign in with any demo account from
-`supabase/seed.sql` (the password is in its header), or create your own account and join
-the demo party with the code `SKAL42`.
-
-**On your phone:** same Wi-Fi as the PC, open `http://<the PC's IP>:5173` (Vite prints it
-as "Network"). The app points itself at the PC's database automatically. The first time,
-Windows asks whether Node.js may accept connections — allow it for private networks.
-Installing it as an app needs HTTPS, which comes with hosting; locally it runs as a web page.
-
-**Emails** (magic links, password resets) don't leave the PC: they land in Mailpit at
-http://127.0.0.1:54324.
-
-`npm --prefix app run build` type-checks and builds; `npx --prefix app oxlint app/src`
-lints.
-
-## 5. Point Claude Code at it
+## 6. Work on it with Claude Code
 
 ```bash
 claude
 ```
 
-`CLAUDE.md` loads automatically, so it starts oriented. If you want to be explicit:
-
-> Read CLAUDE.md. We're building v0 — the schema and RLS are written and tested; counters,
-> the app runs; the game layer is next.
-
-## 6. What's next
-
-In order, from `docs/ROADMAP.md`. Every question these depend on is answered.
-
-1. ~~**`F5` RLS policies**~~ — done ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
-2. ~~**`C4` counter roll-ups**~~ — done ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
-3. ~~**`C10` session lifecycle jobs**~~ — done ([D41](DECISIONS.md#d41--sessions-close-on-schedule-and-last-night-can-still-be-logged-today)).
-4. **`C9`/`C12`/`G1`/`G4`/`G5`** milestones, the achievement engine and combos.
-5. ~~**`F3`/`C1`–`C11`** the app~~ — first version running ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)). Still to come: the offline queue (`C8`).
-
-## A hosted project, eventually
-
-Local is right for development, but your friends need a real one on their phones. When you
-get there:
-
-```bash
-supabase projects create one-million-beers --region eu-north-1
-supabase link --project-ref <ref>
-supabase db push
-```
-
-No hosted project exists yet, and nothing has been applied to one.
+`CLAUDE.md` loads automatically, so it starts oriented: where things stand, the vocabulary,
+the rules that are load-bearing, and the gotchas already paid for. What's next is in
+[ROADMAP.md](ROADMAP.md).
