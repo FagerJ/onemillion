@@ -7,7 +7,9 @@ Superseded decisions are kept, struck through — the history is the point.
 
 ### D36 — Single-attendee sessions are purged after 7 days
 **Decided** (owner, A7). A session that never got a second attendee is deleted once it is
-closed and more than 7 days old. Runs alongside the auto-close job (`C10`). Not built yet.
+closed and more than 7 days old. Runs alongside the auto-close job (`C10`) — built as the
+nightly `purge-lonely-sessions` job in
+[D41](#d41--sessions-close-on-schedule-and-last-night-can-still-be-logged-today).
 
 *Why:* [D30](#d30--the-party-rule-is-enforced-on-beers-not-on-sessions) lets a session hold
 one person while friends arrive, so abandoned ones accumulate. They are clutter in the feed
@@ -17,6 +19,64 @@ and in every query that walks sessions.
 the `beers` trigger refuses any beer in a session with fewer than two attendees. A session
 with two or more attendees and zero beers is **kept** — it is the record of who showed up
 (`ACE` needs it).
+
+---
+
+### D44 — Google sign-in joins email, and auth email goes through Resend *(amends D31)*
+**Decided** (owner, 2026-10-09: "set up the email and social login", reusing what already
+works for Matro). Sign-in is email and password, magic link, and **Continue with Google**.
+New accounts confirm their email before they can sign in — Supabase's default, which the
+local stack now matches. All auth email goes out through Resend, as custom SMTP, from a
+`fager.tech` address, using the branded templates in `supabase/templates/`. A forgotten
+password is reset by an emailed link that lands on `/new-password`.
+
+The Google button only appears when Supabase reports the provider switched on
+(`/auth/v1/settings`), so the app never offers a sign-in that can't work, and turning
+Google on or off needs no deploy.
+
+*Why:* without a real mail server Supabase only emails the project's own team, so nobody
+else could confirm an account or receive a link. Resend and the verified `fager.tech`
+domain already work for Matro. Google is one tap on an Android phone — the platform v0 is
+for ([D38](#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) —
+where typing an email and a password at the bar is exactly the friction D31 worried about.
+Apple sign-in still waits: it needs the paid developer account D38 avoids.
+
+*Cost:*
+- Sign-up gains a step: open the inbox, tap the link. In return a mistyped address can't
+  create an account nobody can get back into.
+- The dashboard side — SMTP, templates, the Google client, redirect URLs — lives outside
+  the repo. [DEPLOY.md](DEPLOY.md) records it, but nothing checks that it still matches.
+- Google's sign-in screen names `bcyoiobsgtltrvpszyls.supabase.co` rather than the app
+  unless Google verifies the branding; a custom auth domain is a paid Supabase add-on.
+- Leans on Resend's free tier (100 emails a day) and on `fager.tech` staying verified.
+
+---
+
+### D43 — The app runs on Vercel, the backend on a hosted Supabase project
+**Decided** (owner, 2026-10-09: "make sure this gets deployed on Vercel"). `main` deploys to
+the Vercel project `onemillion` — **https://onemillion-gray.vercel.app** — as a static
+build, every route rewritten to `index.html` (`app/vercel.json`). The backend is the
+Supabase project `onemillion` (`bcyoiobsgtltrvpszyls`, eu-north-1, free plan), which has run
+every migration so far. Other branches get preview deployments that talk to the same
+database. Setup and day-to-day: [DEPLOY.md](DEPLOY.md).
+
+*Why:* the owner's Vercel team already hosts Matro and fager.tech, so there was nothing new
+to learn or pay for, and a Vite build is plain static files. Stockholm is the nearest
+Supabase region (`F2`). HTTPS is also what Android needs before it will install the app
+(D38, D42).
+
+*Cost:*
+- The migrations are **append-only** from here, because production has run them. A schema
+  change is a new migration, applied to production before the app code that needs it is
+  merged.
+- Previews share production's data — there is one database. Fine for one group of friends;
+  a staging project would take the free plan's second slot.
+- The free plan pauses the database after 7 days without use, and a paused project has to be
+  restored by hand before anyone can log a beer.
+- Hobby-plan deploys want commits authored by the account owner, so this clone commits
+  under the owner's identity.
+- The address is a generated `onemillion-gray.vercel.app` until a custom domain is set up —
+  one DNS record ([DEPLOY.md § 5](DEPLOY.md#5-optional--a-nicer-address)).
 
 ---
 
@@ -262,6 +322,9 @@ applies.
 
 *Cost:* v0 needs a set-password screen and a reset-password flow, so `C1` grows from S to M.
 Supabase stores and hashes the passwords; our code never handles them.
+
+*Amended by [D44](#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)
+(2026-10-09):* Google sign-in is in; Apple stays deferred. The reset-password flow is built.
 
 ---
 

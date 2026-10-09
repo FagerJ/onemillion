@@ -3,14 +3,24 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/SESSION-HANDOFF.md` (session memory — what was reversed and why,
-which recommendations are baked into the schema), `docs/DECISIONS.md` (42 ADRs — what's settled and why),
-`docs/ROADMAP.md` (v0 scope + the irreversibility analysis), `docs/QUESTIONS.md`
-(open questions awaiting the owner's answers).
+**Read first:** `docs/DECISIONS.md` (44 ADRs — what's settled and why), `docs/ROADMAP.md`
+(v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
+how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
+`docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
+and why, which recommendations are baked into the schema.
 
 ## Where things stand
 
-- **Design: done.** 42 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Live** (D43): **https://onemillion-gray.vercel.app** — Vercel project `onemillion` (team
+  "Jonathan Fager's projects"), built from `app/` on every push to `main`. Backend: Supabase
+  project `onemillion`, ref `bcyoiobsgtltrvpszyls`, eu-north-1, free plan, with every
+  migration applied. Branches get preview deployments against the same database.
+- **Sign-in** (D44): email + password, magic link, and Google. New accounts confirm their
+  email first. Auth email goes through Resend (custom SMTP, a `fager.tech` sender) with the
+  templates in `supabase/templates/`. The dashboard side — redirect URLs, SMTP, templates,
+  the Google client — is set by hand and isn't in the repo (DEPLOY.md § One-time setup);
+  check the live settings (`/auth/v1/settings`) rather than assuming it's done.
+- **Design: done.** 44 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
   irreducible tables plus the `beer_types` lookup.
@@ -33,11 +43,9 @@ which recommendations are baked into the schema), `docs/DECISIONS.md` (42 ADRs �
   `supabase/migrations/20261007120000_app_reads.sql` adds `party_leaderboard()`,
   `party_feed()` and the Realtime publication. `supabase/seed.sql` loads a demo party.
 - **Not started:** milestones + combo engine, achievements, the offline queue, PWA install
-  (manifest/icons — needs hosting for HTTPS anyway). Nothing has been applied to a hosted
-  Supabase project; none exists yet.
-- **Everything is on `main`** (merged 2026-10-09, so the repo can be shared). The owner
-  shares it with friends, so `main` should always run: do new work on a branch and merge
-  when it's tested.
+  (manifest/icons — unblocked now that the app is on HTTPS).
+- **`main` is production.** Friends use it, so it must always run: do new work on a branch
+  and merge when it's tested. A push to `main` deploys.
 
 ## Vocabulary — get this right
 
@@ -81,12 +89,21 @@ npx supabase start                    # once per boot; Docker Desktop must be ru
 Tests run inside `begin … rollback`, so they leave the dev database clean. Studio is at
 http://127.0.0.1:54323.
 
-The app (see `docs/LOCAL-SETUP.md` § 4½):
+The app (see `docs/LOCAL-SETUP.md` § 4):
 
 ```bash
 npm --prefix app run dev              # http://localhost:5173 — demo logins in supabase/seed.sql
 npm --prefix app run build            # type-check + build
+npm --prefix app run lint
 ```
+
+Local email (sign-up confirmations, magic links, resets) lands in Mailpit at
+http://127.0.0.1:54324; its API (`/api/v1/messages`) lets you pull a link out of a message
+to test a flow end to end.
+
+Production (`docs/DEPLOY.md`): a push to `main` deploys the app. A migration reaches the
+hosted database separately — through the Supabase MCP's `apply_migration` (then fix its
+version, below) or `npx supabase db push` — and before the app code that needs it.
 
 In Claude Code, `.claude/launch.json` starts the same dev server in the browser pane. A
 pane that is open but not on screen paints no animation frames, so motion freezes on its
@@ -126,6 +143,19 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 - **New tables start locked.** Supabase grants everything to `anon`/`authenticated` by
   default; the RLS migration revokes it and grants back column by column. A new table needs
   its own `revoke`, `grant`, `enable row level security` and policies.
+- **Vercel's Hobby plan can block commits by other authors.** This clone commits as
+  `Jonathan Fager <jonathanfager@proton.me>` (repo-local git config) — keep it. A deployment
+  in `BLOCKED` means a commit authored by someone else; re-author it.
+- **`VITE_*` variables are baked in at build time.** Changing one in Vercel takes a
+  redeploy. The build refuses to run without the two Supabase ones (`app/vite.config.ts`)
+  instead of shipping a blank page.
+- **The Supabase MCP's `apply_migration` records its own version** — the time it ran, not
+  the file's timestamp. Afterwards, `update supabase_migrations.schema_migrations set
+  version = '<file timestamp>' where name = '<name>'`, or `supabase migration list` and
+  `db push` lose track of what production has.
+- **An existing email on sign-up** comes back two ways: a `422 user_already_exists` (what
+  the local stack does), or — where Supabase hides which addresses exist — a user with no
+  identities and no email sent. `Welcome.tsx` handles both.
 
 ## App conventions
 
@@ -143,11 +173,16 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
   `npx supabase gen types typescript --local --schema public > app/src/lib/database.types.ts`.
 - No `crypto.randomUUID` or clipboard without a fallback: a phone on the LAN dev server
   is not a secure context. Use `lib/uuid.ts`.
+- **Auth links come back to `window.location.origin`** — the live site, a preview, or the
+  dev server. Supabase only honours addresses on its redirect list (DEPLOY.md § 1), so a
+  new auth flow should do the same rather than hard-code a URL. Auth email copy lives in
+  `supabase/templates/`, used locally and pasted into the hosted dashboard.
 
 ## Conventions
 
-- Migrations are append-only once applied anywhere. The current ones have only run against
-  throwaway local databases, so editing them in place is still free — say so if that changes.
+- **Migrations are append-only.** Production has run every one of them (D43), so a schema
+  change is a new migration — never an edit to an old one — tested locally, then applied to
+  production before the app code that needs it merges.
 - Numbers in docs and UI use European formatting: `428.391`, `42,8%`.
 - Every non-obvious decision goes in `docs/DECISIONS.md` as a new ADR with what it costs,
   not just what was chosen. Superseded ADRs are struck through and kept.

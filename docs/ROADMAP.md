@@ -1,6 +1,8 @@
 # Roadmap
 
-Status: **v0 scoped** — smallest genuinely fun thing, no decision that damages guilds later.
+Status: **v0 is live** at https://onemillion-gray.vercel.app — the core loop, sign-in and
+hosting are done (✅ below); the game layer and the offline queue are next. Still the
+smallest genuinely fun thing, with no decision that damages guilds later.
 
 Every item has an ID. To reprioritise, just say e.g. *"move U5 into v0, drop S3"*.
 
@@ -46,28 +48,28 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 
 | ID | Item | Effort | Cut from the full plan |
 |---|---|---|---|
-| F2 | Supabase project (eu-north-1) | S | — |
-| F3 | React + Vite + Tailwind + shadcn/ui app ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
-| F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
-| F5 | RLS: party-scoped + `is_party_member` helper | S | guild policies |
-| C1 | Auth — email + password, and magic link ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)) | M | Apple + Google |
-| C2 | Create a party · share the invite code · join by code | M | — |
-| C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |
-| C10 | Session start + manual close; 09:00-next-morning auto-close ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)); purge of single-attendee sessions ([D36](DECISIONS.md#d36--single-attendee-sessions-are-purged-after-7-days)) | S | — |
-| C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
+| ✅ F2 | Supabase project (eu-north-1), app hosted on Vercel ([D43](DECISIONS.md#d43--the-app-runs-on-vercel-the-backend-on-a-hosted-supabase-project)) | S | custom domain |
+| ✅ F3 | React + Vite + Tailwind + shadcn/ui app ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
+| ✅ F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
+| ✅ F5 | RLS: party-scoped + `is_party_member` helper | S | guild policies |
+| ✅ C1 | Auth — email + password, magic link ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)), Google ([D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)) | M | Apple |
+| ✅ C2 | Create a party · share the invite code · join by code | M | — |
+| ✅ C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |
+| ✅ C10 | Session start + manual close; 09:00-next-morning auto-close ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)); purge of single-attendee sessions ([D36](DECISIONS.md#d36--single-attendee-sessions-are-purged-after-7-days)) | S | — |
+| ✅ C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
 | C8 | **Offline write queue** + idempotent replay *(pulled in, D35)* | L | — |
-| C4 | Counter roll-ups: `party_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
+| ✅ C4 | Counter roll-ups: `party_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
 | C9 | Milestone ladder table + seed | S | — |
 | C12 | `milestone_events` — crossing attribution | S | — |
-| C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
-| C6 | Party leaderboard (on the dashboard, not its own screen) | S | — |
-| C7 | Feed — a list of closed sessions | S | reactions, photos |
+| ✅ C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
+| ✅ C6 | Party leaderboard (on the dashboard, not its own screen) | S | — |
+| ✅ C7 | Feed — a list of closed sessions | S | reactions, photos |
 | G4 | **Live combo toasts** — 10 / 25 / 50 / 100 session totals | M | — |
 | G5 | **Milestone celebration** + Golden Goal attribution | M | — |
 | G1 | Achievement engine — `achievement_unlocks` + rule evaluation *(pulled in, D35)* | L | — |
 | G2 | Seed the catalogue *(pulled in, D35)* | M | — |
 | G3 | Achievements grid — locked / unlocked, progress *(pulled in, D35)* | M | — |
-| S6' | Weekly streaks, Monday-start weeks *(pulled in, D35)* | S | the weekly recap |
+| ✅ S6' | Weekly streaks, Monday-start weeks *(pulled in, D35)* | S | the weekly recap |
 
 **Deliberately out of v0, all additive:** every guild item (`U1`–`U7`), easter-egg rungs
 (`G6`), announcer sound (`G7`), push (`S1`), reactions (`S2`), photos (`S3`), venues (`S4`
@@ -110,7 +112,7 @@ and all of Phase 5.
 | C11 | Realtime session sync — everyone at the table watches the tally climb | M |
 | C4 | Counter roll-up triggers (`global_stats`, `party_stats`, `profile_stats`) | M |
 | C5 | **Party dashboard** — dual gauge (milestone ring + 1M bar), stat cards | L |
-| C12 | `milestone_events` — counter-crossing attribution, robust to voids ([D28](DECISIONS.md#d28-----is-a-soft-delete-milestones-attribute-by-counter-crossing)) | S |
+| C12 | `milestone_events` — counter-crossing attribution, robust to voids ([D28](DECISIONS.md#d28---is-a-soft-delete-milestones-attribute-by-counter-crossing)) | S |
 | C6 | Party leaderboard | S |
 | C7 | Activity feed | M |
 | C8 | **Offline write queue** + idempotent replay | L |

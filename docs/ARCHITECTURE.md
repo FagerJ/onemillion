@@ -61,12 +61,12 @@ competitive.
 | Layer | Choice | Why |
 |---|---|---|
 | Database | Supabase Postgres | Aggregations, triggers, RLS, one row per beer scales fine |
-| Auth | Supabase Auth — email + password and magic link; Apple + Google later | Built in; sign-up happens once, at home ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)) |
+| Auth | Supabase Auth — email + password, magic link and Google; mail through Resend; Apple later | Built in; sign-up happens once, at home ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well), [D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)) |
 | Realtime | Supabase Realtime | Live session tally + the global counter ticking |
 | Storage | Supabase Storage | Beer photos |
 | Server logic | Postgres functions + a few Edge Functions | Achievement eval belongs next to the data |
 | Client | React + Vite + Tailwind + shadcn/ui ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) | Installable on Android and iPhone home screens; Capacitor later for stores |
-| Hosting (web) | Vercel or Cloudflare Pages | Serves the static build of `app/` |
+| Hosting (web) | Vercel — https://onemillion-gray.vercel.app | Serves the static build of `app/`; `main` deploys itself ([D43](DECISIONS.md#d43--the-app-runs-on-vercel-the-backend-on-a-hosted-supabase-project)) |
 
 Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 
@@ -511,15 +511,25 @@ accident. Not moralising — just choosing:
 
 ---
 
-## 10. Repository layout (proposed)
+## 10. Repository layout
 
 ```
-/app                  React web app (Vite) — D42
-/packages/core        Shared types, ladder logic, achievement rule types
+/app                  the React web app (Vite) — D42; Vercel builds it (vercel.json) — D43
+  /src/routes         one file per screen
+  /src/components     brand motifs, the dashboard's sections, restyled shadcn/ui
+  /src/data           every query and mutation, and Realtime
+  /src/i18n           every user-facing string
+  /src/lib            Supabase client, generated database types, formatting, the ladder
 /supabase
-  /migrations         Versioned SQL
-  /functions          Edge Functions
-  /seed               Milestones, achievements, club catalogue
-/docs                 These documents
-/.github/workflows    CI: lint, typecheck, migration check
+  /migrations         versioned SQL — append-only now that production has run it
+  /templates          the auth emails — D44
+  /tests              behavioural tests, most run as real signed-in users
+  config.toml         the local stack
+  seed.sql            the demo party, for local development only
+/docs                 these documents; /history keeps notes that have done their job
 ```
+
+Not built from the original plan, because nothing needs them yet: a shared
+`packages/core` (the app imports the generated database types directly), Edge Functions,
+and CI. The ladder lives in `app/src/lib/milestones.ts` until milestones move into the
+database (`C9`).

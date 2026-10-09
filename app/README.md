@@ -10,7 +10,8 @@ npm run dev      # http://localhost:5173 — needs the local Supabase stack and 
 npm run build    # type-check + production build
 ```
 
-Setup, demo logins and testing on a phone: [docs/LOCAL-SETUP.md](../docs/LOCAL-SETUP.md) § 4½.
+Setup, demo logins and testing on a phone: [docs/LOCAL-SETUP.md](../docs/LOCAL-SETUP.md) § 4.
+The live app — Vercel, `vercel.json`, the environment variables: [docs/DEPLOY.md](../docs/DEPLOY.md).
 
 ```
 src/

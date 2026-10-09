@@ -10,6 +10,9 @@
 Every beer you share with your party counts toward one number on one scoreboard.
 Nobody drinks alone — the app won't let you.
 
+**Live at [onemillion-gray.vercel.app](https://onemillion-gray.vercel.app)** — open it on
+your phone, make an account, and join your friends' party with its invite code.
+
 [What it is](#what-it-is) · [The philosophy](#the-philosophy) · [How it's built](#how-its-built) · [Run it](#run-it) · [Where it stands](#where-it-stands)
 
 ---
@@ -89,7 +92,8 @@ celebrated.
 | | |
 |---|---|
 | **App** (`app/`) | React + TypeScript on Vite, Tailwind v4, shadcn/ui, TanStack Query, motion, i18next. A web app, made to live on a phone's home screen once it's hosted. |
-| **Backend** (`supabase/`) | Supabase: Postgres, Auth (password or magic link) and Realtime. |
+| **Backend** (`supabase/`) | Supabase, in Stockholm: Postgres, Auth (email and password, a magic link, or Google) and Realtime. |
+| **Hosting** | The app on Vercel — `main` deploys itself; the backend on hosted Supabase. How it fits together: [docs/DEPLOY.md](docs/DEPLOY.md). |
 | **The rules live in the database** | Row-level security decides who sees and writes what; triggers enforce *nobody drinks alone*, keep the counters, and stamp each night's 09:00 closing time; `pg_cron` closes forgotten nights. The app can't break a rule even if it tried. |
 | **Tested** | 115 assertions across five database test suites, most run as real signed-in users. The access, counter and session rules were each broken on purpose once, to prove a test catches it. |
 
@@ -107,8 +111,9 @@ npm --prefix app run dev      # → http://localhost:5173
 ```
 
 The first start also needs a small `app/.env.local` — one command, in
-[docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md) § 4½, along with testing on your phone over
-Wi-Fi.
+[docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md) § 4, along with testing on your phone over
+Wi-Fi. Emails don't leave your machine: they land in a local inbox at
+http://127.0.0.1:54324.
 
 The local database comes with a demo party, **Onsdagar**, and ten Wednesdays of history.
 Sign in with a demo account (logins at the top of [`supabase/seed.sql`](supabase/seed.sql)),
@@ -116,15 +121,16 @@ or create your own account and join with the invite code **`SKAL42`**.
 
 ## Where it stands
 
-**v0 — the version for one group of friends — is running locally.**
+**v0 — the version for one group of friends — is live.**
 
-- ✅ Sign-up, profiles, creating and joining a party
+- ✅ Sign-up with email, a magic link or Google; profiles; creating and joining a party
 - ✅ The live night: kick-off, `+`, `+ ROUND`, `−`, the designated driver, late arrivals, full time
 - ✅ The global counter, the party's milestone pint, weekly streaks, the table, the nights
 - ✅ Live updates on every phone in the party
+- ✅ Hosted, at [onemillion-gray.vercel.app](https://onemillion-gray.vercel.app)
 - ⏳ **Next:** the game layer — badges, combos and milestone celebrations
+- ⏳ Installing it to the home screen as an app
 - ⏳ The offline queue, for taps in a pub with no signal
-- ⏳ Hosting, so friends can install it from a link
 - 💤 Guilds — designed for, deliberately parked
 
 ## Words
@@ -142,13 +148,14 @@ or create your own account and join with the invite code **`SKAL42`**.
 | Document | What it covers |
 |---|---|
 | [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md) | Getting it running, including on your phone |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | The live app: what runs where, how changes go live, the dashboard setup |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Every decision, why, and what it costs |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data model, counters, the achievement engine, security |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What v0 includes, and why so little is irreversible |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The badge catalogue — football and gaming references |
 | [docs/USER-JOURNEYS.md](docs/USER-JOURNEYS.md) | Journey flowcharts and the story map |
 | [docs/QUESTIONS.md](docs/QUESTIONS.md) | Open questions, and the owner's answers |
-| [docs/SESSION-HANDOFF.md](docs/SESSION-HANDOFF.md) | Notes from the session that designed it |
+| [docs/history/](docs/history/SESSION-HANDOFF.md) | Notes from the session that designed it |
 
 ## Design language
 
