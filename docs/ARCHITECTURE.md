@@ -9,14 +9,14 @@ section B still touch the schema.
 ## 0. Vocabulary
 
 Fixed in [D25](DECISIONS.md#d25--vocabulary-party-is-the-group-session-is-the-night).
-Used consistently everywhere; earlier drafts called a Party a "Crew".
+Used consistently everywhere; earlier drafts called a Crew a "Crew".
 
 | Term | Means |
 |---|---|
 | **Profile** | A person with an account |
-| **Party** | A persistent group of friends. Joined with an invite code. This is your team. |
-| **Session** | One night out. Lives inside a Party. Has attendees and beers. |
-| **Guild** | Many Parties under one banner — supporter-club flavoured |
+| **Crew** | A persistent group of friends. Joined with an invite code. This is your team. |
+| **Session** | One night out. Lives inside a Crew. Has attendees and beers. |
+| **Guild** | Many Crews under one banner — supporter-club flavoured |
 | **Round** | One tap that adds a beer to every attendee of a session at once |
 | **Ladder** | The shared milestone sequence, 10 → 1.000.000 |
 
@@ -29,7 +29,7 @@ Used consistently everywhere; earlier drafts called a Party a "Crew".
 │  Client  (React web app — installable; D42)         │
 │  ┌───────────────┐  ┌──────────────────────────┐    │
 │  │ Offline write │  │ Realtime subscriptions   │    │
-│  │ queue         │  │ (global + party counters)│    │
+│  │ queue         │  │ (global + crew counters)│    │
 │  └───────┬───────┘  └────────────▲─────────────┘    │
 └──────────┼───────────────────────┼──────────────────┘
            │ writes                │ pushes
@@ -77,19 +77,19 @@ Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 ### 3.1 Hierarchy
 
 ```
-profile ──< party_members >── party ──> guild
+profile ──< crew_members >── crew ──> guild
                                 │
                                 └──< session ──< beer
                                         │
                                         └──< session_attendees
 ```
 
-A **beer** belongs to exactly one **session**, which belongs to exactly one **party**,
+A **beer** belongs to exactly one **session**, which belongs to exactly one **crew**,
 which belongs to at most one **guild**. Every beer has an unambiguous path up the
-hierarchy — no double counting, ever, even when a person belongs to several parties.
+hierarchy — no double counting, ever, even when a person belongs to several crews.
 
-To drink with someone outside your party, **they join your party** with the invite code.
-Multi-party membership ([D17](DECISIONS.md#d17--a-person-may-belong-to-several-parties-v1-ships-one))
+To drink with someone outside your crew, **they join your crew** with the invite code.
+Multi-crew membership ([D17](DECISIONS.md#d17--a-person-may-belong-to-several-parties-v1-ships-one))
 makes that cheap, and it keeps attribution trivially simple.
 
 ### 3.2 Tables
@@ -106,12 +106,12 @@ profiles (
   created_at    timestamptz
 )
 
--- Parties (your group of friends) ------------------------------------------
-parties (
+-- Crews (your group of friends) ------------------------------------------
+crews (
   id            uuid pk,
   name          text not null,           -- "The Thirsty Five"
   slug          text unique,
-  invite_code   text unique not null,    -- how you join a party
+  invite_code   text unique not null,    -- how you join a crew
   accent_color  text,
   guild_id      uuid references guilds,  -- nullable; at most one
   guild_joined_at timestamptz,
@@ -119,12 +119,12 @@ parties (
   created_at    timestamptz
 )
 
-party_members (
-  party_id      uuid references parties,
+crew_members (
+  crew_id      uuid references crews,
   profile_id    uuid references profiles,
   role          text not null,           -- 'captain' | 'member'
   joined_at     timestamptz,
-  primary key (party_id, profile_id)
+  primary key (crew_id, profile_id)
 )
 
 -- Guilds (supporter clubs) -------------------------------------------------
@@ -144,8 +144,8 @@ guilds (
 -- Sessions (a night out) ---------------------------------------------------
 sessions (
   id            uuid pk,
-  party_id      uuid references parties not null,
-  guild_id      uuid,                    -- SNAPSHOT of party.guild_id at start
+  crew_id      uuid references crews not null,
+  guild_id      uuid,                    -- SNAPSHOT of crew.guild_id at start
   status        text not null,           -- 'open' | 'closed'
   venue_name    text,
   venue_id      uuid references venues,
@@ -160,18 +160,18 @@ sessions (
 session_attendees (                       -- includes people who drank zero
   session_id    uuid references sessions,
   profile_id    uuid references profiles not null,
-  party_id      uuid not null,            -- denormalised, for the FK below
+  crew_id      uuid not null,            -- denormalised, for the FK below
   in_rounds     boolean default true,     -- false = skip me on "+ ROUND"
   joined_at     timestamptz,
   primary key (session_id, profile_id),
-  -- an attendee must be a member of the session's party
-  foreign key (party_id, profile_id) references party_members (party_id, profile_id)
+  -- an attendee must be a member of the session's crew
+  foreign key (crew_id, profile_id) references crew_members (crew_id, profile_id)
 )
 
 beers (
   id            uuid pk,
   session_id    uuid references sessions not null,
-  party_id      uuid not null,           -- denormalised for fast roll-up
+  crew_id      uuid not null,           -- denormalised for fast roll-up
   guild_id      uuid,                    -- denormalised snapshot
   profile_id    uuid references profiles not null,
   added_by      uuid references profiles not null,  -- who tapped +
@@ -198,9 +198,9 @@ mockup; a tally of 3 writes 3 rows. A million rows is nothing for Postgres, and 
 the thing the whole meme is about: knowing exactly who drank beer number 1.000.000, where,
 and when. A tally column can never answer it, and retrofitting is a painful migration.
 
-**`party_id` and `guild_id` are snapshotted onto sessions and beers, not joined through.**
-When a party transfers to a new guild, history stays where it was earned. Without this, a
-party switching guilds would silently rewrite two guilds' totals — and every achievement
+**`crew_id` and `guild_id` are snapshotted onto sessions and beers, not joined through.**
+When a crew transfers to a new guild, history stays where it was earned. Without this, a
+crew switching guilds would silently rewrite two guilds' totals — and every achievement
 derived from them.
 
 **Attendees are separate from beers.** The designated driver still appears in the feed,
@@ -211,10 +211,10 @@ counter. `in_rounds = false` also excludes them from the round button.
 ([D26](DECISIONS.md#d26--anyone-in-a-session-can-log-for-anyone)), so the audit trail is
 what keeps that civil — every correction is attributable and visible in the session log.
 
-### 3.4 The Party Rule — enforced in the database
+### 3.4 The Crew Rule — enforced in the database
 
 Per [D19](DECISIONS.md#d19--no-solo-logging), **a session needs at least two attendees**,
-and every attendee is a real app user who joined the party with a code. Not a UI
+and every attendee is a real app user who joined the crew with a code. Not a UI
 convention a rogue client can skip:
 
 ```sql
@@ -235,12 +235,12 @@ create trigger beers_02_require_company
 Two foreign keys do the real work, and they chain:
 
 ```
-beers ──> session_attendees ──> party_members
+beers ──> session_attendees ──> crew_members
   "you can only log a beer     "you can only attend a session
-   for someone at the session"   if you're in the party"
+   for someone at the session"   if you're in the crew"
 ```
 
-You cannot log a beer for a person who did not join the party with its invite code. The
+You cannot log a beer for a person who did not join the crew with its invite code. The
 second person in every session is a genuine, consenting account — not a name typed into a
 box.
 
@@ -254,17 +254,17 @@ Consequences worth being explicit about:
   session-scoped ([D20](DECISIONS.md#d20--combos-are-session-scoped)) without a separate
   solo path.
 - **Anti-cheat is largely solved by the schema.** Inflating the counter requires
-  recruiting real accounts into a real party. Most of the Phase 5 anti-cheat work (P1)
+  recruiting real accounts into a real crew. Most of the Phase 5 anti-cheat work (P1)
   collapses into rate limits.
 
 ### 3.5 Session lifecycle
 
 ```
-   someone starts a session in the party
+   someone starts a session in the crew
                  │
                  ▼
            ┌───────────┐
-           │   OPEN    │  party members join / are added
+           │   OPEN    │  crew members join / are added
            │           │  anyone taps + for anyone
            │           │  anyone taps + ROUND for everyone
            │           │  tally syncs live to every attendee
@@ -278,7 +278,7 @@ Consequences worth being explicit about:
 
 Manual close with a **09:00-next-morning auto-close backstop**
 ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)) — people forget to close a
-session, and nobody wants Tuesday's pint landing in Saturday's party.
+session, and nobody wants Tuesday's pint landing in Saturday's crew.
 
 > **Tension with [D16](DECISIONS.md#d16--backdating-limited-to-today-and-yesterday):**
 > backdating and live sessions pull against each other. A session started for last night
@@ -337,7 +337,7 @@ milestones (
   threshold     bigint primary key,
   label         text not null,           -- "500" / "HALF A MILLION"
   tier          text not null,           -- 'bronze'|'silver'|'gold'|'legendary'
-  applies_to    text[] not null          -- {'profile','party','guild','global'}
+  applies_to    text[] not null          -- {'profile','crew','guild','global'}
 )
 
 milestone_events (                        -- who crossed what, when
@@ -351,7 +351,7 @@ milestone_events (                        -- who crossed what, when
 )
 ```
 
-`applies_to` keeps it honest — a party never sees the 250.000 rung dangling unreachably,
+`applies_to` keeps it honest — a crew never sees the 250.000 rung dangling unreachably,
 and the global counter isn't cluttered with a "10 beers" celebration.
 
 **Easter-egg rungs** fire a toast but don't drive the gauge: `442` (the formation), `1337`
@@ -373,7 +373,7 @@ excluding `voided_at is not null`:
 
 ```sql
 global_stats  (id=1, total_beers, updated_at)
-party_stats   (party_id pk, total_beers, last_logged_at, updated_at)
+crew_stats   (crew_id pk, total_beers, last_logged_at, updated_at)
 profile_stats (profile_id pk, total_beers, last_logged_at, updated_at)
 guild_stats   (guild_id pk, total_beers, ...)                -- Phase 3
 ```
@@ -390,7 +390,7 @@ Realtime on the session row does the same job at close range: everyone at the ta
 watches the tally climb as rounds land.
 
 Weekly figures — beers this week, streaks — are computed on read by `profile_summary()` and
-`party_summary()`. They change when a week ends, not only when a beer lands, so storing them
+`crew_summary()`. They change when a week ends, not only when a beer lands, so storing them
 would need a job to break streaks on Monday morning ([D40](DECISIONS.md#d40--totals-are-kept-by-triggers-weekly-figures-are-computed-on-read)).
 
 ---
@@ -406,7 +406,7 @@ achievements (
   description   text not null,
   flavor        text,                    -- the announcer line
   category      text not null,           -- 'combo'|'football'|'gaming'|'milestone'|'social'|'time'
-  scope         text not null,           -- 'profile'|'party'|'guild'|'global'
+  scope         text not null,           -- 'profile'|'crew'|'guild'|'global'
   tier          int,
   rule          jsonb not null,
   is_secret     boolean default false,   -- hidden until unlocked
@@ -416,10 +416,10 @@ achievements (
 achievement_unlocks (
   id            uuid pk,
   achievement_code text references achievements,
-  profile_id    uuid, party_id uuid, guild_id uuid,   -- whichever the scope implies
+  profile_id    uuid, crew_id uuid, guild_id uuid,   -- whichever the scope implies
   session_id    uuid references sessions,             -- what triggered it
   unlocked_at   timestamptz,
-  unique (achievement_code, coalesce(profile_id, party_id, guild_id))
+  unique (achievement_code, coalesce(profile_id, crew_id, guild_id))
 )
 ```
 
@@ -440,8 +440,8 @@ expression language would be a security and correctness liability.
 | `distinct_venues` | `{window:'all', min:10}` | Groundhopper |
 | `distinct_beer_types` | `{in_session:true, min:3}` | Perfect Hat-trick |
 | `session_duration` | `{min_minutes: 90}` | The Full Ninety |
-| `full_party` | `{scope:'party'}` | ACE — everyone turned up |
-| `crossed_milestone` | `{scope:'party'}` | Golden Goal |
+| `full_crew` | `{scope:'crew'}` | ACE — everyone turned up |
+| `crossed_milestone` | `{scope:'crew'}` | Golden Goal |
 | `abstinence` | `{days: 7}` | Clean Sheet |
 
 One function, `evaluate_achievements(session_id uuid)`, runs after each beer commits and
@@ -475,16 +475,16 @@ Rounds queue as a unit: one `round_id`, N beers, all-or-nothing on replay.
 
 ## 8. Security & fairness
 
-**RLS on everything.** Party data is visible to party members; guild aggregates to guild
+**RLS on everything.** Crew data is visible to crew members; guild aggregates to guild
 members; global aggregates are public.
 
-> **Known trap:** RLS policies on `party_members` that themselves query `party_members`
+> **Known trap:** RLS policies on `crew_members` that themselves query `crew_members`
 > cause infinite recursion. Needs a `SECURITY DEFINER` helper:
-> `is_party_member(party_id uuid) returns boolean`. Same for guilds. Cheap if anticipated,
+> `is_crew_member(crew_id uuid) returns boolean`. Same for guilds. Cheap if anticipated,
 > a bad afternoon if not.
 
 **Anti-cheat** is mostly structural now — the FK chain in §3.4 means inflating the counter
-requires recruiting real accounts into a real party. What remains:
+requires recruiting real accounts into a real crew. What remains:
 
 - Rate limit: beers per person per hour
 - `logged_at` cannot be in the future, nor outside the backdating window
@@ -499,7 +499,7 @@ accident. Not moralising — just choosing:
 
 - **No solo logging** ([D19](DECISIONS.md#d19--no-solo-logging)). Solo drinking is the
   pattern worth not gamifying, and the app has no representation for it at all.
-- **Combos reward party size, not consumption**
+- **Combos reward crew size, not consumption**
   ([D20](DECISIONS.md#d20--combos-are-session-scoped)). The route to a big badge is bringing
   a fifth friend, not ordering a fifth beer.
 - **Alcohol-free beers count** ([D9](DECISIONS.md#d9--alcohol-free-beers-count)). The app
@@ -525,7 +525,7 @@ accident. Not moralising — just choosing:
   /templates          the auth emails — D44
   /tests              behavioural tests, most run as real signed-in users
   config.toml         the local stack
-  seed.sql            the demo party, for local development only
+  seed.sql            the demo crew, for local development only
 /docs                 these documents; /history keeps notes that have done their job
 ```
 

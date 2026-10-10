@@ -24,15 +24,15 @@ right:
 
 | Table | The bit that must be right now | Why it can't be fixed later |
 |---|---|---|
-| `parties` | `guild_id` **nullable** | The entire hook for guilds. One column. |
-| `party_members` | a **join table**, not a column on `profiles` | A person in two parties is impossible to retrofit |
-| `sessions` | `party_id`, `guild_id` nullable, `started_at timestamptz` + stored tz | Timezone is not derivable after the fact |
+| `crews` | `guild_id` **nullable** | The entire hook for guilds. One column. |
+| `crew_members` | a **join table**, not a column on `profiles` | A person in two crews is impossible to retrofit |
+| `sessions` | `crew_id`, `guild_id` nullable, `started_at timestamptz` + stored tz | Timezone is not derivable after the fact |
 | `session_attendees` | exists at all | The only record of who was there but drank zero |
-| `beers` | `party_id`, `guild_id` nullable, `profile_id`, `added_by`, `round_id`, `logged_at timestamptz`, `voided_at`, `client_uuid` | None of these can be reconstructed from anything else |
+| `beers` | `crew_id`, `guild_id` nullable, `profile_id`, `added_by`, `round_id`, `logged_at timestamptz`, `voided_at`, `client_uuid` | None of these can be reconstructed from anything else |
 
 Two nullable `guild_id` columns and one join table cost nothing today and are the complete
 path to guilds. A pre-guild beer correctly keeps `guild_id = null` forever — it was earned
-before the party joined, which is exactly what
+before the crew joined, which is exactly what
 [D6](DECISIONS.md#d6--guild_id-is-snapshotted-not-joined) wants.
 
 **Everything else is additive**: new tables, new screens, no painful migration. That
@@ -51,18 +51,18 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ✅ F2 | Supabase project (eu-north-1), app hosted on Vercel ([D43](DECISIONS.md#d43--the-app-runs-on-vercel-the-backend-on-a-hosted-supabase-project)) | S | custom domain |
 | ✅ F3 | React + Vite + Tailwind + shadcn/ui app ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
 | ✅ F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
-| ✅ F5 | RLS: party-scoped + `is_party_member` helper | S | guild policies |
+| ✅ F5 | RLS: crew-scoped + `is_crew_member` helper | S | guild policies |
 | ✅ C1 | Auth — email + password, magic link ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)), Google ([D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)) | M | Apple |
-| ✅ C2 | Create a party · share the invite code · join by code | M | — |
+| ✅ C2 | Create a crew · share the invite code · join by code | M | — |
 | ✅ C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |
 | ✅ C10 | Session start + manual close; 09:00-next-morning auto-close ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)); purge of single-attendee sessions ([D36](DECISIONS.md#d36--single-attendee-sessions-are-purged-after-7-days)) | S | — |
 | ✅ C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
 | C8 | **Offline write queue** + idempotent replay *(pulled in, D35)* | L | — |
-| ✅ C4 | Counter roll-ups: `party_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
+| ✅ C4 | Counter roll-ups: `crew_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
 | C9 | Milestone ladder table + seed | S | — |
 | C12 | `milestone_events` — crossing attribution | S | — |
 | ✅ C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
-| ✅ C6 | Party leaderboard (on the dashboard, not its own screen) | S | — |
+| ✅ C6 | Crew leaderboard (on the dashboard, not its own screen) | S | — |
 | ✅ C7 | Feed — a list of closed sessions | S | reactions, photos |
 | G4 | **Live combo toasts** — 10 / 25 / 50 / 100 session totals | M | — |
 | G5 | **Milestone celebration** + Golden Goal attribution | M | — |
@@ -93,27 +93,27 @@ and all of Phase 5.
 | F1 | Answer [QUESTIONS.md](QUESTIONS.md); freeze decisions in [DECISIONS.md](DECISIONS.md) | — |
 | F2 | Supabase project (eu-north-1), env/secrets management | S |
 | F3 | Client scaffold + design tokens (palette, Anton/Space Grotesk) | M |
-| F4 | Schema v1 migration: profiles, parties, party_members, sessions, session_attendees, beers | M |
-| F5 | RLS policies + `is_party_member` SECURITY DEFINER helper | M |
+| F4 | Schema v1 migration: profiles, crews, crew_members, sessions, session_attendees, beers | M |
+| F5 | RLS policies + `is_crew_member` SECURITY DEFINER helper | M |
 | F6 | CI: lint, typecheck, migration check on PR | S |
 
 ---
 
 ## Phase 1 — The core loop
 
-*A party can log beers and see a number go up. If only this shipped, it would still work.*
+*A crew can log beers and see a number go up. If only this shipped, it would still work.*
 
 | ID | Item | Effort |
 |---|---|---|
 | C1 | Auth: email + password, magic link, then Apple + Google; profile creation | M |
-| C2 | Create a party / join by invite code | M |
+| C2 | Create a crew / join by invite code | M |
 | C3 | **Session logger** — per-person `+`, `+ ROUND`, `−` corrections, detail sheet | L |
 | C10 | **Session lifecycle** — start, attendees, close, 09:00-next-morning auto-close job | M |
 | C11 | Realtime session sync — everyone at the table watches the tally climb | M |
-| C4 | Counter roll-up triggers (`global_stats`, `party_stats`, `profile_stats`) | M |
-| C5 | **Party dashboard** — dual gauge (milestone ring + 1M bar), stat cards | L |
+| C4 | Counter roll-up triggers (`global_stats`, `crew_stats`, `profile_stats`) | M |
+| C5 | **Crew dashboard** — dual gauge (milestone ring + 1M bar), stat cards | L |
 | C12 | `milestone_events` — counter-crossing attribution, robust to voids ([D28](DECISIONS.md#d28---is-a-soft-delete-milestones-attribute-by-counter-crossing)) | S |
-| C6 | Party leaderboard | S |
+| C6 | Crew leaderboard | S |
 | C7 | Activity feed | M |
 | C8 | **Offline write queue** + idempotent replay | L |
 | C9 | Milestone ladder table + seed; "next milestone" resolution | S |
@@ -152,7 +152,7 @@ and all of Phase 5.
 | U1 | Guild schema + `guild_id` snapshotting on sessions/beers | M |
 | U2 | Guild create / browse / join (per chosen join policy) | M |
 | U3 | Club catalogue seed (football clubs w/ crests + colours) | M |
-| U4 | Guild dashboard — guild gauge, contributing parties | M |
+| U4 | Guild dashboard — guild gauge, contributing crews | M |
 | U5 | **Guild league table** — standings ranked on achievement points ([D14](DECISIONS.md#d14--achievement-points-rank-the-guild-league-table)) | L |
 | U6 | Guild-scoped achievements + milestones | M |
 | U7 | Transfer window mechanic (if adopted — see Q7) | M |
@@ -165,7 +165,7 @@ and all of Phase 5.
 
 | ID | Item | Effort | Note |
 |---|---|---|---|
-| S1 | Push notifications — milestones, achievements, party activity | L | |
+| S1 | Push notifications — milestones, achievements, crew activity | L | |
 | S2 | Reactions on feed items | S | |
 | S3 | Beer photos (Storage + upload + feed rendering) | M | |
 | S4 | Venues — search, save, "Groundhopper" support | M | |
@@ -182,7 +182,7 @@ and all of Phase 5.
 
 | ID | Item | Effort |
 |---|---|---|
-| P1 | Anti-cheat: rate limits + outlier flagging (mostly solved by the FK chain in [ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-party-rule--enforced-in-the-database)) | S |
+| P1 | Anti-cheat: rate limits + outlier flagging (mostly solved by the FK chain in [ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-crew-rule--enforced-in-the-database)) | S |
 | P2 | Public global counter page (no auth) — the shareable artefact | M |
 | P3 | Home-screen widget (native only) | M |
 | P4 | App Store / Play Store submission, 17+ rating, age gate | L |
@@ -196,7 +196,7 @@ and all of Phase 5.
 ## Suggested cut lines
 
 **Thinnest thing worth showing friends:** Phase 0 + C1, C2, C3, C4, C5, C8, C10.
-Friends join your party with a code, you start a session, the number goes up, and it works
+Friends join your crew with a code, you start a session, the number goes up, and it works
 in a pub with no signal. C2 is non-negotiable — without the invite code nobody can legally
 log a beer at all.
 

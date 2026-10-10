@@ -51,7 +51,7 @@ The local stack provides `auth.users` and the `anon` / `authenticated` roles, wh
 this is better than the bare-Postgres fallback below.
 
 **Note:** signed-out visitors (`anon`) can't read or write anything — there is no public
-surface yet. Signed-in users see their own parties only, and change membership through the
+surface yet. Signed-in users see their own crews only, and change membership through the
 functions in `20261006120000_rls.sql` ([D39](DECISIONS.md#d39--access-rules-read-tables-directly-change-membership-through-functions)).
 
 ## 4. Run the app
@@ -73,7 +73,7 @@ npm --prefix app run dev
 
 Open **http://localhost:5173**. Sign in with any demo account from
 `supabase/seed.sql` (the password is in its header), or create your own account and join
-the demo party with the code `SKAL42`.
+the demo crew with the code `SKAL42`.
 
 **On your phone:** same Wi-Fi as the PC, open `http://<the PC's IP>:5173` (Vite prints it
 as "Network"). The app points itself at the PC's database automatically. The first time,

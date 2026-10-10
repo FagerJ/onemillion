@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (44 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (45 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -20,28 +20,33 @@ and why, which recommendations are baked into the schema.
   templates in `supabase/templates/`. The dashboard side — redirect URLs, SMTP, templates,
   the Google client — is set by hand and isn't in the repo (DEPLOY.md § One-time setup);
   check the live settings (`/auth/v1/settings`) rather than assuming it's done.
-- **Design: done.** 44 decisions recorded. Architecture, roadmap, achievement catalogue,
-  user journeys and story map all written.
+- **Party → Crew** (D45, 2026-10-10). `supabase/migrations/20261010120000_crew.sql` renamed
+  the tables, columns, functions, policies, triggers and constraints in place. **It is now
+  where every function and policy that touches a crew is defined** — the earlier files
+  below still show the `party` versions they created, which that migration replaced.
+- **Design: done.** 45 decisions recorded. Architecture, roadmap, achievement catalogue,
+  user journeys and story map all written. A parked draft of 150 more achievements, split
+  into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
   irreducible tables plus the `beer_types` lookup.
 - **RLS: written and tested** (`F5`, D39). `supabase/migrations/20261006120000_rls.sql` —
-  policies, column grants, and the membership/lifecycle functions (`create_party`,
-  `join_party`, `close_session`, …). `rls_test.sql` checks them as real signed-in users.
+  policies, column grants, and the membership/lifecycle functions (`create_crew`,
+  `join_crew`, `close_session`, …). `rls_test.sql` checks them as real signed-in users.
 - **Counters: written and tested** (`C4`, D40). `supabase/migrations/20261006130000_stats.sql`
-  — trigger-kept totals in `global_stats` / `party_stats` / `profile_stats`, and
-  `profile_summary()` / `party_summary()` for this-week figures and weekly streaks.
+  — trigger-kept totals in `global_stats` / `crew_stats` / `profile_stats`, and
+  `profile_summary()` / `crew_summary()` for this-week figures and weekly streaks.
 - **Session lifecycle: written and tested** (`C10`, D41).
   `supabase/migrations/20261006140000_session_lifecycle.sql` — `pg_cron` closes overdue
   nights every 5 minutes and purges lonely sessions nightly; opening a night closes the
-  party's stale one; D16's today-or-yesterday window is enforced for the app.
+  crew's stale one; D16's today-or-yesterday window is enforced for the app.
 - **Every question that blocks v0 is answered** (QUESTIONS.md, D31–D38). Venues are out of
   v0 again. English UI behind a translation layer. Ships to Android as an app and to iPhones
   as a web app — no App Store yet. Guilds are parked (QUESTIONS.md D5).
 - **App: first version running** (D42). `app/` — React + Vite + TypeScript, Tailwind v4,
   shadcn/ui (Radix), TanStack Query, React Router, motion, i18next. Sign-up/in, profile,
-  create/join party, kick-off, + / + ROUND / −, live updates, home, feed, party, me.
-  `supabase/migrations/20261007120000_app_reads.sql` adds `party_leaderboard()`,
-  `party_feed()` and the Realtime publication. `supabase/seed.sql` loads a demo party.
+  create/join crew, kick-off, + / + ROUND / −, live updates, home, feed, crew, me.
+  `supabase/migrations/20261007120000_app_reads.sql` adds `crew_leaderboard()`,
+  `crew_feed()` and the Realtime publication. `supabase/seed.sql` loads a demo crew.
 - **Not started:** milestones + combo engine, achievements, the offline queue, PWA install
   (manifest/icons — unblocked now that the app is on HTTPS).
 - **`main` is production.** Friends use it, so it must always run: do new work on a branch
@@ -51,13 +56,18 @@ and why, which recommendations are baked into the schema.
 
 | Term | Means |
 |---|---|
-| **Party** | The persistent group of friends. Joined with an invite code. |
-| **Session** | One night out, inside a party. Has attendees and beers. |
-| **Guild** | A banner many people drink under. Phase 3, not built. Whether *parties* or *people* join is undecided — QUESTIONS.md D5. Don't build anything that assumes either. |
+| **Crew** | The persistent group of friends. Joined with an invite code. |
+| **Session** | One night out, inside a crew. Has attendees and beers. |
+| **Guild** | A banner many people drink under. Phase 3, not built. Whether *crews* or *people* join is undecided — QUESTIONS.md D5. Don't build anything that assumes either. |
 | **Round** | One tap adding a beer to every attendee at once. |
 
-An earlier draft called a Party a "Crew" and used "Party" for the night out. That collision
-caused two rounds of wrong design (see the struck-through D22/D23/D24). Don't reintroduce it.
+**"Party" isn't used for anything any more** (D45, 2026-10-10). The group of friends was a
+*Party* until then — in the schema too — and it is a *Crew* everywhere now: tables, columns,
+functions, UI. The decision log and QUESTIONS.md keep the old word in their older entries,
+because they're history. A very early draft also called the group a "Crew" but used
+"Party" for the night out, and when "party" later came to mean the group, the two meanings
+collided and caused two rounds of wrong design (the struck-through D22/D23/D24). So never
+call a night a party.
 
 ## The rules that are load-bearing
 
@@ -65,10 +75,10 @@ caused two rounds of wrong design (see the struck-through D22/D23/D24). Don't re
   `beers`, not on `sessions` — see D30 for why the obvious version doesn't work.
 - **One row per beer**, never a tally column. Every aggregate is derived from `beers`, which
   is what makes almost everything else safely changeable later.
-- **`guild_id` is nullable on `parties`, `sessions` and `beers`** with no FK yet. This is the
+- **`guild_id` is nullable on `crews`, `sessions` and `beers`** with no FK yet. This is the
   entire hook for guilds. A pre-guild beer keeps `guild_id = null` forever, which is correct.
   `beers.guild_id` is the one that matters: it works whichever guild model is chosen. The
-  `parties`/`sessions` columns only matter if parties end up joining guilds.
+  `crews`/`sessions` columns only matter if crews end up joining guilds.
 - **`−` voids, never deletes.** Counters exclude voided rows; achievements are never revoked.
 - **Milestones attribute by counter-crossing**, not by `global_seq`. Voids leave holes in the
   sequence, so nobody may hold seq exactly 1.000.000.
@@ -134,9 +144,9 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 - **Upserts check the insert row first.** `insert … on conflict do update` with a value that
   breaks a CHECK constraint fails even when the row exists — Postgres validates the
   proposed insert before looking for the conflict. Decrement counters with a plain `update`.
-- **RLS recursion.** A policy on `party_members` that queries `party_members` hangs. Use the
-  `SECURITY DEFINER` helpers (`is_party_member`, `is_party_captain`, `is_session_attendee`,
-  `shares_party_with`).
+- **RLS recursion.** A policy on `crew_members` that queries `crew_members` hangs. Use the
+  `SECURITY DEFINER` helpers (`is_crew_member`, `is_crew_captain`, `is_session_attendee`,
+  `shares_crew_with`).
 - **`set search_path` on every function.** The `SECURITY DEFINER` functions run with an
   empty search_path, and triggers fired inside them inherit it. A trigger function without
   its own `set search_path = public` fails with "relation does not exist".
@@ -166,9 +176,9 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
   second visual vocabulary.
 - **Every string goes through i18next** (`app/src/i18n/en.ts`, typed keys) — no literals in
   JSX, including aria-labels and placeholders.
-- **Data access lives in `app/src/data/queries.ts`.** Party-scoped query keys start with
-  `['party', id]` so one Realtime event refreshes a party. Columns that BEFORE triggers stamp
-  (`party_id`, `closes_at`, `timezone`) are left out of inserts — clients aren't granted them.
+- **Data access lives in `app/src/data/queries.ts`.** Crew-scoped query keys start with
+  `['crew', id]` so one Realtime event refreshes a crew. Columns that BEFORE triggers stamp
+  (`crew_id`, `closes_at`, `timezone`) are left out of inserts — clients aren't granted them.
 - **Regenerate DB types** after a migration:
   `npx supabase gen types typescript --local --schema public > app/src/lib/database.types.ts`.
 - No `crypto.randomUUID` or clipboard without a fallback: a phone on the LAN dev server

@@ -4,9 +4,9 @@ Status: **draft for curation.** This is deliberately over-supplied — cut the o
 don't land. Every entry maps to a rule type in
 [ARCHITECTURE.md §6.1](ARCHITECTURE.md#61-rule-vocabulary).
 
-> ### 🍻 The Party Rule
+> ### 🍻 The Crew Rule
 > **You cannot log a beer alone.** Every session needs at least two attendees, each a real
-> account that joined your party with its invite code
+> account that joined your crew with its invite code
 > ([D19](DECISIONS.md#d19--no-solo-logging),
 > [D22a](DECISIONS.md#d22a--joining-a-party-requires-an-invite-code-supersedes-d22)).
 > There are no achievements for drinking by yourself, because there is no such thing as a
@@ -82,11 +82,11 @@ Fergie time, the Invincibles.
 
 | Code | Title | Trigger |
 |---|---|---|
-| `ACE` | ACE | Every member of your party turns up to one session |
+| `ACE` | ACE | Every member of your crew turns up to one session |
 | `SQUAD_ROTATION` | Squad Rotation | Drink with 5 different people in a week |
-| `CLASS_OF_92` | Class of '92 | Be a founding member of a party that reaches 1.000 |
-| `THE_INVINCIBLES` | The Invincibles | Party logs every day for a month |
-| `CAPTAINS_ARMBAND` | Captain's Armband | Top of your party leaderboard for 4 straight weeks |
+| `CLASS_OF_92` | Class of '92 | Be a founding member of a crew that reaches 1.000 |
+| `THE_INVINCIBLES` | The Invincibles | Crew logs every day for a month |
+| `CAPTAINS_ARMBAND` | Captain's Armband | Top of your crew leaderboard for 4 straight weeks |
 | `GOLDEN_BOOT` | Golden Boot | Top scorer in your guild for a season |
 | `THE_TREBLE` | The Treble | Three milestones in one week |
 | `CLEAN_SHEET` | Clean Sheet | A full week with zero logged — rest counts |
@@ -94,7 +94,7 @@ Fergie time, the Invincibles.
 | `DERBY_DAY` | Derby Day | Log during a fixture between two rival guilds |
 | `AWAY_GOAL` | Away Goal | Log in a city that isn't your home city |
 | `GROUNDHOPPER` | Groundhopper | 10 distinct venues |
-| `BOSMAN` | Bosman | Transfer your party to a new guild |
+| `BOSMAN` | Bosman | Transfer your crew to a new guild |
 | `RELEGATION_BATTLE` | Relegation Battle | Bottom 3 of your guild table |
 | `GOLDEN_GOAL` | Golden Goal | Log the beer that crosses a milestone |
 
@@ -103,8 +103,8 @@ Fergie time, the Invincibles.
 | Code | Title | Trigger |
 |---|---|---|
 | `FORMATION` | 4-4-2 | Your 442nd beer |
-| `SIXTY_SIX` | Nineteen Sixty-Six | Party's 1.966th beer |
-| `NINETY_NINE` | The Treble Season | Party's 1.999th beer |
+| `SIXTY_SIX` | Nineteen Sixty-Six | Crew's 1.966th beer |
+| `NINETY_NINE` | The Treble Season | Crew's 1.999th beer |
 | `FULL_TIME` | Full Time | Your 90th beer |
 | `SIX_SEVEN` | The Kids Think This Is Fun | Your 67th beer *(owner, A4)* |
 | `NICE` | hehehe | Your 69th beer *(owner, A4)* |
@@ -124,16 +124,16 @@ Fergie time, the Invincibles.
 | `ACHIEVEMENT_UNLOCKED` | Achievement Unlocked | Your first ever achievement |
 | `LEVEL_UP` | Level Up | Any milestone rung |
 | `RESPAWN` | Respawn | Log again after 30+ days away |
-| `SPEEDRUN` | Speedrun | Party hits a milestone faster than any other party that month |
+| `SPEEDRUN` | Speedrun | Crew hits a milestone faster than any other crew that month |
 | `CRITICAL_HIT` | Critical Hit | A beer over 8% ABV |
 | `LOOT_DROP` | Rare Drop | Log a beer type nobody in your guild has logged |
-| `NEW_GAME_PLUS` | New Game+ | Party passes 10.000 |
+| `NEW_GAME_PLUS` | New Game+ | Crew passes 10.000 |
 | `FINAL_BOSS` | Final Boss | Log the 1.000.000th beer globally |
 | `TOUCH_GRASS` | Touch Grass | *(secret)* Log 3 days running, then take a week off |
 | `AFK` | AFK | *(secret)* 90 days without logging, then return |
 | `THE_CAKE_IS_A_LIE` | The Cake Is a Lie | *(secret)* Log an alcohol-free beer at a milestone |
 | `ROUND_FOR_THE_LADS` | Round for the Lads | Tap `+ ROUND` for 8 or more people at once |
-| `GG_EZ` | GG EZ | *(secret)* Beat a rival party to a milestone by <10 beers |
+| `GG_EZ` | GG EZ | *(secret)* Beat a rival crew to a milestone by <10 beers |
 
 ### The two power-level badges
 
@@ -152,7 +152,7 @@ different rungs and get completely different art:
 
 Auto-generated from the ladder — one per rung per scope, so they don't need hand-authoring.
 
-| Rung | Party title | Guild title |
+| Rung | Crew title | Guild title |
 |---|---|---|
 | 10 | Opening Round | — |
 | 100 | Century | — |
@@ -172,7 +172,7 @@ Auto-generated from the ladder — one per rung per scope, so they don't need ha
 Every achievement carries `points`. Open question (Q11) whether points do anything:
 
 - **Nothing** — badges are their own reward, simplest.
-- **Party XP / levels** — points aggregate into a party level, a second progression axis.
+- **Crew XP / levels** — points aggregate into a crew level, a second progression axis.
 - **Guild table ranking** — points, not raw beers, order the guild league table. This
   rewards *variety and consistency* over sheer volume, which is a meaningfully healthier
   incentive than "whoever drinks most wins".

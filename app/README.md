@@ -15,7 +15,7 @@ The live app — Vercel, `vercel.json`, the environment variables: [docs/DEPLOY.
 
 ```
 src/
-  routes/            one file per screen (Welcome, setup/, Home, Night, Nights, PartyPage, Me)
+  routes/            one file per screen (Welcome, setup/, Home, Night, Nights, CrewPage, Me)
   components/brand/  the design language: Cap, PintGauge, Flaps, LiveBadge, CountUp
   components/home/   the dashboard's sections
   components/ui/     shadcn/ui, restyled to the brand

@@ -3,6 +3,9 @@
 Lightweight ADRs. Each decision records what was chosen, why, and what it costs.
 Superseded decisions are kept, struck through — the history is the point.
 
+Entries before D45 call the group of friends a **party**; since D45 it's a **crew**. The old
+entries keep their words, because they're history.
+
 ---
 
 ### D36 — Single-attendee sessions are purged after 7 days
@@ -19,6 +22,32 @@ and in every query that walks sessions.
 the `beers` trigger refuses any beer in a session with fewer than two attendees. A session
 with two or more attendees and zero beers is **kept** — it is the record of who showed up
 (`ACE` needs it).
+
+---
+
+### D45 — The group of friends is a Crew *(renames D25's Party)*
+**Decided** (owner, 2026-10-10: "Party is probably wrong, so it should probably be crew",
+then "Rename Party->Crew"). The group of friends is a **crew** everywhere: on screen, in the
+routes (`/crew`, `/setup/crew`), in the code, and in the database — `crews`,
+`crew_members`, `crew_stats`, `crew_id`, `create_crew()`, `join_crew()`, `crew_summary()`
+and the rest, renamed in place by `20261010120000_crew.sql`. A night out is still a
+*session* in the code and a *night* on screen. D19's Party Rule is now the **Crew Rule**.
+"Party" isn't used for anything.
+
+*Why:* "party" reads as the night out rather than the people — the same confusion that sent
+D22–D24 wrong — and a crew is what a group of friends calls itself. With nothing on
+production but two sign-ups, renaming everything cost one migration; once crews and nights
+exist it would mean renaming under live data with every phone needing the new app at once.
+D25 said such a rename was "cheap now, expensive after the first migration" — this is the
+last cheap moment.
+
+*Cost:*
+- One large migration. Postgres can't rename a function's parameters, so every function and
+  policy that touches a crew was dropped and created again under the new names. Those
+  definitions now live in the crew migration, not in the files that first created them.
+- Older ADRs and QUESTIONS.md still say "party" — they're history, and this entry is the
+  bridge between the two words.
+- An old link to `/party` lands on the home screen.
 
 ---
 
@@ -333,7 +362,7 @@ Supabase stores and hashes the passwords; our code never handles them.
 which refuses any beer whose session has fewer than two attendees. `sessions` itself
 carries no minimum.
 
-*Why:* [ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-party-rule--enforced-in-the-database)
+*Why:* [ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-crew-rule--enforced-in-the-database)
 originally specified a deferred constraint trigger on `sessions`. That cannot work with the
 real flow — you start a session, then friends are added. A deferred check runs at COMMIT, so
 a session created with only its host could never be committed, and "start a session and wait
@@ -643,7 +672,7 @@ simple chain is better.
 **Folded into [D22a](#d22a--joining-a-party-requires-an-invite-code-supersedes-d22).**
 
 Still true, now as a two-link chain: `beers → session_attendees → party_members`. See
-[ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-party-rule--enforced-in-the-database).
+[ARCHITECTURE §3.4](ARCHITECTURE.md#34-the-crew-rule--enforced-in-the-database).
 
 ---
 
@@ -660,6 +689,9 @@ for.
 
 *Cost:* a rename across every document and the not-yet-written schema. Cheap now,
 expensive after the first migration.
+
+*Amended by [D45](#d45--the-group-of-friends-is-a-crew-renames-d25s-party) (2026-10-10):*
+the group of friends is a **Crew** now. Session stays the night; Guild stays many crews.
 
 ---
 

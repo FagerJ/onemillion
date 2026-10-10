@@ -3,6 +3,7 @@
 > **Status, 2026-10-09:** every question v0 needed is answered and built in, and the app is
 > live. Still open, none of them urgent: the fun stuff in **C** (tune whenever) and the
 > guild questions in **D** (parked). Everything below is kept as asked and answered.
+> Since D45 the group of friends is a **crew**; the answers below still say *party*.
 
 **This file is for you to edit.** Fill in the `**Answer:**` lines, save, and either commit
 it or just tell me you're done. Anything you leave blank, I'll take my recommendation on.

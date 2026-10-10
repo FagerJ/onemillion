@@ -9,17 +9,17 @@ IDs from [ROADMAP.md](ROADMAP.md).
 
 ## Journey 01 — First run, and the cold start
 
-Two ways in, and they are **not symmetric**. Joining an existing party works immediately.
+Two ways in, and they are **not symmetric**. Joining an existing crew works immediately.
 Founding one leaves you unable to log anything at all.
 
 ```mermaid
 flowchart LR
   A["Sign in<br/><small>Google · email · magic link</small>"] --> B["Create profile<br/><small>name · initials · colour</small>"]
-  B --> C["Create a party<br/><small>you are member #1</small>"]
+  B --> C["Create a crew<br/><small>you are member #1</small>"]
   B --> D["Join with a code<br/><small>4-6 characters</small>"]
   C --> E["Nothing can be logged<br/><small>a session needs two people</small>"]
   E -->|"a friend joins with your code"| F
-  D --> F["Party of two or more<br/><small>ready to start a session</small>"]
+  D --> F["Crew of two or more<br/><small>ready to start a session</small>"]
   F --> G["Journey 02<br/><small>a night out</small>"]
 
   classDef dead fill:#3a1710,stroke:#FF5B35,color:#FBF4E4
@@ -32,13 +32,13 @@ flowchart LR
 
 **The founder's path dead-ends.** Because a session requires two attendees
 ([D19](DECISIONS.md#d19--no-solo-logging)) and every attendee must be a real account that
-joined the party by code
+joined the crew by code
 ([D22a](DECISIONS.md#d22a--joining-a-party-requires-an-invite-code-supersedes-d22)), the
-person who creates a party cannot log a single beer until someone else accepts.
+person who creates a crew cannot log a single beer until someone else accepts.
 
-That red box is not an error state — it is the designed consequence of the Party Rule, and
+That red box is not an error state — it is the designed consequence of the Crew Rule, and
 it is the first thing every new user sees. It is also why all three v1 stories in the
-"Form a party" column are load-bearing.
+"Form a crew" column are load-bearing.
 
 ---
 
@@ -55,7 +55,7 @@ flowchart TB
   end
 
   subgraph pg["IN POSTGRES — server authoritative"]
-    C["insert into beers<br/><small>FK: must be an attendee</small>"] --> D["roll up counters<br/><small>party · guild · global</small>"]
+    C["insert into beers<br/><small>FK: must be an attendee</small>"] --> D["roll up counters<br/><small>crew · guild · global</small>"]
     D --> E["evaluate rules<br/><small>session total, not per head</small>"]
     E --> F["milestone crossed<br/><small>Golden Goal attributed</small>"]
   end
@@ -114,12 +114,12 @@ free and the queue can retry as often as it likes
 Backbone reads left to right as the order a person actually meets the app. Each cell holds
 the stories that make that step work, grouped by release.
 
-| | 01 Get in | 02 Form a party | 03 Start a night | 04 Log beers | 05 Celebrate | 06 Track progress | 07 Compete |
+| | 01 Get in | 02 Form a crew | 03 Start a night | 04 Log beers | 05 Celebrate | 06 Track progress | 07 Compete |
 |---|---|---|---|---|---|---|---|
-| **v1**<br/><sub>Phase 0+1 & game layer</sub> | **Sign in** — email + password, magic link, Google `C1`<br/>Pick name, initials, colour `C1` | **Create a party** `C2`<br/>**Share the invite code** `C2`<br/>**Join with a code** `C2` | **Start a session** `C10`<br/>Mark who is here `C3`<br/>Close it, or 09:00 auto-close `C10` | **Tap + for one person** `C3`<br/>**Tap + ROUND for everyone** `C3`<br/>Skip the driver on rounds `C3`<br/>Tap − to fix a mistake `C3`<br/>**Log with no signal** `C8` | **Live combo toasts** `G4`<br/>**Milestone takeover, Golden Goal named** `G5`<br/>Tally climbs on every phone `C11`<br/>Rules engine + catalogue `G1` `G2` | **Milestone ring + 1M bar** `C5`<br/>Week, streak, rank tiles `C5`<br/>Party leaderboard `C6`<br/>Activity feed `C7`<br/>Global counter ticking `C4` | *nothing in v1 — competition needs a population first* |
-| **Next**<br/><sub>Phase 4</sub> | Onboarding polish, empty states `P6` | Captain can rename/remove `Q25`<br/>Leave a party, history stays `Q25` | Set the venue `S4`<br/>Save the regular haunts `S4` | Add volume, ABV, type `S5`<br/>Add a photo `S3` | Push when the party logs `S1`<br/>React to feed items `S2` | Achievements grid `G3`<br/>Streaks + weekly recap `S6`<br/>Easter-egg rungs `G6` | — |
-| **Guilds**<br/><sub>Phase 3</sub> | — | Party joins one guild `U1`<br/>Open/approval/invite `Q3` | — | — | Guild-scoped badges `U6` | Guild dashboard + gauge `U4` | **Browse and search guilds** `U2`<br/>**League table, ranked on points** `U5`<br/>Seeded club catalogue `Q6`<br/>Seasons, silverware `Q24` |
-| **Later**<br/><sub>Phase 5</sub> | Age gate, 17+ rating `P4` | Several parties + switcher `D17` | Backdate last night `D16` | Rate limits, outlier flagging `P1` | Announcer sound, muted `G7` | Public counter page `P2`<br/>Home-screen widget `P3` | Transfer window `U7` |
+| **v1**<br/><sub>Phase 0+1 & game layer</sub> | **Sign in** — email + password, magic link, Google `C1`<br/>Pick name, initials, colour `C1` | **Create a crew** `C2`<br/>**Share the invite code** `C2`<br/>**Join with a code** `C2` | **Start a session** `C10`<br/>Mark who is here `C3`<br/>Close it, or 09:00 auto-close `C10` | **Tap + for one person** `C3`<br/>**Tap + ROUND for everyone** `C3`<br/>Skip the driver on rounds `C3`<br/>Tap − to fix a mistake `C3`<br/>**Log with no signal** `C8` | **Live combo toasts** `G4`<br/>**Milestone takeover, Golden Goal named** `G5`<br/>Tally climbs on every phone `C11`<br/>Rules engine + catalogue `G1` `G2` | **Milestone ring + 1M bar** `C5`<br/>Week, streak, rank tiles `C5`<br/>Crew leaderboard `C6`<br/>Activity feed `C7`<br/>Global counter ticking `C4` | *nothing in v1 — competition needs a population first* |
+| **Next**<br/><sub>Phase 4</sub> | Onboarding polish, empty states `P6` | Captain can rename/remove `Q25`<br/>Leave a crew, history stays `Q25` | Set the venue `S4`<br/>Save the regular haunts `S4` | Add volume, ABV, type `S5`<br/>Add a photo `S3` | Push when the crew logs `S1`<br/>React to feed items `S2` | Achievements grid `G3`<br/>Streaks + weekly recap `S6`<br/>Easter-egg rungs `G6` | — |
+| **Guilds**<br/><sub>Phase 3</sub> | — | Crew joins one guild `U1`<br/>Open/approval/invite `Q3` | — | — | Guild-scoped badges `U6` | Guild dashboard + gauge `U4` | **Browse and search guilds** `U2`<br/>**League table, ranked on points** `U5`<br/>Seeded club catalogue `Q6`<br/>Seasons, silverware `Q24` |
+| **Later**<br/><sub>Phase 5</sub> | Age gate, 17+ rating `P4` | Several crews + switcher `D17` | Backdate last night `D16` | Rate limits, outlier flagging `P1` | Announcer sound, muted `G7` | Public counter page `P2`<br/>Home-screen widget `P3` | Transfer window `U7` |
 
 **Bold** = load-bearing, the walking skeleton. `Qnn` = waiting on an
 [open question](QUESTIONS.md).

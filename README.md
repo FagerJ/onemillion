@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/banner.jpg" alt="One Million Beers: a live night with a round being poured, the party dashboard with its pint gauge, and the invite code on scoreboard flaps" width="100%">
+  <img src="docs/screenshots/banner.jpg" alt="One Million Beers: a live night with a round being poured, the crew dashboard with its pint gauge, and the invite code on scoreboard flaps" width="100%">
 </p>
 
 # One Million Beers
@@ -7,11 +7,11 @@
 **A beer-logging app for a group of friends, built around one absurd, shared goal:
 1.000.000 beers.**
 
-Every beer you share with your party counts toward one number on one scoreboard.
+Every beer you share with your crew counts toward one number on one scoreboard.
 Nobody drinks alone — the app won't let you.
 
 **Live at [onemillion-gray.vercel.app](https://onemillion-gray.vercel.app)** — open it on
-your phone, make an account, and join your friends' party with its invite code.
+your phone, make an account, and join your friends' crew with its invite code.
 
 [What it is](#what-it-is) · [The philosophy](#the-philosophy) · [How it's built](#how-its-built) · [Run it](#run-it) · [Where it stands](#where-it-stands)
 
@@ -19,22 +19,22 @@ your phone, make an account, and join your friends' party with its invite code.
 
 ## What it is
 
-Your group of friends is a **party**. When you meet up, someone kicks off a **night**,
+Your group of friends is a **crew**. When you meet up, someone kicks off a **night**,
 and everyone at the table is on it. Anyone can tap **+** for anyone, or **+ ROUND** to
 pour one for the whole table at once — and the tally climbs live on every phone.
 
-Each night lands in the party's history. The party chases its next milestone on a ladder
+Each night lands in the crew's history. The crew chases its next milestone on a ladder
 that runs 10 → 25 → 50 → 100 → … → 1.000.000. And every beer anyone logs, anywhere, ticks
 one shared global counter one step closer to seven figures.
 
 <p align="center">
   <img src="docs/screenshots/welcome.jpg" width="19%" alt="Welcome screen: the wordmark beside a pouring pint, the target on scoreboard flaps, and sign-in">
-  <img src="docs/screenshots/home.jpg" width="19%" alt="Home: the global million counter, the party's pint filling toward the next rung, streak and this week">
+  <img src="docs/screenshots/home.jpg" width="19%" alt="Home: the global million counter, the crew's pint filling toward the next rung, streak and this week">
   <img src="docs/screenshots/night.jpg" width="19%" alt="A live night: a LIVE badge with a match clock, 17 beers tonight, plus buttons per person and a + ROUND button">
-  <img src="docs/screenshots/nights.jpg" width="19%" alt="The nights: every night the party has had, newest first, with everyone's count">
-  <img src="docs/screenshots/party.jpg" width="19%" alt="The party: the invite code on split-flap tiles, and the members with the captain's armband">
+  <img src="docs/screenshots/nights.jpg" width="19%" alt="The nights: every night the crew has had, newest first, with everyone's count">
+  <img src="docs/screenshots/crew.jpg" width="19%" alt="The crew: the invite code on split-flap tiles, and the members with the captain's armband">
 </p>
-<p align="center"><sub>Welcome · Home · A live night · The nights · The party</sub></p>
+<p align="center"><sub>Welcome · Home · A live night · The nights · The crew</sub></p>
 
 ## The philosophy
 
@@ -47,7 +47,7 @@ That idea runs through every rule.
 ### Nobody drinks alone
 
 The one rule the whole app is built on. A beer can only be logged at a night with at least
-two people, and every one of them is a real account that joined the party with its invite
+two people, and every one of them is a real account that joined the crew with its invite
 code — no guests, no names typed in. There is no way to represent drinking alone, so there
 is nothing to reward it with. The database enforces this, not the interface.
 
@@ -58,7 +58,7 @@ The counter therefore counts **shared** beers. It undercounts reality on purpose
 Wherever the game hands out glory, it rewards the table, not the individual. Combos — the
 badges a night earns as it climbs, arriving with the game layer — count the whole table's
 total and unlock for everyone there, so the route to a big badge is bringing a fifth
-friend, not ordering a fifth beer. When parties band together into guilds,
+friend, not ordering a fifth beer. When crews band together into guilds,
 the league table will rank them on achievements, not on volume.
 
 ### Rest is part of the game
@@ -73,13 +73,13 @@ arrive, they'll celebrate what happened — they will never nudge anyone to drin
 It should feel like the scoreboard at the local on match night. The voice is a football
 commentator crossed with an arcade announcer — loud, affectionate, never violent; there is
 no "kill" language anywhere. Everyone is a bottle cap in their own colour. The milestone
-gauge is a pint that fills toward your party's next rung. The million sits on split-flap
+gauge is a pint that fills toward your crew's next rung. The million sits on split-flap
 scoreboard tiles. A running night carries a broadcast **LIVE** badge with a match clock,
 and the leaderboard is *the table*.
 
 ### One row per beer
 
-Every beer is its own row — who drank it, who tapped it, at which night, in which party.
+Every beer is its own row — who drank it, who tapped it, at which night, in which crew.
 Nothing is a running tally. Totals, streaks, leaderboards and badges are all *derived*, so
 any of them can be recomputed, reshaped or replayed over history later. That's what lets the
 design stay small today without painting it into a corner — guilds included.
@@ -115,7 +115,7 @@ The first start also needs a small `app/.env.local` — one command, in
 Wi-Fi. Emails don't leave your machine: they land in a local inbox at
 http://127.0.0.1:54324.
 
-The local database comes with a demo party, **Onsdagar**, and ten Wednesdays of history.
+The local database comes with a demo crew, **Onsdagar**, and ten Wednesdays of history.
 Sign in with a demo account (logins at the top of [`supabase/seed.sql`](supabase/seed.sql)),
 or create your own account and join with the invite code **`SKAL42`**.
 
@@ -123,10 +123,10 @@ or create your own account and join with the invite code **`SKAL42`**.
 
 **v0 — the version for one group of friends — is live.**
 
-- ✅ Sign-up with email, a magic link or Google; profiles; creating and joining a party
+- ✅ Sign-up with email, a magic link or Google; profiles; creating and joining a crew
 - ✅ The live night: kick-off, `+`, `+ ROUND`, `−`, the designated driver, late arrivals, full time
-- ✅ The global counter, the party's milestone pint, weekly streaks, the table, the nights
-- ✅ Live updates on every phone in the party
+- ✅ The global counter, the crew's milestone pint, weekly streaks, the table, the nights
+- ✅ Live updates on every phone in the crew
 - ✅ Hosted, at [onemillion-gray.vercel.app](https://onemillion-gray.vercel.app)
 - ⏳ **Next:** the game layer — badges, combos and milestone celebrations
 - ⏳ Installing it to the home screen as an app
@@ -137,11 +137,11 @@ or create your own account and join with the invite code **`SKAL42`**.
 
 | Term | Means |
 |---|---|
-| **Party** | Your group of friends. Joined with an invite code. |
-| **Night** | One evening out, inside a party — a *session* in the code. Needs two people before anyone can log. |
+| **Crew** | Your group of friends. Joined with an invite code. |
+| **Night** | One evening out, inside a crew — a *session* in the code. Needs two people before anyone can log. |
 | **Round** | One tap that adds a beer for everyone at the table who isn't driving. |
-| **The ladder** | The milestones every party climbs: 10, 25, 50, 100 … 1.000.000. |
-| **Guild** | Many parties under one banner, like a supporters' club. Later. |
+| **The ladder** | The milestones every crew climbs: 10, 25, 50, 100 … 1.000.000. |
+| **Guild** | Many crews under one banner, like a supporters' club. Later. |
 
 ## The docs
 
