@@ -153,6 +153,7 @@ or create your own account and join with the invite code **`SKAL42`**.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data model, counters, the achievement engine, security |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What v0 includes, and why so little is irreversible |
 | [docs/ACHIEVEMENTS.md](docs/ACHIEVEMENTS.md) | The badge catalogue — football and gaming references |
+| [docs/ACHIEVEMENT-TIERS.md](docs/ACHIEVEMENT-TIERS.md) | Parked: 150 more, split into guild, crew and person, with the badge art |
 | [docs/USER-JOURNEYS.md](docs/USER-JOURNEYS.md) | Journey flowcharts and the story map |
 | [docs/QUESTIONS.md](docs/QUESTIONS.md) | Open questions, and the owner's answers |
 | [docs/history/](docs/history/SESSION-HANDOFF.md) | Notes from the session that designed it |
