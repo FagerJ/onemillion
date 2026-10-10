@@ -34,18 +34,18 @@ begin
   insert into profiles (id, display_name, initials) values (u2, 'Mia',   'M');
   insert into profiles (id, display_name, initials) values (u3, 'Sam',   'S');
 
-  insert into parties (name, created_by) values ('The Thirsty Five', u1)
+  insert into crews (name, created_by) values ('The Thirsty Five', u1)
     returning id into p;
 
   -- invite code generated, 6 chars, from the no-confusables alphabet
-  select count(*) into n from parties
+  select count(*) into n from crews
    where id = p and invite_code ~ '^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$';
   if n <> 1 then raise exception 'TEST FAIL: invite code not generated correctly'; end if;
 
-  insert into party_members (party_id, profile_id, role) values (p, u1, 'captain');
+  insert into crew_members (crew_id, profile_id, role) values (p, u1, 'captain');
 
   -- ── D19 / D30: a beer cannot be logged alone ────────────────
-  insert into sessions (party_id, created_by) values (p, u1) returning id into s;
+  insert into sessions (crew_id, created_by) values (p, u1) returning id into s;
   insert into session_attendees (session_id, profile_id) values (s, u1);
 
   failed := false;
@@ -59,17 +59,17 @@ begin
   end if;
 
   -- ── a second attendee unlocks logging ───────────────────────
-  insert into party_members (party_id, profile_id) values (p, u2);
+  insert into crew_members (crew_id, profile_id) values (p, u2);
   insert into session_attendees (session_id, profile_id) values (s, u2);
 
   insert into beers (session_id, profile_id, added_by) values (s, u1, u1)
     returning id into b;
 
-  -- ── stamping: party_id and guild_id come from the session ───
+  -- ── stamping: crew_id and guild_id come from the session ───
   select count(*) into n from beers
-   where id = b and party_id = p and guild_id is null;
+   where id = b and crew_id = p and guild_id is null;
   if n <> 1 then
-    raise exception 'TEST FAIL: beer was not stamped with its party (guild should be null pre-guild)';
+    raise exception 'TEST FAIL: beer was not stamped with its crew (guild should be null pre-guild)';
   end if;
 
   -- ── D26: anyone at the session can log for anyone ───────────
@@ -78,7 +78,7 @@ begin
   if n <> 2 then raise exception 'TEST FAIL: cross-logging within a session should be allowed'; end if;
 
   -- ── you cannot log for someone who is not at the session ────
-  insert into party_members (party_id, profile_id) values (p, u3);
+  insert into crew_members (crew_id, profile_id) values (p, u3);
   failed := false;
   begin
     insert into beers (session_id, profile_id, added_by) values (s, u3, u1);
@@ -86,7 +86,7 @@ begin
     failed := true;
   end;
   if not failed then
-    raise exception 'TEST FAIL: logged a beer for a party member who never joined the session';
+    raise exception 'TEST FAIL: logged a beer for a crew member who never joined the session';
   end if;
 
   -- ── D28: "−" voids, it does not delete ─────────────────────
@@ -105,10 +105,10 @@ begin
   end;
   if not failed then raise exception 'TEST FAIL: void without voided_by was accepted'; end if;
 
-  -- ── one open session per party ──────────────────────────────
+  -- ── one open session per crew ──────────────────────────────
   failed := false;
   begin
-    insert into sessions (party_id, created_by) values (p, u2);
+    insert into sessions (crew_id, created_by) values (p, u2);
   exception when unique_violation then
     failed := true;
   end;
@@ -136,15 +136,15 @@ begin
   -- closing requires a timestamp
   failed := false;
   begin
-    insert into sessions (party_id, status, created_by) values (p, 'closed', u1);
+    insert into sessions (crew_id, status, created_by) values (p, 'closed', u1);
   exception when check_violation then
     failed := true;
   end;
   if not failed then raise exception 'TEST FAIL: closed session without closed_at was accepted'; end if;
 
   -- ── B4: a departed member cannot join a new session ─────────
-  update party_members set left_at = now() where party_id = p and profile_id = u3;
-  insert into sessions (party_id, created_by) values (p, u1) returning id into s;
+  update crew_members set left_at = now() where crew_id = p and profile_id = u3;
+  insert into sessions (crew_id, created_by) values (p, u1) returning id into s;
   failed := false;
   begin
     insert into session_attendees (session_id, profile_id) values (s, u3);
@@ -154,34 +154,34 @@ begin
   if not failed then raise exception 'TEST FAIL: a member who left was added to a session'; end if;
 
   -- their historical beers survive
-  select count(*) into n from beers where party_id = p;
+  select count(*) into n from beers where crew_id = p;
   if n < 2 then raise exception 'TEST FAIL: history was lost'; end if;
 
-  -- ── B2: party size cap ──────────────────────────────────────
-  update parties set max_members = 3 where id = p;   -- u1, u2 live; u3 left
+  -- ── B2: crew size cap ──────────────────────────────────────
+  update crews set max_members = 3 where id = p;   -- u1, u2 live; u3 left
   insert into auth.users (id) values (gen_random_uuid()) returning id into u3;
   insert into profiles (id, display_name, initials) values (u3, 'Alex', 'A');
-  insert into party_members (party_id, profile_id) values (p, u3);  -- 3rd live member, ok
+  insert into crew_members (crew_id, profile_id) values (p, u3);  -- 3rd live member, ok
 
   insert into auth.users (id) values (gen_random_uuid()) returning id into u3;
   insert into profiles (id, display_name, initials) values (u3, 'Priya', 'P');
   failed := false;
   begin
-    insert into party_members (party_id, profile_id) values (p, u3);
+    insert into crew_members (crew_id, profile_id) values (p, u3);
   exception when check_violation then
     failed := true;
   end;
-  if not failed then raise exception 'TEST FAIL: party cap was not enforced'; end if;
+  if not failed then raise exception 'TEST FAIL: crew cap was not enforced'; end if;
 
   -- rejoining (clearing left_at) respects the cap too
   failed := false;
   begin
-    update party_members set left_at = null
-     where party_id = p and profile_id = (select id from profiles where display_name = 'Sam');
+    update crew_members set left_at = null
+     where crew_id = p and profile_id = (select id from profiles where display_name = 'Sam');
   exception when check_violation then
     failed := true;
   end;
-  if not failed then raise exception 'TEST FAIL: a rejoin went past the party cap'; end if;
+  if not failed then raise exception 'TEST FAIL: a rejoin went past the crew cap'; end if;
 
   -- ── D8: client_uuid makes replay idempotent ─────────────────
   insert into session_attendees (session_id, profile_id) values (s, u1), (s, u2);
@@ -211,19 +211,19 @@ begin
   end;
   if not failed then raise exception 'TEST FAIL: a free-text beer_type was accepted'; end if;
 
-  -- ── D33: parties default to 50 members ──────────────────────
-  insert into parties (name, created_by) values ('Onsdagar', u1) returning id into p;
-  select count(*) into n from parties where id = p and max_members = 50;
-  if n <> 1 then raise exception 'TEST FAIL: party cap does not default to 50'; end if;
+  -- ── D33: crews default to 50 members ──────────────────────
+  insert into crews (name, created_by) values ('Onsdagar', u1) returning id into p;
+  select count(*) into n from crews where id = p and max_members = 50;
+  if n <> 1 then raise exception 'TEST FAIL: crew cap does not default to 50'; end if;
 
   -- ── D32: sessions close at 09:00 the morning after ──────────
-  -- Closed sessions, so they don't collide with the one-open-per-party index.
+  -- Closed sessions, so they don't collide with the one-open-per-crew index.
   -- Dated 2099 so the start stays later than "now": closes_at counts from the
   -- later of the two (D41). 25 October 2099 is when summer time ends.
   update profiles set timezone = 'Europe/London' where id = u2;
 
   -- evening start, creator's timezone inherited from their profile
-  insert into sessions (party_id, status, closed_at, started_at, created_by)
+  insert into sessions (crew_id, status, closed_at, started_at, created_by)
     values (p, 'closed', now(), '2099-10-07 20:00 Europe/London', u2) returning id into s;
   select count(*) into n from sessions
    where id = s and timezone = 'Europe/London'
@@ -231,7 +231,7 @@ begin
   if n <> 1 then raise exception 'TEST FAIL: evening session should close 09:00 next morning, creator tz'; end if;
 
   -- after-midnight start belongs to the night before; an explicit timezone wins
-  insert into sessions (party_id, status, closed_at, started_at, timezone, created_by)
+  insert into sessions (crew_id, status, closed_at, started_at, timezone, created_by)
     values (p, 'closed', now(), '2099-10-08 01:30 Europe/Stockholm', 'Europe/Stockholm', u2)
     returning id into s;
   select count(*) into n from sessions
@@ -240,14 +240,14 @@ begin
   if n <> 1 then raise exception 'TEST FAIL: 01:30 session should close 09:00 the same morning'; end if;
 
   -- breakfast start doesn't close within minutes
-  insert into sessions (party_id, status, closed_at, started_at, created_by)
+  insert into sessions (crew_id, status, closed_at, started_at, created_by)
     values (p, 'closed', now(), '2099-10-08 08:30 Europe/Stockholm', u1) returning id into s;
   select count(*) into n from sessions
    where id = s and closes_at = '2099-10-09 09:00 Europe/Stockholm';
   if n <> 1 then raise exception 'TEST FAIL: 08:30 session should close 09:00 the next day'; end if;
 
   -- across the end of summer time the wall clock still says 09:00
-  insert into sessions (party_id, status, closed_at, started_at, created_by)
+  insert into sessions (crew_id, status, closed_at, started_at, created_by)
     values (p, 'closed', now(), '2099-10-24 22:00 Europe/Stockholm', u1) returning id into s;
   select count(*) into n from sessions
    where id = s and closes_at = '2099-10-25 09:00 Europe/Stockholm'

@@ -10,7 +10,7 @@ declare
   bjorn   uuid := gen_random_uuid();
   cecilia uuid := gen_random_uuid();
   p uuid;                  -- Onsdagar
-  q uuid;                  -- a second party, with a night that isn't due yet
+  q uuid;                  -- a second crew, with a night that isn't due yet
   s uuid;
   s2 uuid;
   qs uuid;
@@ -28,12 +28,12 @@ begin
   insert into auth.users (id) values (anna), (bjorn), (cecilia);
   insert into profiles (id, display_name, initials)
     values (anna, 'Anna', 'A'), (bjorn, 'Björn', 'B'), (cecilia, 'Cecilia', 'C');
-  insert into parties (name, created_by) values ('Onsdagar', anna) returning id into p;
-  insert into party_members (party_id, profile_id, role)
+  insert into crews (name, created_by) values ('Onsdagar', anna) returning id into p;
+  insert into crew_members (crew_id, profile_id, role)
     values (p, anna, 'captain'), (p, bjorn, 'member'), (p, cecilia, 'member');
 
   -- ── past closing time is closed, job or no job ──────────────
-  insert into sessions (party_id, created_by) values (p, anna) returning id into s;
+  insert into sessions (crew_id, created_by) values (p, anna) returning id into s;
   insert into session_attendees (session_id, profile_id) values (s, anna), (s, bjorn);
   insert into beers (session_id, profile_id, added_by) values (s, anna, anna);
   update sessions set closes_at = now() - interval '1 minute' where id = s;   -- 09:00 has been
@@ -55,14 +55,14 @@ begin
   -- ── a new night closes the stale one first ──────────────────
   -- Without this the one-open-session index would refuse the new night until
   -- the job came round.
-  insert into sessions (party_id, created_by) values (p, bjorn) returning id into s2;
+  insert into sessions (crew_id, created_by) values (p, bjorn) returning id into s2;
   select count(*) into n from sessions where id = s and status = 'closed' and closed_at = closes_at;
   if n <> 1 then raise exception 'TEST FAIL: opening a new night did not close the stale one'; end if;
 
   -- ── the job closes what's due, at the time it was due ───────
-  insert into parties (name, created_by) values ('Elsewhere', anna) returning id into q;
-  insert into party_members (party_id, profile_id, role) values (q, anna, 'captain');
-  insert into sessions (party_id, created_by) values (q, anna) returning id into qs;
+  insert into crews (name, created_by) values ('Elsewhere', anna) returning id into q;
+  insert into crew_members (crew_id, profile_id, role) values (q, anna, 'captain');
+  insert into sessions (crew_id, created_by) values (q, anna) returning id into qs;
 
   update sessions set closes_at = now() - interval '3 minutes' where id = s2;
   perform close_stale_sessions();
@@ -80,20 +80,20 @@ begin
   --                         quiet   two attendees, no beers     → kept: who showed up
   --                         busy    two attendees and a beer    → kept
   -- Closed yesterday:       recent  one attendee                → kept until a week old
-  insert into sessions (party_id, created_by) values (p, anna) returning id into lonely;
+  insert into sessions (crew_id, created_by) values (p, anna) returning id into lonely;
   insert into session_attendees (session_id, profile_id) values (lonely, anna);
   update sessions set status = 'closed', closed_at = now() - interval '8 days' where id = lonely;
 
-  insert into sessions (party_id, created_by) values (p, anna) returning id into quiet;
+  insert into sessions (crew_id, created_by) values (p, anna) returning id into quiet;
   insert into session_attendees (session_id, profile_id) values (quiet, anna), (quiet, bjorn);
   update sessions set status = 'closed', closed_at = now() - interval '8 days' where id = quiet;
 
-  insert into sessions (party_id, created_by) values (p, anna) returning id into busy;
+  insert into sessions (crew_id, created_by) values (p, anna) returning id into busy;
   insert into session_attendees (session_id, profile_id) values (busy, anna), (busy, bjorn);
   insert into beers (session_id, profile_id, added_by) values (busy, bjorn, anna);
   update sessions set status = 'closed', closed_at = now() - interval '8 days' where id = busy;
 
-  insert into sessions (party_id, created_by) values (p, anna) returning id into recent;
+  insert into sessions (crew_id, created_by) values (p, anna) returning id into recent;
   insert into session_attendees (session_id, profile_id) values (recent, anna);
   update sessions set status = 'closed', closed_at = now() - interval '1 day' where id = recent;
 
@@ -111,7 +111,7 @@ begin
   perform test_helpers.sign_in(anna);
 
   -- last night, opened this morning: accepted, and still open to log into
-  insert into sessions (party_id, started_at, created_by)
+  insert into sessions (crew_id, started_at, created_by)
     values (p, yesterday_8pm, anna) returning id into s;
   select closes_at into t from sessions where id = s;
   if t <= now() then
@@ -124,7 +124,7 @@ begin
 
   failed := false;
   begin
-    insert into sessions (party_id, started_at, created_by)
+    insert into sessions (crew_id, started_at, created_by)
       values (q, now() - interval '3 days', anna);
   exception when insufficient_privilege then failed := true;
   end;
@@ -132,7 +132,7 @@ begin
 
   failed := false;
   begin
-    insert into sessions (party_id, started_at, created_by)
+    insert into sessions (crew_id, started_at, created_by)
       values (q, now() + interval '1 day', anna);
   exception when insufficient_privilege then failed := true;
   end;

@@ -3,7 +3,7 @@
 -- Loaded by `supabase db reset` after the migrations. Local development only:
 -- `supabase db push` never seeds a hosted project.
 --
--- Eight demo accounts, all in the party "Onsdagar" (invite code SKAL42), with ten
+-- Eight demo accounts, all in the crew "Onsdagar" (invite code SKAL42), with ten
 -- Wednesdays of history so the dashboard, streaks, leaderboard and feed have
 -- something to show. Every demo account signs in with the password  onemillion
 --
@@ -53,11 +53,11 @@ insert into public.profiles (id, display_name, initials, avatar_color, timezone,
 select id, display_name, initials, color, 'Europe/Stockholm', now() - interval '80 days'
 from demo_people;
 
-insert into public.parties (id, name, invite_code, created_by, created_at)
+insert into public.crews (id, name, invite_code, created_by, created_at)
 values ('d0000000-0000-4000-8000-0000000000a1', 'Onsdagar', 'SKAL42',
         'd0000000-0000-4000-8000-000000000001', now() - interval '80 days');
 
-insert into public.party_members (party_id, profile_id, role, joined_at)
+insert into public.crew_members (crew_id, profile_id, role, joined_at)
 select 'd0000000-0000-4000-8000-0000000000a1', id,
        case when ord = 1 then 'captain' else 'member' end,
        now() - interval '80 days'
@@ -83,7 +83,7 @@ begin
   for w in reverse 10..1 loop
     started := ((this_monday - 7 * w + 2) + time '19:00') at time zone tz;
 
-    insert into public.sessions (party_id, started_at, timezone, created_by)
+    insert into public.sessions (crew_id, started_at, timezone, created_by)
     values (onsdagar, started, tz, demo)
     returning id into s;
 

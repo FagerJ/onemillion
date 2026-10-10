@@ -15,11 +15,11 @@ declare
   anna    uuid := gen_random_uuid();   -- founds Onsdagar
   bjorn   uuid := gen_random_uuid();
   cecilia uuid := gen_random_uuid();
-  olle    uuid := gen_random_uuid();   -- outsider: founds another party
-  nils    uuid := gen_random_uuid();   -- joins Olle's party
+  olle    uuid := gen_random_uuid();   -- outsider: founds another crew
+  nils    uuid := gen_random_uuid();   -- joins Olle's crew
   dag     uuid := gen_random_uuid();   -- joins Onsdagar late, stays home
-  onsdagar public.parties;
-  other    public.parties;
+  onsdagar public.crews;
+  other    public.crews;
   s uuid;
   b uuid;
   n int;
@@ -50,58 +50,58 @@ begin
   perform test_helpers.sign_in(dag);
   insert into public.profiles (id, display_name, initials) values (dag, 'Dag', 'D');
 
-  -- ── parties are created and joined through functions ────────
+  -- ── crews are created and joined through functions ────────
   perform test_helpers.sign_in(anna);
-  select * into onsdagar from public.create_party('Onsdagar');
+  select * into onsdagar from public.create_crew('Onsdagar');
 
   perform test_helpers.sign_in(bjorn);
-  perform public.join_party(lower(onsdagar.invite_code));   -- codes are case-insensitive
+  perform public.join_crew(lower(onsdagar.invite_code));   -- codes are case-insensitive
   perform test_helpers.sign_in(cecilia);
-  perform public.join_party(onsdagar.invite_code);
+  perform public.join_crew(onsdagar.invite_code);
 
   perform test_helpers.sign_in(olle);
-  select * into other from public.create_party('Somewhere Else');
+  select * into other from public.create_crew('Somewhere Else');
   perform test_helpers.sign_in(nils);
-  perform public.join_party(other.invite_code);
+  perform public.join_crew(other.invite_code);
 
   failed := false;
   begin
-    insert into public.party_members (party_id, profile_id, role)
+    insert into public.crew_members (crew_id, profile_id, role)
       values (onsdagar.id, nils, 'captain');
   exception when insufficient_privilege then failed := true;
   end;
-  if not failed then raise exception 'TEST FAIL: a client wrote party_members directly'; end if;
+  if not failed then raise exception 'TEST FAIL: a client wrote crew_members directly'; end if;
 
-  -- ── you see your own party, nobody else's ───────────────────
+  -- ── you see your own crew, nobody else's ───────────────────
   perform test_helpers.sign_in(olle);
-  select count(*) into n from public.parties where id = onsdagar.id;
+  select count(*) into n from public.crews where id = onsdagar.id;
   if n <> 0 then raise exception 'TEST FAIL: an outsider can see Onsdagar'; end if;
-  select count(*) into n from public.party_members where party_id = onsdagar.id;
+  select count(*) into n from public.crew_members where crew_id = onsdagar.id;
   if n <> 0 then raise exception 'TEST FAIL: an outsider can see who is in Onsdagar'; end if;
   select count(*) into n from public.profiles where id = anna;
   if n <> 0 then raise exception 'TEST FAIL: an outsider can see Anna''s profile'; end if;
 
   perform test_helpers.sign_in(bjorn);
-  select count(*) into n from public.parties;
-  if n <> 1 then raise exception 'TEST FAIL: Björn should see exactly one party, saw %', n; end if;
-  select count(*) into n from public.party_members where party_id = onsdagar.id;
+  select count(*) into n from public.crews;
+  if n <> 1 then raise exception 'TEST FAIL: Björn should see exactly one crew, saw %', n; end if;
+  select count(*) into n from public.crew_members where crew_id = onsdagar.id;
   if n <> 3 then raise exception 'TEST FAIL: a member should see all 3 members, saw %', n; end if;
   select count(*) into n from public.profiles where id in (anna, bjorn, cecilia);
-  if n <> 3 then raise exception 'TEST FAIL: a member should see party-mates'' profiles, saw %', n; end if;
+  if n <> 3 then raise exception 'TEST FAIL: a member should see crew-mates'' profiles, saw %', n; end if;
 
   -- ── a night out ─────────────────────────────────────────────
   perform test_helpers.sign_in(anna);
-  insert into public.sessions (party_id, created_by) values (onsdagar.id, anna) returning id into s;
+  insert into public.sessions (crew_id, created_by) values (onsdagar.id, anna) returning id into s;
   insert into public.session_attendees (session_id, profile_id) values (s, anna);
   insert into public.session_attendees (session_id, profile_id) values (s, bjorn);
   insert into public.beers (session_id, profile_id, added_by) values (s, bjorn, anna)
     returning id into b;   -- D26: logging for a friend
 
-  -- an outsider can't start a session in someone else's party...
+  -- an outsider can't start a session in someone else's crew...
   perform test_helpers.sign_in(olle);
   failed := false;
   begin
-    insert into public.sessions (party_id, created_by) values (onsdagar.id, olle);
+    insert into public.sessions (crew_id, created_by) values (onsdagar.id, olle);
   exception when insufficient_privilege then failed := true;
   end;
   if not failed then raise exception 'TEST FAIL: an outsider started a session in Onsdagar'; end if;
@@ -127,12 +127,12 @@ begin
   if n <> 0 then raise exception 'TEST FAIL: an outsider can see Onsdagar''s beers'; end if;
 
   perform test_helpers.sign_in(dag);
-  perform public.join_party(onsdagar.invite_code);
+  perform public.join_crew(onsdagar.invite_code);
 
-  -- a party member who isn't at the table can watch the tally, but not log
+  -- a crew member who isn't at the table can watch the tally, but not log
   perform test_helpers.sign_in(cecilia);
   select count(*) into n from public.beers where session_id = s;
-  if n <> 1 then raise exception 'TEST FAIL: a party member should see the live tally'; end if;
+  if n <> 1 then raise exception 'TEST FAIL: a crew member should see the live tally'; end if;
 
   failed := false;
   begin
@@ -152,7 +152,7 @@ begin
     insert into public.session_attendees (session_id, profile_id) values (s, dag);
   exception when insufficient_privilege then failed := true;
   end;
-  if not failed then raise exception 'TEST FAIL: someone not at the session added a party-mate to it'; end if;
+  if not failed then raise exception 'TEST FAIL: someone not at the session added a crew-mate to it'; end if;
 
   -- ...until she checks herself in
   insert into public.session_attendees (session_id, profile_id) values (s, cecilia);
@@ -222,9 +222,9 @@ begin
 
   -- ── captains (B4) ───────────────────────────────────────────
   perform test_helpers.sign_in(bjorn);
-  update public.parties set name = 'Björns gäng' where id = onsdagar.id;
-  select name into t from public.parties where id = onsdagar.id;
-  if t <> 'Onsdagar' then raise exception 'TEST FAIL: a member renamed the party'; end if;
+  update public.crews set name = 'Björns gäng' where id = onsdagar.id;
+  select name into t from public.crews where id = onsdagar.id;
+  if t <> 'Onsdagar' then raise exception 'TEST FAIL: a member renamed the crew'; end if;
 
   failed := false;
   begin
@@ -241,42 +241,42 @@ begin
   if not failed then raise exception 'TEST FAIL: a member removed someone'; end if;
 
   perform test_helpers.sign_in(anna);
-  update public.parties set name = 'Onsdagar FC' where id = onsdagar.id;
-  select name into t from public.parties where id = onsdagar.id;
-  if t <> 'Onsdagar FC' then raise exception 'TEST FAIL: the captain could not rename the party'; end if;
+  update public.crews set name = 'Onsdagar FC' where id = onsdagar.id;
+  select name into t from public.crews where id = onsdagar.id;
+  if t <> 'Onsdagar FC' then raise exception 'TEST FAIL: the captain could not rename the crew'; end if;
 
   failed := false;
   begin
-    update public.parties set max_members = 200 where id = onsdagar.id;
+    update public.crews set max_members = 200 where id = onsdagar.id;
   exception when insufficient_privilege then failed := true;
   end;
-  if not failed then raise exception 'TEST FAIL: the party cap was raised from the app'; end if;
+  if not failed then raise exception 'TEST FAIL: the crew cap was raised from the app'; end if;
 
   perform public.promote_member(onsdagar.id, bjorn);
-  select count(*) into n from public.party_members
-   where party_id = onsdagar.id and profile_id = bjorn and role = 'captain';
+  select count(*) into n from public.crew_members
+   where crew_id = onsdagar.id and profile_id = bjorn and role = 'captain';
   if n <> 1 then raise exception 'TEST FAIL: the captain could not promote a member'; end if;
 
   perform public.remove_member(onsdagar.id, cecilia);
 
-  -- removed: Cecilia loses the party but keeps her own history...
+  -- removed: Cecilia loses the crew but keeps her own history...
   perform test_helpers.sign_in(cecilia);
-  select count(*) into n from public.parties where id = onsdagar.id;
-  if n <> 0 then raise exception 'TEST FAIL: a removed member can still see the party'; end if;
+  select count(*) into n from public.crews where id = onsdagar.id;
+  if n <> 0 then raise exception 'TEST FAIL: a removed member can still see the crew'; end if;
   select count(*) into n from public.beers where profile_id = cecilia;
   if n <> 1 then raise exception 'TEST FAIL: a removed member lost sight of her own beers'; end if;
-  select count(*) into n from public.party_members where profile_id = cecilia and left_at is not null;
+  select count(*) into n from public.crew_members where profile_id = cecilia and left_at is not null;
   if n <> 1 then raise exception 'TEST FAIL: a removed member lost her membership history'; end if;
 
-  -- ...and her name stays in the party's history
+  -- ...and her name stays in the crew's history
   perform test_helpers.sign_in(anna);
   select count(*) into n from public.profiles where id = cecilia;
-  if n <> 1 then raise exception 'TEST FAIL: a departed member vanished from the party''s history'; end if;
+  if n <> 1 then raise exception 'TEST FAIL: a departed member vanished from the crew''s history'; end if;
 
   -- she can rejoin with the code; a new code shuts old invites out
   perform test_helpers.sign_in(cecilia);
-  perform public.join_party(onsdagar.invite_code);
-  select count(*) into n from public.parties where id = onsdagar.id;
+  perform public.join_crew(onsdagar.invite_code);
+  select count(*) into n from public.crews where id = onsdagar.id;
   if n <> 1 then raise exception 'TEST FAIL: a departed member could not rejoin'; end if;
 
   perform test_helpers.sign_in(anna);
@@ -286,17 +286,17 @@ begin
   perform test_helpers.sign_in(nils);
   failed := false;
   begin
-    perform public.join_party(onsdagar.invite_code);
+    perform public.join_crew(onsdagar.invite_code);
   exception when no_data_found then failed := true;
   end;
   if not failed then raise exception 'TEST FAIL: an old invite code still works'; end if;
 
   -- the last captain leaving hands over the armband
   perform test_helpers.sign_in(olle);
-  perform public.leave_party(other.id);
+  perform public.leave_crew(other.id);
   perform test_helpers.sign_in(nils);
-  select count(*) into n from public.party_members
-   where party_id = other.id and profile_id = nils and role = 'captain';
+  select count(*) into n from public.crew_members
+   where crew_id = other.id and profile_id = nils and role = 'captain';
   if n <> 1 then raise exception 'TEST FAIL: nobody became captain when the last one left'; end if;
 
   -- ── closing a session ───────────────────────────────────────
@@ -332,10 +332,10 @@ begin
 
   failed := false;
   begin
-    perform public.join_party(onsdagar.invite_code);
+    perform public.join_crew(onsdagar.invite_code);
   exception when insufficient_privilege then failed := true;
   end;
-  if not failed then raise exception 'TEST FAIL: a signed-out visitor could call join_party'; end if;
+  if not failed then raise exception 'TEST FAIL: a signed-out visitor could call join_crew'; end if;
   reset role;
 
   raise notice 'ALL RLS TESTS PASSED';
