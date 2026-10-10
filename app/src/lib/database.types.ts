@@ -21,14 +21,14 @@ export type Database = {
                   ]
                 },"beers": {
                   Row: {
-                    "abv": number | null,"added_by": string,"beer_type": string | null,"client_uuid": string | null,"created_at": string,"global_seq": number,"guild_id": string | null,"id": string,"is_alcohol_free": boolean,"logged_at": string,"party_id": string,"profile_id": string,"round_id": string | null,"session_id": string,"voided_at": string | null,"voided_by": string | null,"volume_ml": number | null
+                    "abv": number | null,"added_by": string,"beer_type": string | null,"client_uuid": string | null,"created_at": string,"crew_id": string,"global_seq": number,"guild_id": string | null,"id": string,"is_alcohol_free": boolean,"logged_at": string,"profile_id": string,"round_id": string | null,"session_id": string,"voided_at": string | null,"voided_by": string | null,"volume_ml": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "abv"?: number | null,"added_by": string,"beer_type"?: string | null,"client_uuid"?: string | null,"created_at"?: string,"global_seq"?: number,"guild_id"?: string | null,"id"?: string,"is_alcohol_free"?: boolean,"logged_at"?: string,"party_id": string,"profile_id": string,"round_id"?: string | null,"session_id": string,"voided_at"?: string | null,"voided_by"?: string | null,"volume_ml"?: number | null
+                    "abv"?: number | null,"added_by": string,"beer_type"?: string | null,"client_uuid"?: string | null,"created_at"?: string,"crew_id": string,"global_seq"?: number,"guild_id"?: string | null,"id"?: string,"is_alcohol_free"?: boolean,"logged_at"?: string,"profile_id": string,"round_id"?: string | null,"session_id": string,"voided_at"?: string | null,"voided_by"?: string | null,"volume_ml"?: number | null
                   }
                   Update: {
-                    "abv"?: number | null,"added_by"?: string,"beer_type"?: string | null,"client_uuid"?: string | null,"created_at"?: string,"global_seq"?: number,"guild_id"?: string | null,"id"?: string,"is_alcohol_free"?: boolean,"logged_at"?: string,"party_id"?: string,"profile_id"?: string,"round_id"?: string | null,"session_id"?: string,"voided_at"?: string | null,"voided_by"?: string | null,"volume_ml"?: number | null
+                    "abv"?: number | null,"added_by"?: string,"beer_type"?: string | null,"client_uuid"?: string | null,"created_at"?: string,"crew_id"?: string,"global_seq"?: number,"guild_id"?: string | null,"id"?: string,"is_alcohol_free"?: boolean,"logged_at"?: string,"profile_id"?: string,"round_id"?: string | null,"session_id"?: string,"voided_at"?: string | null,"voided_by"?: string | null,"volume_ml"?: number | null
                   }
                   Relationships: [
                     {
@@ -69,6 +69,72 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"crew_members": {
+                  Row: {
+                    "crew_id": string,"joined_at": string,"left_at": string | null,"profile_id": string,"role": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "crew_id": string,"joined_at"?: string,"left_at"?: string | null,"profile_id": string,"role"?: string
+                  }
+                  Update: {
+                    "crew_id"?: string,"joined_at"?: string,"left_at"?: string | null,"profile_id"?: string,"role"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_members_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_members_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crew_stats": {
+                  Row: {
+                    "crew_id": string,"last_logged_at": string | null,"total_beers": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "crew_id": string,"last_logged_at"?: string | null,"total_beers"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "crew_id"?: string,"last_logged_at"?: string | null,"total_beers"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_stats_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: true
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crews": {
+                  Row: {
+                    "accent_color": string,"created_at": string,"created_by": string,"guild_id": string | null,"guild_joined_at": string | null,"id": string,"invite_code": string,"max_members": number,"name": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accent_color"?: string,"created_at"?: string,"created_by": string,"guild_id"?: string | null,"guild_joined_at"?: string | null,"id"?: string,"invite_code"?: string,"max_members"?: number,"name": string
+                  }
+                  Update: {
+                    "accent_color"?: string,"created_at"?: string,"created_by"?: string,"guild_id"?: string | null,"guild_joined_at"?: string | null,"id"?: string,"invite_code"?: string,"max_members"?: number,"name"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crews_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"global_stats": {
                   Row: {
                     "id": number,"total_beers": number,"updated_at": string
@@ -82,72 +148,6 @@ isOneToOne: false
                   }
                   Relationships: [
                     
-                  ]
-                },"parties": {
-                  Row: {
-                    "accent_color": string,"created_at": string,"created_by": string,"guild_id": string | null,"guild_joined_at": string | null,"id": string,"invite_code": string,"max_members": number,"name": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "accent_color"?: string,"created_at"?: string,"created_by": string,"guild_id"?: string | null,"guild_joined_at"?: string | null,"id"?: string,"invite_code"?: string,"max_members"?: number,"name": string
-                  }
-                  Update: {
-                    "accent_color"?: string,"created_at"?: string,"created_by"?: string,"guild_id"?: string | null,"guild_joined_at"?: string | null,"id"?: string,"invite_code"?: string,"max_members"?: number,"name"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "parties_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"party_members": {
-                  Row: {
-                    "joined_at": string,"left_at": string | null,"party_id": string,"profile_id": string,"role": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "joined_at"?: string,"left_at"?: string | null,"party_id": string,"profile_id": string,"role"?: string
-                  }
-                  Update: {
-                    "joined_at"?: string,"left_at"?: string | null,"party_id"?: string,"profile_id"?: string,"role"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "party_members_party_id_fkey"
-      columns: ["party_id"]
-isOneToOne: false
-      referencedRelation: "parties"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "party_members_profile_id_fkey"
-      columns: ["profile_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"party_stats": {
-                  Row: {
-                    "last_logged_at": string | null,"party_id": string,"total_beers": number,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "last_logged_at"?: string | null,"party_id": string,"total_beers"?: number,"updated_at"?: string
-                  }
-                  Update: {
-                    "last_logged_at"?: string | null,"party_id"?: string,"total_beers"?: number,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "party_stats_party_id_fkey"
-      columns: ["party_id"]
-isOneToOne: true
-      referencedRelation: "parties"
-      referencedColumns: ["id"]
-    }
                   ]
                 },"profile_stats": {
                   Row: {
@@ -185,22 +185,22 @@ isOneToOne: true
                   ]
                 },"session_attendees": {
                   Row: {
-                    "in_rounds": boolean,"joined_at": string,"party_id": string,"profile_id": string,"session_id": string
+                    "crew_id": string,"in_rounds": boolean,"joined_at": string,"profile_id": string,"session_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "in_rounds"?: boolean,"joined_at"?: string,"party_id": string,"profile_id": string,"session_id": string
+                    "crew_id": string,"in_rounds"?: boolean,"joined_at"?: string,"profile_id": string,"session_id": string
                   }
                   Update: {
-                    "in_rounds"?: boolean,"joined_at"?: string,"party_id"?: string,"profile_id"?: string,"session_id"?: string
+                    "crew_id"?: string,"in_rounds"?: boolean,"joined_at"?: string,"profile_id"?: string,"session_id"?: string
                   }
                   Relationships: [
                     {
-      foreignKeyName: "session_attendees_party_id_profile_id_fkey"
-      columns: ["party_id","profile_id"]
+      foreignKeyName: "session_attendees_crew_id_profile_id_fkey"
+      columns: ["crew_id","profile_id"]
 isOneToOne: false
-      referencedRelation: "party_members"
-      referencedColumns: ["party_id","profile_id"]
+      referencedRelation: "crew_members"
+      referencedColumns: ["crew_id","profile_id"]
     },{
       foreignKeyName: "session_attendees_profile_id_fkey"
       columns: ["profile_id"]
@@ -217,14 +217,14 @@ isOneToOne: false
                   ]
                 },"sessions": {
                   Row: {
-                    "closed_at": string | null,"closes_at": string,"created_at": string,"created_by": string,"guild_id": string | null,"id": string,"note": string | null,"party_id": string,"started_at": string,"status": string,"timezone": string,"venue_name": string | null
+                    "closed_at": string | null,"closes_at": string,"created_at": string,"created_by": string,"crew_id": string,"guild_id": string | null,"id": string,"note": string | null,"started_at": string,"status": string,"timezone": string,"venue_name": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "closed_at"?: string | null,"closes_at": string,"created_at"?: string,"created_by": string,"guild_id"?: string | null,"id"?: string,"note"?: string | null,"party_id": string,"started_at"?: string,"status"?: string,"timezone": string,"venue_name"?: string | null
+                    "closed_at"?: string | null,"closes_at": string,"created_at"?: string,"created_by": string,"crew_id": string,"guild_id"?: string | null,"id"?: string,"note"?: string | null,"started_at"?: string,"status"?: string,"timezone": string,"venue_name"?: string | null
                   }
                   Update: {
-                    "closed_at"?: string | null,"closes_at"?: string,"created_at"?: string,"created_by"?: string,"guild_id"?: string | null,"id"?: string,"note"?: string | null,"party_id"?: string,"started_at"?: string,"status"?: string,"timezone"?: string,"venue_name"?: string | null
+                    "closed_at"?: string | null,"closes_at"?: string,"created_at"?: string,"created_by"?: string,"crew_id"?: string,"guild_id"?: string | null,"id"?: string,"note"?: string | null,"started_at"?: string,"status"?: string,"timezone"?: string,"venue_name"?: string | null
                   }
                   Relationships: [
                     {
@@ -234,10 +234,10 @@ isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "sessions_party_id_fkey"
-      columns: ["party_id"]
+      foreignKeyName: "sessions_crew_id_fkey"
+      columns: ["crew_id"]
 isOneToOne: false
-      referencedRelation: "parties"
+      referencedRelation: "crews"
       referencedColumns: ["id"]
     }
                   ]
@@ -253,7 +253,7 @@ isOneToOne: false
 "close_stale_sessions":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
-"create_party":
+"create_crew":
 { Args: { "p_name": string }; Returns: {
               "accent_color": string,
 "created_at": string,
@@ -267,23 +267,38 @@ isOneToOne: false
             }
                           SetofOptions: {
         from: "*"
-        to: "parties"
+        to: "crews"
         isOneToOne: true
         isSetofReturn: false
       } },
+"crew_feed":
+{ Args: { "p_before"?: string,"p_crew": string,"p_limit"?: number }; Returns: {
+              "attendees": Json,"closed_at": string,"closes_at": string,"note": string,"session_id": string,"started_at": string,"status": string,"total_beers": number
+            }[]
+                           },
+"crew_leaderboard":
+{ Args: { "p_crew": string }; Returns: {
+              "avatar_color": string,"beers_this_week": number,"display_name": string,"initials": string,"is_current": boolean,"profile_id": string,"total_beers": number
+            }[]
+                           },
+"crew_summary":
+{ Args: { "p_crew": string }; Returns: {
+              "beers_this_week": number,"best_streak_weeks": number,"current_streak_weeks": number,"last_logged_at": string,"total_beers": number
+            }[]
+                           },
 "generate_invite_code":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
-"is_party_captain":
-{ Args: { "p_party": string }; Returns: boolean
+"is_crew_captain":
+{ Args: { "p_crew": string }; Returns: boolean
                            },
-"is_party_member":
-{ Args: { "p_party": string }; Returns: boolean
+"is_crew_member":
+{ Args: { "p_crew": string }; Returns: boolean
                            },
 "is_session_attendee":
 { Args: { "p_session": string }; Returns: boolean
                            },
-"join_party":
+"join_crew":
 { Args: { "p_code": string }; Returns: {
               "accent_color": string,
 "created_at": string,
@@ -297,27 +312,12 @@ isOneToOne: false
             }
                           SetofOptions: {
         from: "*"
-        to: "parties"
+        to: "crews"
         isOneToOne: true
         isSetofReturn: false
       } },
-"leave_party":
-{ Args: { "p_party": string }; Returns: undefined
-                           },
-"party_feed":
-{ Args: { "p_before"?: string,"p_limit"?: number,"p_party": string }; Returns: {
-              "attendees": Json,"closed_at": string,"closes_at": string,"note": string,"session_id": string,"started_at": string,"status": string,"total_beers": number
-            }[]
-                           },
-"party_leaderboard":
-{ Args: { "p_party": string }; Returns: {
-              "avatar_color": string,"beers_this_week": number,"display_name": string,"initials": string,"is_current": boolean,"profile_id": string,"total_beers": number
-            }[]
-                           },
-"party_summary":
-{ Args: { "p_party": string }; Returns: {
-              "beers_this_week": number,"best_streak_weeks": number,"current_streak_weeks": number,"last_logged_at": string,"total_beers": number
-            }[]
+"leave_crew":
+{ Args: { "p_crew": string }; Returns: undefined
                            },
 "profile_summary":
 { Args: { "p_profile": string }; Returns: {
@@ -325,7 +325,7 @@ isOneToOne: false
             }[]
                            },
 "promote_member":
-{ Args: { "p_party": string,"p_profile": string }; Returns: undefined
+{ Args: { "p_crew": string,"p_profile": string }; Returns: undefined
                            },
 "purge_lonely_sessions":
 { Args: Record<PropertyKey, never>; Returns: number
@@ -334,12 +334,12 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "regenerate_invite_code":
-{ Args: { "p_party": string }; Returns: string
+{ Args: { "p_crew": string }; Returns: string
                            },
 "remove_member":
-{ Args: { "p_party": string,"p_profile": string }; Returns: undefined
+{ Args: { "p_crew": string,"p_profile": string }; Returns: undefined
                            },
-"shares_party_with":
+"shares_crew_with":
 { Args: { "p_profile": string }; Returns: boolean
                            },
 "streak_of":

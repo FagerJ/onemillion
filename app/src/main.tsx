@@ -5,16 +5,16 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { AppShell } from '@/components/layout/AppShell'
-import { RedirectIfSignedIn, RequireAuth, RequireParty, RequireProfile } from '@/components/layout/Gates'
+import { RedirectIfSignedIn, RequireAuth, RequireCrew, RequireProfile } from '@/components/layout/Gates'
 import { Toaster } from '@/components/ui/sonner'
 import '@/i18n'
+import { CrewPage } from '@/routes/CrewPage'
 import { Home } from '@/routes/Home'
 import { Me } from '@/routes/Me'
 import { NewPassword } from '@/routes/NewPassword'
 import { Night } from '@/routes/Night'
 import { Nights } from '@/routes/Nights'
-import { PartyPage } from '@/routes/PartyPage'
-import { PartySetup } from '@/routes/setup/PartySetup'
+import { CrewSetup } from '@/routes/setup/CrewSetup'
 import { ProfileSetup } from '@/routes/setup/ProfileSetup'
 import { Welcome } from '@/routes/Welcome'
 import './index.css'
@@ -39,9 +39,9 @@ const router = createBrowserRouter([
       {
         element: <RequireProfile />,
         children: [
-          { path: '/setup/party', element: <PartySetup /> },
+          { path: '/setup/crew', element: <CrewSetup /> },
           {
-            element: <RequireParty />,
+            element: <RequireCrew />,
             children: [
               {
                 path: '/',
@@ -50,7 +50,7 @@ const router = createBrowserRouter([
                   { index: true, element: <Home /> },
                   { path: 'night', element: <Night /> },
                   { path: 'nights', element: <Nights /> },
-                  { path: 'party', element: <PartyPage /> },
+                  { path: 'crew', element: <CrewPage /> },
                   { path: 'me', element: <Me /> },
                 ],
               },

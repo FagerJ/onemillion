@@ -5,15 +5,15 @@ import { Cap } from '@/components/brand/Cap'
 import { LiveBadge, useNow } from '@/components/brand/LiveBadge'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useFeed, useMyParty } from '@/data/queries'
+import { useFeed, useMyCrew } from '@/data/queries'
 import { duration, fmt, nightLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-/** C7: every night the party has had, newest first, the live one on top. */
+/** C7: every night the crew has had, newest first, the live one on top. */
 export function Nights() {
   const { t } = useTranslation()
-  const { data: mine } = useMyParty()
-  const { data: nights, isLoading } = useFeed(mine?.party.id)
+  const { data: mine } = useMyCrew()
+  const { data: nights, isLoading } = useFeed(mine?.crew.id)
   const now = useNow()
 
   return (

@@ -15,7 +15,7 @@ type Row = {
   is_current: boolean
 }
 
-/** The party leaderboard (C6), laid out like a football league table. */
+/** The crew leaderboard (C6), laid out like a football league table. */
 export function LeagueTable({ rows, meId }: { rows: Row[]; meId: string }) {
   const { t } = useTranslation()
   // open on this week once anyone has drunk in it; before that, all time is the story

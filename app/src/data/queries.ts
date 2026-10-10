@@ -5,11 +5,11 @@ import { apiOrigin, publishableKey, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/uuid'
 
 // Every read and write the screens make. Reads go straight at the tables and the
-// read functions; RLS decides what comes back (D39). Party-scoped keys all start
-// with ['party', id] so one realtime event can refresh a whole party at once.
+// read functions; RLS decides what comes back (D39). Crew-scoped keys all start
+// with ['crew', id] so one realtime event can refresh a whole crew at once.
 
 export type Profile = Tables<'profiles'>
-export type Party = Tables<'parties'>
+export type Crew = Tables<'crews'>
 export type Session = Tables<'sessions'>
 
 export type Member = {
@@ -43,7 +43,7 @@ function maybe<R extends Response>(result: R): R['data'] {
   return result.data
 }
 
-// party_id, closes_at and timezone are NOT NULL with no default, so the generated
+// crew_id, closes_at and timezone are NOT NULL with no default, so the generated
 // Insert types demand them — but BEFORE triggers stamp them, and clients aren't even
 // granted those columns (D39). Inserts leave them out; these say so to the compiler.
 type TableName = keyof Database['public']['Tables']
@@ -85,24 +85,24 @@ export function useProfile() {
   })
 }
 
-/** The party you're in. The schema allows several (D17); v0 shows one. */
-export function useMyParty() {
+/** The crew you're in. The schema allows several (D17); v0 shows one. */
+export function useMyCrew() {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['me', user?.id, 'party'],
+    queryKey: ['me', user?.id, 'crew'],
     enabled: !!user,
     queryFn: async () => {
       const row = maybe(
         await supabase
-          .from('party_members')
-          .select('role, party:parties(*)')
+          .from('crew_members')
+          .select('role, crew:crews(*)')
           .eq('profile_id', user!.id)
           .is('left_at', null)
           .order('joined_at')
           .limit(1)
           .maybeSingle(),
       )
-      return row ? { role: row.role, party: row.party as Party } : null
+      return row ? { role: row.role, crew: row.crew as Crew } : null
     },
   })
 }
@@ -124,50 +124,50 @@ export function useSaveProfile() {
   })
 }
 
-// ── parties ───────────────────────────────────────────────────
+// ── crews ───────────────────────────────────────────────────
 
-export function useCreateParty() {
+export function useCreateCrew() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (name: string) => must(await supabase.rpc('create_party', { p_name: name })),
+    mutationFn: async (name: string) => must(await supabase.rpc('create_crew', { p_name: name })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
   })
 }
 
-export function useJoinParty() {
+export function useJoinCrew() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (code: string) => must(await supabase.rpc('join_party', { p_code: code })),
+    mutationFn: async (code: string) => must(await supabase.rpc('join_crew', { p_code: code })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
   })
 }
 
-export function useLeaveParty() {
+export function useLeaveCrew() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (partyId: string) => must(await supabase.rpc('leave_party', { p_party: partyId })),
+    mutationFn: async (crewId: string) => must(await supabase.rpc('leave_crew', { p_crew: crewId })),
     onSuccess: () => queryClient.invalidateQueries(),
   })
 }
 
-export function useRegenerateCode(partyId: string) {
+export function useRegenerateCode(crewId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async () => must(await supabase.rpc('regenerate_invite_code', { p_party: partyId })),
+    mutationFn: async () => must(await supabase.rpc('regenerate_invite_code', { p_crew: crewId })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
   })
 }
 
-export function useMembers(partyId: string | undefined) {
+export function useMembers(crewId: string | undefined) {
   return useQuery({
-    queryKey: ['party', partyId, 'members'],
-    enabled: !!partyId,
+    queryKey: ['crew', crewId, 'members'],
+    enabled: !!crewId,
     queryFn: async () =>
       must(
         await supabase
-          .from('party_members')
+          .from('crew_members')
           .select('role, joined_at, profile:profiles(id, display_name, initials, avatar_color)')
-          .eq('party_id', partyId!)
+          .eq('crew_id', crewId!)
           .is('left_at', null)
           .order('joined_at'),
       ) as Member[],
@@ -183,11 +183,11 @@ export function useGlobalTotal() {
   })
 }
 
-export function usePartySummary(partyId: string | undefined) {
+export function useCrewSummary(crewId: string | undefined) {
   return useQuery({
-    queryKey: ['party', partyId, 'summary'],
-    enabled: !!partyId,
-    queryFn: async () => must(await supabase.rpc('party_summary', { p_party: partyId! }))[0] ?? null,
+    queryKey: ['crew', crewId, 'summary'],
+    enabled: !!crewId,
+    queryFn: async () => must(await supabase.rpc('crew_summary', { p_crew: crewId! }))[0] ?? null,
   })
 }
 
@@ -199,20 +199,20 @@ export function useProfileSummary(profileId: string | undefined) {
   })
 }
 
-export function useLeaderboard(partyId: string | undefined) {
+export function useLeaderboard(crewId: string | undefined) {
   return useQuery({
-    queryKey: ['party', partyId, 'leaderboard'],
-    enabled: !!partyId,
-    queryFn: async () => must(await supabase.rpc('party_leaderboard', { p_party: partyId! })),
+    queryKey: ['crew', crewId, 'leaderboard'],
+    enabled: !!crewId,
+    queryFn: async () => must(await supabase.rpc('crew_leaderboard', { p_crew: crewId! })),
   })
 }
 
-export function useFeed(partyId: string | undefined) {
+export function useFeed(crewId: string | undefined) {
   return useQuery({
-    queryKey: ['party', partyId, 'feed'],
-    enabled: !!partyId,
+    queryKey: ['crew', crewId, 'feed'],
+    enabled: !!crewId,
     queryFn: async () =>
-      must(await supabase.rpc('party_feed', { p_party: partyId!, p_limit: 40 })).map((n) => ({
+      must(await supabase.rpc('crew_feed', { p_crew: crewId!, p_limit: 40 })).map((n) => ({
         ...n,
         closed_at: n.closed_at as string | null,
         attendees: n.attendees as unknown as FeedAttendee[],
@@ -222,17 +222,17 @@ export function useFeed(partyId: string | undefined) {
 
 // ── the night ─────────────────────────────────────────────────
 
-/** The party's open night. One past its closing time counts as over (D41). */
-export function useOpenNight(partyId: string | undefined) {
+/** The crew's open night. One past its closing time counts as over (D41). */
+export function useOpenNight(crewId: string | undefined) {
   return useQuery({
-    queryKey: ['party', partyId, 'open-night'],
-    enabled: !!partyId,
+    queryKey: ['crew', crewId, 'open-night'],
+    enabled: !!crewId,
     queryFn: async () => {
       const night = maybe(
         await supabase
           .from('sessions')
           .select('*')
-          .eq('party_id', partyId!)
+          .eq('crew_id', crewId!)
           .eq('status', 'open')
           .order('started_at', { ascending: false })
           .limit(1)
@@ -274,7 +274,7 @@ export function useLiveBeers(sessionId: string | undefined) {
   })
 }
 
-export function useKickOff(partyId: string) {
+export function useKickOff(crewId: string) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   return useMutation({
@@ -282,7 +282,7 @@ export function useKickOff(partyId: string) {
       const night = must(
         await supabase
           .from('sessions')
-          .insert(stamped<'sessions'>([{ party_id: partyId, created_by: user!.id } satisfies Stamped<'sessions', 'closes_at' | 'timezone'>]))
+          .insert(stamped<'sessions'>([{ crew_id: crewId, created_by: user!.id } satisfies Stamped<'sessions', 'closes_at' | 'timezone'>]))
           .select('id')
           .single(),
       )
@@ -295,7 +295,7 @@ export function useKickOff(partyId: string) {
       )
       return night.id
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['party', partyId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crew', crewId] }),
   })
 }
 
@@ -399,10 +399,10 @@ export function useTakeBack(sessionId: string) {
   })
 }
 
-export function useCloseNight(partyId: string) {
+export function useCloseNight(crewId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (sessionId: string) => must(await supabase.rpc('close_session', { p_session: sessionId })),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['party', partyId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crew', crewId] }),
   })
 }

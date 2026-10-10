@@ -6,14 +6,14 @@ import { Splash } from '@/components/layout/Splash'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useCreateParty, useJoinParty, useMyParty } from '@/data/queries'
+import { useCreateCrew, useJoinCrew, useMyCrew } from '@/data/queries'
 
-export function PartySetup() {
+export function CrewSetup() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { data: mine, isLoading } = useMyParty()
-  const join = useJoinParty()
-  const create = useCreateParty()
+  const { data: mine, isLoading } = useMyCrew()
+  const join = useJoinCrew()
+  const create = useCreateCrew()
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
@@ -89,11 +89,11 @@ export function PartySetup() {
       >
         <h2 className="display text-[26px] text-foam">{t('gate.createTitle')}</h2>
         <div className="grid gap-2">
-          <Label htmlFor="party-name" className="kicker">
+          <Label htmlFor="crew-name" className="kicker">
             {t('gate.createName')}
           </Label>
           <Input
-            id="party-name"
+            id="crew-name"
             maxLength={60}
             value={name}
             placeholder={t('gate.createPlaceholder')}

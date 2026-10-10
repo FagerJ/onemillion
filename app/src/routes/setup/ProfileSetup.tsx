@@ -22,7 +22,7 @@ export function ProfileSetup() {
       <p className="kicker">{t('profile.step')}</p>
       <h1 className="display mt-2 text-[56px] text-foam">{t('profile.title')}</h1>
       <div className="mat mt-6 p-5">
-        <ProfileForm suggestedName={suggestedName} onDone={() => navigate('/setup/party', { replace: true })} />
+        <ProfileForm suggestedName={suggestedName} onDone={() => navigate('/setup/crew', { replace: true })} />
       </div>
     </div>
   )

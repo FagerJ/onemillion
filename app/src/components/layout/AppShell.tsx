@@ -2,15 +2,15 @@ import { CircleUser, House, Plus, ScrollText, Users } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { useMyParty, useOpenNight } from '@/data/queries'
-import { usePartyRealtime } from '@/data/realtime'
+import { useMyCrew, useOpenNight } from '@/data/queries'
+import { useCrewRealtime } from '@/data/realtime'
 import { cn } from '@/lib/utils'
 
 export function AppShell() {
-  const { data: mine } = useMyParty()
-  const partyId = mine?.party.id
-  usePartyRealtime(partyId)
-  const { data: night } = useOpenNight(partyId)
+  const { data: mine } = useMyCrew()
+  const crewId = mine?.crew.id
+  useCrewRealtime(crewId)
+  const { data: night } = useOpenNight(crewId)
   const { pathname } = useLocation()
 
   return (
@@ -34,7 +34,7 @@ function Dock({ live }: { live: boolean }) {
     { to: '/', icon: House, label: t('nav.home') },
     { to: '/nights', icon: ScrollText, label: t('nav.nights') },
     null,
-    { to: '/party', icon: Users, label: t('nav.party') },
+    { to: '/crew', icon: Users, label: t('nav.crew') },
     { to: '/me', icon: CircleUser, label: t('nav.me') },
   ]
   return (

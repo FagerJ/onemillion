@@ -4,17 +4,17 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/auth/AuthProvider'
 import { Cap } from '@/components/brand/Cap'
 import { CountUp } from '@/components/brand/CountUp'
+import { CrewHero } from '@/components/home/CrewHero'
 import { LeagueTable } from '@/components/home/LeagueTable'
 import { MillionBoard } from '@/components/home/MillionBoard'
-import { PartyHero } from '@/components/home/PartyHero'
 import { TonightCard } from '@/components/home/TonightCard'
 import {
   useGlobalTotal,
   useLeaderboard,
   useMembers,
-  useMyParty,
+  useMyCrew,
   useOpenNight,
-  usePartySummary,
+  useCrewSummary,
   useProfile,
   useProfileSummary,
 } from '@/data/queries'
@@ -28,22 +28,22 @@ const rise = (i: number) => ({
 export function Home() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { data: mine } = useMyParty()
-  const party = mine!.party
+  const { data: mine } = useMyCrew()
+  const crew = mine!.crew
   const { data: profile } = useProfile()
-  const { data: members = [] } = useMembers(party.id)
-  const { data: summary } = usePartySummary(party.id)
+  const { data: members = [] } = useMembers(crew.id)
+  const { data: summary } = useCrewSummary(crew.id)
   const { data: personal } = useProfileSummary(user?.id)
   const { data: global = 0 } = useGlobalTotal()
-  const { data: night } = useOpenNight(party.id)
-  const { data: board } = useLeaderboard(party.id)
+  const { data: night } = useOpenNight(crew.id)
+  const { data: board } = useLeaderboard(crew.id)
 
   return (
     <div className="flex flex-col gap-4">
       <motion.header {...rise(0)} className="mb-1 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="kicker">{t('home.members', { count: members.length })}</p>
-          <h1 className="display mt-1.5 truncate text-[clamp(40px,12vw,52px)] text-foam">{party.name}</h1>
+          <h1 className="display mt-1.5 truncate text-[clamp(40px,12vw,52px)] text-foam">{crew.name}</h1>
         </div>
         {profile && (
           <Link to="/me" aria-label={t('nav.me')} className="mb-1 transition-transform active:scale-90">
@@ -57,7 +57,7 @@ export function Home() {
       </motion.div>
 
       <motion.div {...rise(2)}>
-        <PartyHero total={summary?.total_beers ?? 0} />
+        <CrewHero total={summary?.total_beers ?? 0} />
       </motion.div>
 
       <motion.div {...rise(3)} className="grid grid-cols-3 gap-3">

@@ -16,7 +16,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ session: data.session, user: data.session?.user ?? null, loading: false })
     })
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      // Someone else's cached party must never flash up after a sign-out.
+      // Someone else's cached crew must never flash up after a sign-out.
       if (event === 'SIGNED_OUT') queryClient.clear()
       setState({ session, user: session?.user ?? null, loading: false })
     })

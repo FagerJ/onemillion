@@ -36,7 +36,7 @@ import {
   useLiveBeers,
   useLogBeers,
   useMembers,
-  useMyParty,
+  useMyCrew,
   useOpenNight,
   useSetInRounds,
   useTakeBack,
@@ -48,20 +48,20 @@ import { buzz } from '@/lib/haptics'
 import { cn } from '@/lib/utils'
 
 export function Night() {
-  const { data: mine } = useMyParty()
-  const party = mine!.party
-  const { data: night, isLoading } = useOpenNight(party.id)
+  const { data: mine } = useMyCrew()
+  const crew = mine!.crew
+  const { data: night, isLoading } = useOpenNight(crew.id)
   if (isLoading) return <Skeleton className="h-[70dvh] rounded-[28px]" />
-  return night ? <LiveNight night={night} partyId={party.id} /> : <KickOff partyId={party.id} />
+  return night ? <LiveNight night={night} crewId={crew.id} /> : <KickOff crewId={crew.id} />
 }
 
 // ── before the night: who's at the table ──────────────────────
 
-function KickOff({ partyId }: { partyId: string }) {
+function KickOff({ crewId }: { crewId: string }) {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { data: members = [] } = useMembers(partyId)
-  const kickOff = useKickOff(partyId)
+  const { data: members = [] } = useMembers(crewId)
+  const kickOff = useKickOff(crewId)
   const [picked, setPicked] = useState<Set<string>>(() => new Set([user!.id]))
 
   const toggle = (id: string) => {
@@ -128,7 +128,7 @@ function KickOff({ partyId }: { partyId: string }) {
 
 // ── the night itself ──────────────────────────────────────────
 
-function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
+function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { data: attendees = [] } = useAttendees(night.id)
@@ -147,7 +147,7 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
   const inRounds = attendees.filter((a) => a.in_rounds)
   const alone = attendees.length < 2
   // Only people at the table may log (D39). Someone else may have started the night,
-  // so a party member who isn't here yet watches until they check in.
+  // so a crew member who isn't here yet watches until they check in.
   const here = attendees.some((a) => a.profile_id === user!.id)
   const refused = (e: unknown) => (e as { code?: string } | null)?.code === '42501'
   const failed = (e: unknown) => toast.error(t(refused(e) ? 'night.notAtTable' : 'night.failed'))
@@ -173,7 +173,7 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
     <div className="pb-32">
       <div className="flex items-center justify-between">
         <LiveBadge startedAt={night.started_at} />
-        {here && <FullTime partyId={partyId} sessionId={night.id} />}
+        {here && <FullTime crewId={crewId} sessionId={night.id} />}
       </div>
 
       <section className="relative mt-5 text-center">
@@ -215,7 +215,7 @@ function LiveNight({ night, partyId }: { night: Session; partyId: string }) {
 
       {here && (
         <div className="mt-4 flex justify-center">
-          <AddSomeone partyId={partyId} sessionId={night.id} present={attendees} />
+          <AddSomeone crewId={crewId} sessionId={night.id} present={attendees} />
         </div>
       )}
 
@@ -384,9 +384,9 @@ function Spray() {
   )
 }
 
-function AddSomeone({ partyId, sessionId, present }: { partyId: string; sessionId: string; present: Attendee[] }) {
+function AddSomeone({ crewId, sessionId, present }: { crewId: string; sessionId: string; present: Attendee[] }) {
   const { t } = useTranslation()
-  const { data: members = [] } = useMembers(partyId)
+  const { data: members = [] } = useMembers(crewId)
   const add = useAddAttendees(sessionId)
   const [open, setOpen] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -453,9 +453,9 @@ function AddSomeone({ partyId, sessionId, present }: { partyId: string; sessionI
   )
 }
 
-function FullTime({ partyId, sessionId }: { partyId: string; sessionId: string }) {
+function FullTime({ crewId, sessionId }: { crewId: string; sessionId: string }) {
   const { t } = useTranslation()
-  const close = useCloseNight(partyId)
+  const close = useCloseNight(crewId)
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>

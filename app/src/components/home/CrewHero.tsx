@@ -6,8 +6,8 @@ import { fmt } from '@/lib/format'
 import { LADDER, rungFor } from '@/lib/milestones'
 import { cn } from '@/lib/utils'
 
-/** The party's total, the pint filling toward the next rung, and the ladder around it. */
-export function PartyHero({ total }: { total: number }) {
+/** The crew's total, the pint filling toward the next rung, and the ladder around it. */
+export function CrewHero({ total }: { total: number }) {
   const { t } = useTranslation()
   const rung = rungFor(total)
   const i = LADDER.indexOf(rung.next as (typeof LADDER)[number])
@@ -25,7 +25,7 @@ export function PartyHero({ total }: { total: number }) {
         />
         <div className="min-w-0 pb-2">
           <CountUp value={total} className="display block text-[clamp(56px,17vw,76px)] text-foam tabular" />
-          <p className="kicker mt-1.5">{t('home.asAParty')}</p>
+          <p className="kicker mt-1.5">{t('home.asACrew')}</p>
 
           <div className="mt-5 border-t border-foam/8 pt-4">
             <p className="kicker text-gold/70">{t('home.nextRung')}</p>

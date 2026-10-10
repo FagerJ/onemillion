@@ -1,9 +1,9 @@
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
-import { useMyParty, useProfile } from '@/data/queries'
+import { useMyCrew, useProfile } from '@/data/queries'
 import { Splash } from './Splash'
 
-// The way in: signed in → has a profile → is in a party → the app. Each gate sends
+// The way in: signed in → has a profile → is in a crew → the app. Each gate sends
 // you to the step you're missing.
 
 export function RequireAuth() {
@@ -20,10 +20,10 @@ export function RequireProfile() {
   return <Outlet />
 }
 
-export function RequireParty() {
-  const { data: mine, isLoading } = useMyParty()
+export function RequireCrew() {
+  const { data: mine, isLoading } = useMyCrew()
   if (isLoading) return <Splash />
-  if (!mine) return <Navigate to="/setup/party" replace />
+  if (!mine) return <Navigate to="/setup/crew" replace />
   return <Outlet />
 }
 
