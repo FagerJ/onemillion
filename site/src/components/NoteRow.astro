@@ -1,0 +1,60 @@
+---
+import type { CollectionEntry } from 'astro:content'
+import { formatDate } from '../site'
+
+interface Props {
+  entry: CollectionEntry<'notes'>
+}
+
+const { entry } = Astro.props
+const { title, summary, date } = entry.data
+---
+
+<li class="note">
+  <time datetime={date.toISOString().slice(0, 10)}>{formatDate(date)}</time>
+  <div>
+    <a class="title" href={`/notes/${entry.id}/`}>{title}</a>
+    <p>{summary}</p>
+  </div>
+</li>
+
+<style>
+  .note {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 6px 20px;
+    padding: 22px 0;
+    border-top: 1px solid var(--line);
+  }
+  time {
+    padding-top: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    line-height: 1;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--foam);
+  }
+  .title:hover {
+    color: var(--gold);
+  }
+  p {
+    margin: 8px 0 0;
+    color: var(--muted);
+  }
+  @media (max-width: 560px) {
+    .note {
+      grid-template-columns: 1fr;
+    }
+    time {
+      padding-top: 0;
+    }
+  }
+</style>

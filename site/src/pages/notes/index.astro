@@ -1,0 +1,26 @@
+---
+import { getCollection } from 'astro:content'
+import NoteRow from '../../components/NoteRow.astro'
+import Base from '../../layouts/Base.astro'
+import { byDate } from '../../site'
+
+const notes = byDate(await getCollection('notes'))
+---
+
+<Base title="Release notes" description="Everything that changed in One Million Beers, newest first.">
+  <header class="post-head">
+    <p class="kicker">Newest first</p>
+    <h1 class="display">Release notes</h1>
+  </header>
+  <ol class="notes">
+    {notes.map((n) => <NoteRow entry={n} />)}
+  </ol>
+</Base>
+
+<style>
+  .notes {
+    margin: 36px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+</style>

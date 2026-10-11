@@ -1,0 +1,51 @@
+---
+import '@fontsource/anton'
+import '@fontsource-variable/space-grotesk'
+import '../styles/global.css'
+import { APP_URL, REPO_URL } from '../site'
+
+interface Props {
+  title?: string
+  description?: string
+}
+
+const {
+  title,
+  description = 'What changed in One Million Beers, and what the crew is deciding next.',
+} = Astro.props
+const fullTitle = title ? `${title} · One Million Beers` : 'One Million Beers · News'
+const section = Astro.url.pathname.split('/')[1]
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0905" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+  </head>
+  <body>
+    <header class="top">
+      <a href="/" class="wordmark" aria-label="One Million Beers — news home">
+        One <span>Million</span> Beers
+        <small>News</small>
+      </a>
+      <nav>
+        <a href="/notes/" aria-current={section === 'notes' ? 'page' : undefined}>Release notes</a>
+        <a href="/questions/" aria-current={section === 'questions' ? 'page' : undefined}>Questions</a>
+        <a class="to-app" href={APP_URL}>Open the app</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <p>Nobody drinks alone.</p>
+      <p><a href={APP_URL}>The app</a> · <a href={REPO_URL}>The code</a></p>
+    </footer>
+  </body>
+</html>

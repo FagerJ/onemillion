@@ -1,0 +1,33 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content'
+import Base from '../../layouts/Base.astro'
+import { formatDate } from '../../site'
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes')
+  return notes.map((entry) => ({ params: { id: entry.id }, props: { entry } }))
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'notes'> }
+const { title, summary, date } = entry.data
+const { Content } = await render(entry)
+---
+
+<Base title={title} description={summary}>
+  <article>
+    <header class="post-head">
+      <p class="kicker">Release notes</p>
+      <h1 class="display">{title}</h1>
+      <div class="meta"><time datetime={date.toISOString().slice(0, 10)}>{formatDate(date)}</time></div>
+    </header>
+    <div class="prose"><Content /></div>
+  </article>
+  <p class="back"><a href="/notes/">← All release notes</a></p>
+</Base>
+
+<style>
+  .back {
+    margin-top: 48px;
+    font-weight: 600;
+  }
+</style>

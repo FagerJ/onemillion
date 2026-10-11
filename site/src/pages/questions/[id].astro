@@ -1,0 +1,64 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content'
+import Base from '../../layouts/Base.astro'
+import { formatDate } from '../../site'
+
+export async function getStaticPaths() {
+  const questions = await getCollection('questions')
+  return questions.map((entry) => ({ params: { id: entry.id }, props: { entry } }))
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'questions'> }
+const { title, summary, date, status, answer } = entry.data
+const { Content } = await render(entry)
+---
+
+<Base title={title} description={summary}>
+  <article>
+    <header class="post-head">
+      <p class="kicker">Question for the crew</p>
+      <h1 class="display">{title}</h1>
+      <div class="meta">
+        <span class={`chip ${status}`}>{status === 'open' ? 'Open' : 'Decided'}</span>
+        <time datetime={date.toISOString().slice(0, 10)}>Asked {formatDate(date)}</time>
+      </div>
+    </header>
+    <div class="prose"><Content /></div>
+  </article>
+
+  {
+    status === 'open' && (
+      <aside class="mat say">
+        <h2 class="display">Have your say</h2>
+        {answer ? (
+          <a class="button" href={answer.url}>
+            {answer.label}
+          </a>
+        ) : (
+          <p>Tell the crew: in the group chat, or at the next night.</p>
+        )}
+      </aside>
+    )
+  }
+
+  <p class="back"><a href="/questions/">← All questions</a></p>
+</Base>
+
+<style>
+  .say {
+    margin-top: 48px;
+    padding: 26px 24px;
+  }
+  .say h2 {
+    margin-bottom: 18px;
+    font-size: 32px;
+  }
+  .say p {
+    margin: 0;
+    color: var(--muted);
+  }
+  .back {
+    margin-top: 40px;
+    font-weight: 600;
+  }
+</style>

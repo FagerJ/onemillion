@@ -1,0 +1,28 @@
+---
+import { getCollection } from 'astro:content'
+import QuestionCard from '../../components/QuestionCard.astro'
+import Base from '../../layouts/Base.astro'
+import { byDate } from '../../site'
+
+// open questions first, then the decided ones as a record
+const questions = byDate(await getCollection('questions'))
+const ordered = [...questions.filter((q) => q.data.status === 'open'), ...questions.filter((q) => q.data.status !== 'open')]
+---
+
+<Base title="Questions" description="What the crew is deciding next, and what's been decided.">
+  <header class="post-head">
+    <p class="kicker">Have your say</p>
+    <h1 class="display">Questions</h1>
+  </header>
+  <div class="cards">
+    {ordered.map((q) => <QuestionCard entry={q} />)}
+  </div>
+</Base>
+
+<style>
+  .cards {
+    display: grid;
+    gap: 14px;
+    margin-top: 36px;
+  }
+</style>

@@ -1,0 +1,433 @@
+/* The app's design language (D42), for a page you read rather than tap: stout black
+   and gold, Anton for headlines, Space Grotesk for the rest, dark only. Tokens match
+   app/src/index.css. */
+
+:root {
+  --cellar: #0d0905;
+  --stout: #161009;
+  --cask: #1d160d;
+  --oak: #2a1f13;
+  --gold: #f5b23a;
+  --gold-deep: #c6821a;
+  --fire: #ff5b35;
+  --hop: #8bd450;
+  --foam: #fbf4e4;
+  --muted: rgb(251 244 228 / 0.62);
+  --faint: rgb(251 244 228 / 0.4);
+  --line: rgb(245 178 58 / 0.14);
+  --font-sans: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Anton', 'Space Grotesk Variable', sans-serif;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--cellar);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--foam);
+  font: 400 17px/1.6 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* the pub lamp: a warm pool of light from above, falling off into the cellar */
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgb(245 178 58 / 0.13), transparent 60%),
+    radial-gradient(90% 50% at 50% 115%, rgb(255 91 53 / 0.06), transparent 70%),
+    var(--cellar);
+  background-attachment: fixed;
+}
+
+/* film grain, so flat colour reads as a material */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+::selection {
+  background: rgb(245 178 58 / 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid rgb(245 178 58 / 0.6);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+a {
+  color: var(--gold);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: #ffc95f;
+}
+
+main,
+.top,
+footer {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+
+/* ── type ──────────────────────────────────────────────────── */
+
+.display {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+}
+
+.gold {
+  color: var(--gold);
+  text-shadow: 0 0 42px rgb(245 178 58 / 0.35);
+}
+
+.kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.lead {
+  margin: 18px 0 0;
+  max-width: 34em;
+  font-size: 19px;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* ── header and footer ─────────────────────────────────────── */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  padding-top: max(22px, env(safe-area-inset-top));
+  padding-bottom: 22px;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--foam);
+  white-space: nowrap;
+}
+
+.wordmark span {
+  color: var(--gold);
+}
+
+.wordmark small {
+  margin-left: 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--faint);
+  vertical-align: 4px;
+}
+
+.top nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.top nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.top nav a:hover,
+.top nav a[aria-current='page'] {
+  color: var(--foam);
+}
+
+.top nav a[aria-current='page'] {
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+}
+
+.top nav .to-app {
+  color: var(--gold);
+}
+
+footer {
+  margin-top: 80px;
+  padding-top: 28px;
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--faint);
+}
+
+footer p {
+  margin: 0 0 6px;
+}
+
+footer p:first-child {
+  font-family: var(--font-display);
+  font-size: 18px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── building blocks ───────────────────────────────────────── */
+
+/* the beer mat: every card */
+.mat {
+  display: block;
+  border: 1px solid rgb(245 178 58 / 0.12);
+  border-radius: 22px;
+  background: var(--cask);
+  box-shadow:
+    inset 0 1px 0 rgb(251 244 228 / 0.05),
+    0 20px 40px -24px rgb(0 0 0 / 0.8);
+}
+
+a.mat {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease;
+}
+
+a.mat:hover {
+  border-color: rgb(245 178 58 / 0.4);
+  transform: translateY(-2px);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 26px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--stout);
+  text-decoration: none;
+  background: linear-gradient(180deg, #ffc95f 0%, #f5b23a 45%, #e09b25 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset 0 -2px 0 rgb(0 0 0 / 0.18),
+    0 10px 24px -10px rgb(245 178 58 / 0.65);
+}
+
+.button:hover {
+  color: var(--stout);
+  filter: brightness(1.05);
+}
+
+.chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.chip.open {
+  color: var(--fire);
+  background: rgb(255 91 53 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(255 91 53 / 0.3);
+}
+
+.chip.decided {
+  color: var(--hop);
+  background: rgb(139 212 80 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(139 212 80 / 0.3);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 64px 0 18px;
+}
+
+.section-head h2 {
+  font-size: 34px;
+}
+
+.section-head a {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── a post: Markdown rendered into the page ───────────────── */
+
+.post-head {
+  margin: 28px 0 8px;
+}
+
+.post-head h1 {
+  margin-top: 12px;
+  font-size: clamp(44px, 11vw, 72px);
+}
+
+.post-head .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 18px;
+  font-size: 14px;
+  color: var(--faint);
+}
+
+.prose {
+  margin-top: 36px;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h2 {
+  margin: 48px 0 12px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.prose h3 {
+  margin: 32px 0 10px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 0 0 16px;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.3em;
+}
+
+.prose li {
+  margin-bottom: 6px;
+}
+
+.prose li::marker {
+  color: var(--gold);
+}
+
+.prose strong {
+  color: #fff;
+}
+
+.prose code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  background: rgb(251 244 228 / 0.08);
+}
+
+.prose hr {
+  margin: 40px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.prose blockquote {
+  margin: 0 0 16px;
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--gold);
+  color: var(--muted);
+}
+
+/* Tables scroll sideways on a phone instead of squashing their columns. */
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 8px 0 20px;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.prose th,
+.prose td {
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.prose th:first-child,
+.prose td:first-child {
+  padding-left: 0;
+}
+
+.prose th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.prose td:first-child {
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.mat {
+    transition: none;
+  }
+  a.mat:hover {
+    transform: none;
+  }
+}

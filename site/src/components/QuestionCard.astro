@@ -1,0 +1,52 @@
+---
+import type { CollectionEntry } from 'astro:content'
+import { formatDate } from '../site'
+
+interface Props {
+  entry: CollectionEntry<'questions'>
+}
+
+const { entry } = Astro.props
+const { title, summary, status, date } = entry.data
+---
+
+<a class="mat card" href={`/questions/${entry.id}/`}>
+  <div class="row">
+    <span class={`chip ${status}`}>{status === 'open' ? 'Open' : 'Decided'}</span>
+    <time datetime={date.toISOString().slice(0, 10)}>{formatDate(date)}</time>
+  </div>
+  <h3 class="display">{title}</h3>
+  <p>{summary}</p>
+  <span class="go">{status === 'open' ? 'Read and have your say →' : 'Read →'}</span>
+</a>
+
+<style>
+  .card {
+    padding: 22px 22px 20px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  time {
+    font-size: 13px;
+    color: var(--faint);
+  }
+  h3 {
+    margin-top: 16px;
+    font-size: clamp(28px, 7vw, 36px);
+  }
+  p {
+    margin: 10px 0 0;
+    color: var(--muted);
+  }
+  .go {
+    display: inline-block;
+    margin-top: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+</style>
