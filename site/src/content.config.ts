@@ -23,8 +23,16 @@ const questions = defineCollection({
     summary: z.string(),
     // decided questions stay up, marked, with the answer written into the post
     status: z.enum(['open', 'decided']).default('open'),
-    // where people answer; without it the page says to tell the crew
+    // where people answer; without it (or a poll) the page says to tell the crew
     answer: z.object({ label: z.string(), url: z.url() }).optional(),
+    // a poll on the page (D47): `id` and every option `key` must match a row in the
+    // database's `polls` table, which a migration adds
+    poll: z
+      .object({
+        id: z.string(),
+        options: z.array(z.object({ key: z.string(), label: z.string(), hint: z.string().optional() })).min(2),
+      })
+      .optional(),
   }),
 })
 

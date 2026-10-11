@@ -1,0 +1,414 @@
+---
+// A poll on a question page (D47). The votes live in Supabase, behind two functions a
+// signed-out visitor may call: cast_vote() and poll_results(). The page is static; the
+// small script below does the voting and draws the results.
+
+interface Props {
+  id: string
+  options: { key: string; label: string; hint?: string }[]
+}
+
+const { id, options } = Astro.props
+const api = import.meta.env.PUBLIC_SUPABASE_URL
+const key = import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+// A build without these would ship a poll that can't vote, so refuse to build at all.
+if (import.meta.env.PROD && (!api || !key)) {
+  throw new Error('Polls need PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_PUBLISHABLE_KEY. See site/CLAUDE.md.')
+}
+---
+
+{
+  api && key ? (
+    <div class="poll" data-poll={id} data-api={api} data-key={key} data-options={JSON.stringify(options)}>
+      <form class="vote">
+        <fieldset>
+          <legend class="kicker">Your pick</legend>
+          {options.map((o) => (
+            <label class="option">
+              <input type="radio" name="choice" value={o.key} required />
+              <span class="option-body">
+                <span class="option-label">{o.label}</span>
+                {o.hint && <span class="option-hint">{o.hint}</span>}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <label class="field">
+          <span class="kicker">Your name</span>
+          <input name="name" maxlength="30" required autocomplete="given-name" />
+        </label>
+        <label class="field">
+          <span class="kicker">Why? (if you like)</span>
+          <textarea name="comment" maxlength="280" rows="3" />
+        </label>
+        <button class="button" type="submit">Cast my vote</button>
+        <p class="poll-status" role="status" aria-live="polite" />
+      </form>
+
+      <div class="results" aria-live="polite">
+        <div class="results-head">
+          <h3 class="display">The table so far</h3>
+          <span class="results-total" />
+        </div>
+        <ol class="bars" />
+        <div class="said" hidden>
+          <h3 class="display">What people said</h3>
+          <ul />
+        </div>
+      </div>
+    </div>
+  ) : (
+    <p class="poll-off">
+      The poll isn't connected here. Running locally? Point site/.env.local at the local Supabase stack.
+    </p>
+  )
+}
+
+<script>
+  type Option = { key: string; label: string }
+  type Vote = { choice: string; name: string; comment: string | null; voted_at: string }
+  type Saved = { choice: string; name: string; comment: string }
+
+  // localStorage can be missing or blocked (private windows); voting still works, it
+  // just won't remember you.
+  const store = {
+    get(k: string): string | null {
+      try {
+        return localStorage.getItem(k)
+      } catch {
+        return null
+      }
+    },
+    set(k: string, v: string) {
+      try {
+        localStorage.setItem(k, v)
+      } catch {
+        /* not remembered */
+      }
+    },
+  }
+
+  function newId(): string {
+    if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+    const b = crypto.getRandomValues(new Uint8Array(16))
+    b[6] = (b[6] & 0x0f) | 0x40
+    b[8] = (b[8] & 0x3f) | 0x80
+    const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+  }
+
+  // One id per browser, shared by every poll: it's what lets you change your vote.
+  let voter = store.get('omb-voter')
+  if (!voter) {
+    voter = newId()
+    store.set('omb-voter', voter)
+  }
+
+  function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string) {
+    const node = document.createElement(tag)
+    if (className) node.className = className
+    if (text !== undefined) node.textContent = text
+    return node
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-poll]')) {
+    const poll = root.dataset.poll!
+    const api = root.dataset.api!
+    const key = root.dataset.key!
+    const options: Option[] = JSON.parse(root.dataset.options!)
+    const labelOf = new Map(options.map((o) => [o.key, o.label]))
+
+    const form = root.querySelector('form')!
+    const button = form.querySelector('button')!
+    const status = root.querySelector<HTMLElement>('.poll-status')!
+    const total = root.querySelector<HTMLElement>('.results-total')!
+    const bars = root.querySelector<HTMLElement>('.bars')!
+    const said = root.querySelector<HTMLElement>('.said')!
+    const saidList = said.querySelector('ul')!
+
+    async function rpc(fn: string, body: object) {
+      const res = await fetch(`${api}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: { apikey: key, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => null)
+        throw new Error(error?.message ?? res.statusText)
+      }
+      return res.status === 204 ? null : res.json()
+    }
+
+    function showSaved(saved: Saved) {
+      const radio = form.querySelector<HTMLInputElement>(`input[value="${CSS.escape(saved.choice)}"]`)
+      if (radio) radio.checked = true
+      const comment = form.elements.namedItem('comment') as HTMLTextAreaElement | null
+      if (comment) comment.value = saved.comment
+      button.textContent = 'Change my vote'
+      status.textContent = `You voted for ${labelOf.get(saved.choice) ?? saved.choice}. Change it any time.`
+    }
+
+    function render(votes: Vote[]) {
+      const counts = new Map(options.map((o) => [o.key, 0]))
+      for (const v of votes) counts.set(v.choice, (counts.get(v.choice) ?? 0) + 1)
+      const rows = options
+        .map((o, i) => ({ ...o, i, n: counts.get(o.key) ?? 0 }))
+        .sort((a, b) => b.n - a.n || a.i - b.i)
+      const top = rows[0]?.n ?? 0
+
+      total.textContent = votes.length === 1 ? '1 vote' : `${votes.length} votes`
+      bars.replaceChildren(
+        ...rows.map((r) => {
+          const li = el('li', r.n > 0 && r.n === top ? 'bar lead' : 'bar')
+          const head = el('div', 'bar-head')
+          head.append(el('span', 'bar-label', r.label), el('span', 'bar-count', String(r.n)))
+          const track = el('div', 'bar-track')
+          const fill = el('div', 'bar-fill')
+          fill.style.width = top ? `${(r.n / top) * 100}%` : '0%'
+          track.append(fill)
+          li.append(head, track)
+          return li
+        }),
+      )
+
+      const withWords = votes.filter((v) => v.comment)
+      said.hidden = withWords.length === 0
+      saidList.replaceChildren(
+        ...withWords.map((v) => {
+          const li = el('li')
+          const who = el('p', 'said-who')
+          who.append(el('strong', undefined, v.name), document.createTextNode(` · ${labelOf.get(v.choice) ?? v.choice}`))
+          li.append(who, el('p', 'said-text', v.comment!))
+          return li
+        }),
+      )
+    }
+
+    async function refresh() {
+      try {
+        render(await rpc('poll_results', { p_poll: poll }))
+      } catch {
+        total.textContent = "Couldn't load the results. Try again in a bit."
+      }
+    }
+
+    const nameField = form.elements.namedItem('name') as HTMLInputElement
+    nameField.value = store.get('omb-name') ?? ''
+    const saved = store.get(`omb-vote:${poll}`)
+    if (saved) showSaved(JSON.parse(saved) as Saved)
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const data = new FormData(form)
+      const vote: Saved = {
+        choice: String(data.get('choice') ?? ''),
+        name: String(data.get('name') ?? '').trim(),
+        comment: String(data.get('comment') ?? '').trim(),
+      }
+      button.disabled = true
+      status.textContent = 'Counting…'
+      try {
+        await rpc('cast_vote', {
+          p_poll: poll,
+          p_voter: voter,
+          p_choice: vote.choice,
+          p_name: vote.name,
+          p_comment: vote.comment || null,
+        })
+        store.set('omb-name', vote.name)
+        store.set(`omb-vote:${poll}`, JSON.stringify(vote))
+        showSaved(vote)
+        status.textContent = `Counted: ${labelOf.get(vote.choice)}. Change it any time.`
+        await refresh()
+      } catch (err) {
+        status.textContent = `That didn't go through: ${(err as Error).message}`
+      } finally {
+        button.disabled = false
+      }
+    })
+
+    void refresh()
+  }
+</script>
+
+<style is:global>
+  .poll fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .poll legend {
+    margin-bottom: 12px;
+  }
+  .poll .option {
+    position: relative;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    border: 1.5px solid rgb(251 244 228 / 0.1);
+    border-radius: 16px;
+    background: rgb(13 9 5 / 0.55);
+    cursor: pointer;
+    transition: border-color 150ms ease;
+  }
+  .poll .option:hover {
+    border-color: rgb(245 178 58 / 0.45);
+  }
+  .poll .option:has(input:checked) {
+    border-color: var(--gold);
+    background: rgb(245 178 58 / 0.08);
+  }
+  .poll .option:has(input:focus-visible) {
+    outline: 2px solid rgb(245 178 58 / 0.6);
+    outline-offset: 2px;
+  }
+  .poll .option input {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin: 2px 0 0;
+    accent-color: var(--gold);
+  }
+  .poll .option-body {
+    display: grid;
+    gap: 2px;
+  }
+  .poll .option-label {
+    font-weight: 700;
+  }
+  .poll .option-hint {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .poll .field {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .poll input[name='name'],
+  .poll textarea {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1px solid rgb(251 244 228 / 0.12);
+    border-radius: 16px;
+    background: rgb(13 9 5 / 0.7);
+    color: var(--foam);
+    font: inherit;
+    font-size: 16px;
+  }
+  .poll input[name='name']:focus,
+  .poll textarea:focus {
+    outline: none;
+    border-color: rgb(245 178 58 / 0.6);
+    box-shadow: 0 0 0 4px rgb(245 178 58 / 0.12);
+  }
+  .poll textarea {
+    resize: vertical;
+  }
+  .poll .button {
+    margin-top: 20px;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .poll .button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .poll .poll-status {
+    min-height: 1.6em;
+    margin: 12px 0 0;
+    font-size: 15px;
+    color: var(--hop);
+  }
+  .poll .results {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  .poll .results-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .poll .results h3 {
+    font-size: 24px;
+  }
+  .poll .results-total {
+    font-size: 14px;
+    color: var(--faint);
+  }
+  .poll .bars {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .poll .bar-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    font-size: 15px;
+  }
+  .poll .bar-count {
+    font-family: var(--font-display);
+    font-size: 20px;
+    line-height: 1;
+  }
+  .poll .bar-track {
+    height: 10px;
+    border-radius: 999px;
+    background: rgb(251 244 228 / 0.07);
+    overflow: hidden;
+  }
+  .poll .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: rgb(251 244 228 / 0.3);
+    transition: width 400ms ease;
+  }
+  .poll .bar.lead .bar-fill {
+    background: linear-gradient(90deg, #e09b25, #ffc95f);
+  }
+  .poll .bar.lead .bar-count {
+    color: var(--gold);
+  }
+  .poll .said {
+    margin-top: 28px;
+  }
+  .poll .said ul {
+    display: grid;
+    gap: 14px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .poll .said-who {
+    margin: 0;
+    font-size: 14px;
+    color: var(--faint);
+  }
+  .poll .said-who strong {
+    color: var(--foam);
+  }
+  .poll .said-text {
+    margin: 3px 0 0;
+  }
+  .poll-off {
+    margin: 0;
+    color: var(--muted);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .poll .bar-fill,
+    .poll .option {
+      transition: none;
+    }
+  }
+</style>

@@ -124,6 +124,8 @@ Either way you should see:
 ```
 → lifecycle_test.sql
 NOTICE:  ALL LIFECYCLE TESTS PASSED
+→ polls_test.sql
+NOTICE:  ALL POLL TESTS PASSED
 → reads_test.sql
 NOTICE:  ALL READS TESTS PASSED
 → rls_test.sql

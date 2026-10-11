@@ -31,6 +31,9 @@ The app needs two environment variables, set in the Vercel project for every env
 | `VITE_SUPABASE_URL` | `https://bcyoiobsgtltrvpszyls.supabase.co` |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | the project's publishable key (`sb_publishable_…`) |
 
+The news site's polls (D47) need the same two values under other names, set in the
+`onemillion-news` project: `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
 Both are public by design — they ship inside the app, and row-level security is what
 guards the data. Vite bakes them in at build time, so changing one takes a redeploy. A
 build without them refuses to run rather than deploying a blank page.
@@ -153,9 +156,21 @@ A login belongs to the address it was made on, so anyone who signed in at
 
 ## Keeping an eye on production
 
-- **Advisors** (Supabase → Advisors): the 13 "SECURITY DEFINER function executable"
-  warnings are intended — they are D39's membership functions and RLS helpers, which
-  signed-in users are meant to call. Anything else is news.
+- **Advisors** (Supabase → Advisors). Expected, and fine:
+  - "SECURITY DEFINER function executable" for signed-in users: D39's membership functions
+    and RLS helpers, plus the two poll functions.
+  - The same for signed-out visitors on `cast_vote` and `poll_results` only (D47).
+  - "RLS enabled, no policy" on `polls` and `poll_votes`: they're reachable only through
+    those two functions.
+  - "Leaked password protection disabled": checking new passwords against known leaks is a
+    paid-plan feature.
+
+  Anything else is news.
+- **Polls** (D47), in the SQL editor:
+  - the votes: `select choice, name, comment from poll_votes where poll_id = 'address';`
+  - close a poll: `update polls set is_open = false where id = 'address';` (and mark the
+    post `status: decided`, with the answer written in)
+  - remove a stray vote: `delete from poll_votes where poll_id = 'address' and name = '…';`
 - **The scheduled jobs:** `select jobname, status, start_time from cron.job_run_details
   order by start_time desc limit 10;` in the SQL editor. `close-stale-sessions` runs every
   5 minutes, `purge-lonely-sessions` at 04:17 UTC.

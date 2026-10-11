@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (46 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (47 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -25,12 +25,14 @@ and why, which recommendations are baked into the schema.
   for the crew, `site/` (Astro, static), Vercel project `onemillion-news`. A post is a
   Markdown file in `site/src/content/notes/` or `…/questions/`; `site/CLAUDE.md` has the
   front matter and the voice. When something user-visible ships, write it a release note.
+  Questions can carry **polls** (D47): votes in `polls`/`poll_votes`, reached only through
+  `cast_vote()` and `poll_results()` — the one thing a signed-out visitor may call.
   DNS for both subdomains is at Simply.com (DEPLOY.md § 0).
 - **Party → Crew** (D45, 2026-10-10). `supabase/migrations/20261010120000_crew.sql` renamed
   the tables, columns, functions, policies, triggers and constraints in place. **It is now
   where every function and policy that touches a crew is defined** — the earlier files
   below still show the `party` versions they created, which that migration replaced.
-- **Design: done.** 46 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 47 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written. A parked draft of 150 more achievements, split
   into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five

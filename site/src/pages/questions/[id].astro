@@ -1,5 +1,6 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content'
+import Poll from '../../components/Poll.astro'
 import Base from '../../layouts/Base.astro'
 import { formatDate } from '../../site'
 
@@ -9,7 +10,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props as { entry: CollectionEntry<'questions'> }
-const { title, summary, date, status, answer } = entry.data
+const { title, summary, date, status, answer, poll } = entry.data
 const { Content } = await render(entry)
 ---
 
@@ -30,7 +31,9 @@ const { Content } = await render(entry)
     status === 'open' && (
       <aside class="mat say">
         <h2 class="display">Have your say</h2>
-        {answer ? (
+        {poll ? (
+          <Poll id={poll.id} options={poll.options} />
+        ) : answer ? (
           <a class="button" href={answer.url}>
             {answer.label}
           </a>

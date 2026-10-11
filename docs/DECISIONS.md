@@ -25,6 +25,31 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D47 — Polls on the news site: anyone can vote, through two functions
+**Decided** (owner, 2026-10-11: "build a poll on the website for how guilds should work and
+for what domain name we should use"). A question on the news site can carry a poll. Votes
+live in Supabase (`polls`, `poll_votes`), and a signed-out visitor can call exactly two
+functions: `cast_vote()` and `poll_results()`. No account needed: you give a name, pick an
+option, and say why if you like. Your browser keeps a random voter id, which is what lets you
+change your vote; the results show choices, names and comments, never the ids. A poll is a
+row in `polls`, added by a migration, plus a post naming the same id and option keys.
+
+*Why:* half the crew hasn't signed up, and the site is public — a poll behind a sign-in would
+get few answers, and the shared doc needs a Claude account to open at all. Two narrow
+functions keep D39's rule that the tables are shut: nobody reads or writes them directly.
+
+*Cost:*
+- The first thing a signed-out visitor can do anywhere (D39 gave `anon` nothing). It is
+  bounded: two functions, open polls only, known options only, 500 votes a poll, names up to
+  30 characters and comments up to 280.
+- One vote per browser, not per person: a cleared browser or a second phone votes again.
+  Fine among friends, not a referendum; a stray vote is one line of SQL to delete.
+- Names and comments are public, on a public page.
+- A poll's options live in two places, the migration and the post. The database refuses a
+  key it doesn't know, so a mismatch fails loudly instead of counting wrong.
+
+---
+
 ### D46 — The app moves to onemillion.fager.tech, and a news site sits beside it
 **Decided** (owner, 2026-10-11: "Start a website on a separate subdomain … where I can post
 these questions, post some release notes", choosing `fager.tech` subdomains over buying

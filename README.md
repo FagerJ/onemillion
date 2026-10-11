@@ -97,7 +97,7 @@ celebrated.
 | **Hosting** | The app on Vercel — `main` deploys itself; the backend on hosted Supabase. How it fits together: [docs/DEPLOY.md](docs/DEPLOY.md). |
 | **News site** (`site/`) | Release notes and questions for the crew, built with Astro from Markdown files. |
 | **The rules live in the database** | Row-level security decides who sees and writes what; triggers enforce *nobody drinks alone*, keep the counters, and stamp each night's 09:00 closing time; `pg_cron` closes forgotten nights. The app can't break a rule even if it tried. |
-| **Tested** | 115 assertions across five database test suites, most run as real signed-in users. The access, counter and session rules were each broken on purpose once, to prove a test catches it. |
+| **Tested** | 131 assertions across six database test suites, most run as real signed-in users. The access, counter, session and poll rules were each broken on purpose once, to prove a test catches it. |
 
 The reasoning behind every choice — and what each one costs — is in the
 [decision log](docs/DECISIONS.md).
