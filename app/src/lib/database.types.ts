@@ -149,6 +149,40 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"poll_votes": {
+                  Row: {
+                    "choice": string,"comment": string | null,"created_at": string,"name": string,"poll_id": string,"updated_at": string,"voter": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "choice": string,"comment"?: string | null,"created_at"?: string,"name": string,"poll_id": string,"updated_at"?: string,"voter": string
+                  }
+                  Update: {
+                    "choice"?: string,"comment"?: string | null,"created_at"?: string,"name"?: string,"poll_id"?: string,"updated_at"?: string,"voter"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "poll_votes_poll_id_fkey"
+      columns: ["poll_id"]
+isOneToOne: false
+      referencedRelation: "polls"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"polls": {
+                  Row: {
+                    "created_at": string,"id": string,"is_open": boolean,"options": (string)[]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id": string,"is_open"?: boolean,"options": (string)[]
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"is_open"?: boolean,"options"?: (string)[]
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"profile_stats": {
                   Row: {
                     "last_logged_at": string | null,"profile_id": string,"total_beers": number,"updated_at": string
@@ -247,7 +281,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "close_session":
+            "cast_vote":
+{ Args: { "p_choice": string,"p_comment"?: string,"p_name": string,"p_poll": string,"p_voter": string }; Returns: undefined
+                           },
+"close_session":
 { Args: { "p_session": string }; Returns: undefined
                            },
 "close_stale_sessions":
@@ -318,6 +355,11 @@ isOneToOne: false
       } },
 "leave_crew":
 { Args: { "p_crew": string }; Returns: undefined
+                           },
+"poll_results":
+{ Args: { "p_poll": string }; Returns: {
+              "choice": string,"comment": string,"name": string,"voted_at": string
+            }[]
                            },
 "profile_summary":
 { Args: { "p_profile": string }; Returns: {
