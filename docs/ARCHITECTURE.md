@@ -66,7 +66,7 @@ competitive.
 | Storage | Supabase Storage | Beer photos |
 | Server logic | Postgres functions + a few Edge Functions | Achievement eval belongs next to the data |
 | Client | React + Vite + Tailwind + shadcn/ui ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) | Installable on Android and iPhone home screens; Capacitor later for stores |
-| Hosting (web) | Vercel — https://onemillion-gray.vercel.app | Serves the static build of `app/`; `main` deploys itself ([D43](DECISIONS.md#d43--the-app-runs-on-vercel-the-backend-on-a-hosted-supabase-project)) |
+| Hosting (web) | Vercel — https://onemillion.fager.tech | Serves the static build of `app/`; `main` deploys itself ([D43](DECISIONS.md#d43--the-app-runs-on-vercel-the-backend-on-a-hosted-supabase-project)) |
 
 Region: `eu-north-1` (Stockholm) to match the existing Supabase org.
 
@@ -520,6 +520,7 @@ accident. Not moralising — just choosing:
   /src/data           every query and mutation, and Realtime
   /src/i18n           every user-facing string
   /src/lib            Supabase client, generated database types, formatting, the ladder
+/site                 the news site (Astro): release notes and questions as Markdown — D46
 /supabase
   /migrations         versioned SQL — append-only now that production has run it
   /templates          the auth emails — D44

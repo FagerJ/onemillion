@@ -25,6 +25,32 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D46 — The app moves to onemillion.fager.tech, and a news site sits beside it
+**Decided** (owner, 2026-10-11: "Start a website on a separate subdomain … where I can post
+these questions, post some release notes", choosing `fager.tech` subdomains over buying
+`onemillionbeers.beer`). The app's address is **onemillion.fager.tech**; the generated
+`onemillion-gray.vercel.app` still answers. A second Vercel project, `onemillion-news`,
+builds `site/` and serves it at **news.onemillion.fager.tech**: release notes and questions
+for the crew, each a Markdown file in `site/src/content/`. DNS stays at Simply.com, one
+CNAME per subdomain.
+
+*Why:* a subdomain needs a domain we control, and `fager.tech` is already on the Vercel team
+at no extra cost (`onemillionbeers.beer` was $1,99, then $28,13 a year). Release notes and
+questions want a page anyone can open without signing in, which the app deliberately is not
+(D39). Astro turns Markdown into plain pages with no JavaScript, so posting is adding a file.
+
+*Cost:*
+- Two DNS records to keep at Simply, and the app's address now rides on `fager.tech`
+  staying registered.
+- A login belongs to an address: anyone who signed in on the old one signs in again. Two
+  accounts existed when it moved.
+- Supabase's Site URL, its redirect list and the Google client must all name the new address.
+- The news site is public. A static page can't take votes, so answers go to the shared doc
+  or the crew chat.
+- Every push to `main` builds both projects, even when only one folder changed.
+
+---
+
 ### D45 — The group of friends is a Crew *(renames D25's Party)*
 **Decided** (owner, 2026-10-10: "Party is probably wrong, so it should probably be crew",
 then "Rename Party->Crew"). The group of friends is a **crew** everywhere: on screen, in the
@@ -105,7 +131,7 @@ Supabase region (`F2`). HTTPS is also what Android needs before it will install 
 - Hobby-plan deploys want commits authored by the account owner, so this clone commits
   under the owner's identity.
 - The address is a generated `onemillion-gray.vercel.app` until a custom domain is set up —
-  one DNS record ([DEPLOY.md § 5](DEPLOY.md#5-optional--a-nicer-address)).
+  one DNS record ([D46](#d46--the-app-moves-to-onemillionfagertech-and-a-news-site-sits-beside-it)).
 
 ---
 

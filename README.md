@@ -10,8 +10,9 @@
 Every beer you share with your crew counts toward one number on one scoreboard.
 Nobody drinks alone — the app won't let you.
 
-**Live at [onemillion-gray.vercel.app](https://onemillion-gray.vercel.app)** — open it on
-your phone, make an account, and join your friends' crew with its invite code.
+**Live at [onemillion.fager.tech](https://onemillion.fager.tech)** — open it on your phone,
+make an account, and join your friends' crew with its invite code. What's new, and what the
+crew is deciding next: [news.onemillion.fager.tech](https://news.onemillion.fager.tech).
 
 [What it is](#what-it-is) · [The philosophy](#the-philosophy) · [How it's built](#how-its-built) · [Run it](#run-it) · [Where it stands](#where-it-stands)
 
@@ -94,6 +95,7 @@ celebrated.
 | **App** (`app/`) | React + TypeScript on Vite, Tailwind v4, shadcn/ui, TanStack Query, motion, i18next. A web app, made to live on a phone's home screen once it's hosted. |
 | **Backend** (`supabase/`) | Supabase, in Stockholm: Postgres, Auth (email and password, a magic link, or Google) and Realtime. |
 | **Hosting** | The app on Vercel — `main` deploys itself; the backend on hosted Supabase. How it fits together: [docs/DEPLOY.md](docs/DEPLOY.md). |
+| **News site** (`site/`) | Release notes and questions for the crew, built with Astro from Markdown files. |
 | **The rules live in the database** | Row-level security decides who sees and writes what; triggers enforce *nobody drinks alone*, keep the counters, and stamp each night's 09:00 closing time; `pg_cron` closes forgotten nights. The app can't break a rule even if it tried. |
 | **Tested** | 115 assertions across five database test suites, most run as real signed-in users. The access, counter and session rules were each broken on purpose once, to prove a test catches it. |
 
@@ -127,7 +129,7 @@ or create your own account and join with the invite code **`SKAL42`**.
 - ✅ The live night: kick-off, `+`, `+ ROUND`, `−`, the designated driver, late arrivals, full time
 - ✅ The global counter, the crew's milestone pint, weekly streaks, the table, the nights
 - ✅ Live updates on every phone in the crew
-- ✅ Hosted, at [onemillion-gray.vercel.app](https://onemillion-gray.vercel.app)
+- ✅ Hosted, at [onemillion.fager.tech](https://onemillion.fager.tech), with [release notes and questions](https://news.onemillion.fager.tech) beside it
 - ⏳ **Next:** the game layer — badges, combos and milestone celebrations
 - ⏳ Installing it to the home screen as an app
 - ⏳ The offline queue, for taps in a pub with no signal

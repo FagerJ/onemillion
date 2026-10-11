@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (45 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (46 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -11,8 +11,9 @@ and why, which recommendations are baked into the schema.
 
 ## Where things stand
 
-- **Live** (D43): **https://onemillion-gray.vercel.app** — Vercel project `onemillion` (team
-  "Jonathan Fager's projects"), built from `app/` on every push to `main`. Backend: Supabase
+- **Live** (D43, D46): **https://onemillion.fager.tech** (also `onemillion-gray.vercel.app`) —
+  Vercel project `onemillion` (team "Jonathan Fager's projects"), built from `app/` on every
+  push to `main`. Backend: Supabase
   project `onemillion`, ref `bcyoiobsgtltrvpszyls`, eu-north-1, free plan, with every
   migration applied. Branches get preview deployments against the same database.
 - **Sign-in** (D44): email + password, magic link, and Google. New accounts confirm their
@@ -20,11 +21,16 @@ and why, which recommendations are baked into the schema.
   templates in `supabase/templates/`. The dashboard side — redirect URLs, SMTP, templates,
   the Google client — is set by hand and isn't in the repo (DEPLOY.md § One-time setup);
   check the live settings (`/auth/v1/settings`) rather than assuming it's done.
+- **News site** (D46): **https://news.onemillion.fager.tech** — release notes and questions
+  for the crew, `site/` (Astro, static), Vercel project `onemillion-news`. A post is a
+  Markdown file in `site/src/content/notes/` or `…/questions/`; `site/CLAUDE.md` has the
+  front matter and the voice. When something user-visible ships, write it a release note.
+  DNS for both subdomains is at Simply.com (DEPLOY.md § 0).
 - **Party → Crew** (D45, 2026-10-10). `supabase/migrations/20261010120000_crew.sql` renamed
   the tables, columns, functions, policies, triggers and constraints in place. **It is now
   where every function and policy that touches a crew is defined** — the earlier files
   below still show the `party` versions they created, which that migration replaced.
-- **Design: done.** 45 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 46 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written. A parked draft of 150 more achievements, split
   into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five

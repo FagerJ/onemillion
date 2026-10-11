@@ -3,20 +3,23 @@
 How the live app is put together, how a change reaches it, and the one-time setup that
 lives in the Supabase and Google dashboards instead of this repo
 ([D43](DECISIONS.md#d43--the-app-runs-on-vercel-the-backend-on-a-hosted-supabase-project),
-[D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)).
+[D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31),
+[D46](DECISIONS.md#d46--the-app-moves-to-onemillionfagertech-and-a-news-site-sits-beside-it)).
 
 ## What runs where
 
 | | Where | Notes |
 |---|---|---|
-| **The app** | Vercel project `onemillion`, team "Jonathan Fager's projects" — **https://onemillion-gray.vercel.app** | A static build of `app/`, configured by `app/vercel.json` |
+| **The app** | Vercel project `onemillion`, team "Jonathan Fager's projects" — **https://onemillion.fager.tech** (`onemillion-gray.vercel.app` still answers) | A static build of `app/`, configured by `app/vercel.json` |
+| **The news site** | Vercel project `onemillion-news` — **https://news.onemillion.fager.tech** | Release notes and questions, built from `site/` (Astro); see `site/CLAUDE.md` for posting |
 | **The backend** | Supabase project `onemillion`, ref `bcyoiobsgtltrvpszyls`, eu-north-1 (Stockholm), free plan | Postgres, Auth, Realtime, `pg_cron` |
 | **Email** | Resend, sending from `fager.tech` | Plugged into Supabase as custom SMTP |
 | **Google sign-in** | A Google Cloud OAuth client | Supabase does the talking; the app only has a button |
 
 ## How a change goes live
 
-**The app.** Push to `main` and Vercel builds and serves it in under a minute. Any other
+**The app and the news site.** Push to `main` and Vercel builds and serves both in under a
+minute — each project builds on every push, whichever folder changed. Any other
 branch gets a preview deployment of its own; preview links need a Vercel login, the
 production address doesn't. Work on a branch, test it locally, merge to `main` — friends
 run `main`.
@@ -59,11 +62,25 @@ publication — matched the local database section for section.
 These hold secrets or live outside the repo, so they're done by hand, in this order. The
 first one has to happen before anyone signs up.
 
+### 0. The addresses — DNS at Simply.com
+
+`fager.tech` is on the Vercel team, but its DNS lives at Simply.com, so each subdomain is
+one record there. Vercel shows the domains as "Invalid Configuration" until these exist.
+
+| Type | Name | Points to |
+|---|---|---|
+| CNAME | `onemillion` | `1f1695937a689901.vercel-dns-017.com.` |
+| CNAME | `news.onemillion` | `1adce561a71bfcf5.vercel-dns-017.com.` |
+
+The targets are the ones Vercel recommends for these two projects
+(`cname.vercel-dns.com.` works too). HTTPS certificates follow by themselves within minutes.
+
 ### 1. Where links may land — Supabase → Authentication → URL Configuration
 
-- **Site URL:** `https://onemillion-gray.vercel.app`
-- **Redirect URLs** — add both:
-  - `https://onemillion-gray.vercel.app/**`
+- **Site URL:** `https://onemillion.fager.tech`
+- **Redirect URLs** — add all three:
+  - `https://onemillion.fager.tech/**`
+  - `https://onemillion-gray.vercel.app/**` (the old address still answers)
   - `https://onemillion-*-jonathan-fagers-projects-300ce6dd.vercel.app/**` (preview deployments)
 
 Every email link and every Google round-trip comes back to the address that asked for it,
@@ -115,7 +132,7 @@ In the [Google Cloud console](https://console.cloud.google.com), in a project of
 2. **Audience:** External, then **Publish app**. It only asks for name and email, so Google
    needs no review; left in Testing, only listed test users get in.
 3. **Clients → Create client:** type *Web application*.
-   - Authorised JavaScript origins: `https://onemillion-gray.vercel.app`
+   - Authorised JavaScript origins: `https://onemillion.fager.tech` and `https://onemillion-gray.vercel.app`
    - Authorised redirect URIs: `https://bcyoiobsgtltrvpszyls.supabase.co/auth/v1/callback`
 4. Copy the client ID and secret into **Supabase → Authentication → Sign In / Providers →
    Google**, and switch it on.
@@ -123,12 +140,8 @@ In the [Google Cloud console](https://console.cloud.google.com), in a project of
 The app asks Supabase which providers are on, so **Continue with Google** appears by
 itself — no deploy needed.
 
-### 5. Optional — a nicer address
-
-`onemillion.fager.tech` would take one DNS record: `fager.tech` is already on this Vercel
-team, but its DNS is at Simply.com, so the CNAME Vercel asks for goes there. Then swap the
-new address into steps 1 and 4. Do it before friends sign in: a login belongs to one
-address and doesn't carry over to another.
+A login belongs to the address it was made on, so anyone who signed in at
+`onemillion-gray.vercel.app` signs in once more at `onemillion.fager.tech`.
 
 ## Free-plan limits worth knowing
 

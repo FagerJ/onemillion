@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: **v0 is live** at https://onemillion-gray.vercel.app — the core loop, sign-in and
+Status: **v0 is live** at https://onemillion.fager.tech — the core loop, sign-in and
 hosting are done (✅ below); the game layer and the offline queue are next. Still the
 smallest genuinely fun thing, with no decision that damages guilds later.
 
