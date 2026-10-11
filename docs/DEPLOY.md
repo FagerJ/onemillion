@@ -98,9 +98,12 @@ For each template, set the subject and paste the whole file as the body:
 | Confirm signup | `Confirm your email · One Million Beers` | [`supabase/templates/confirmation.html`](../supabase/templates/confirmation.html) |
 | Magic link | `Your sign-in link · One Million Beers` | [`supabase/templates/magic_link.html`](../supabase/templates/magic_link.html) |
 | Reset password | `Pick a new password · One Million Beers` | [`supabase/templates/recovery.html`](../supabase/templates/recovery.html) |
+| Invite user | `You're invited · One Million Beers` | [`supabase/templates/invite.html`](../supabase/templates/invite.html) |
+| Change email address | `Confirm your new email · One Million Beers` | [`supabase/templates/email_change.html`](../supabase/templates/email_change.html) |
 
 The local stack sends the same files (`supabase/config.toml`), so what lands in Mailpit is
-what friends get.
+what friends get. Reauthentication is the one template left at Supabase's default: the app never
+asks for it.
 
 ### 4. Google sign-in
 
