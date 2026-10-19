@@ -25,6 +25,15 @@ export function useCrewRealtime(crewId: string | undefined) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'global_stats' }, () =>
         queryClient.invalidateQueries({ queryKey: ['global'] }),
       )
+      // A Golden Goal at this table (G5). The beer in the same transaction already
+      // refreshes the crew; this is belt and braces.
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'milestone_events', filter }, refreshCrew)
+      // Global rungs come from every crew, so they can't be filtered by this one.
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'milestone_events', filter: 'scope=eq.global' },
+        () => queryClient.invalidateQueries({ queryKey: ['milestones', 'global'] }),
+      )
       .subscribe()
     return () => {
       void supabase.removeChannel(channel)

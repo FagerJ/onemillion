@@ -133,7 +133,7 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   const { user } = useAuth()
   const { data: attendees = [] } = useAttendees(night.id)
   const { data: beers = [] } = useLiveBeers(night.id)
-  const log = useLogBeers(night.id)
+  const log = useLogBeers(night.id, night.crew_id)
   const takeBack = useTakeBack(night.id)
   const checkIn = useAddAttendees(night.id)
   const [pours, setPours] = useState(0)

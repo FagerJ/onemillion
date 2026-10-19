@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (53 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (61 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -32,7 +32,7 @@ and why, which recommendations are baked into the schema.
   the tables, columns, functions, policies, triggers and constraints in place. **It is now
   where every function and policy that touches a crew is defined** — the earlier files
   below still show the `party` versions they created, which that migration replaced.
-- **Design: done.** 53 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 61 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written. A parked draft of 150 more achievements, split
   into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
@@ -60,7 +60,12 @@ and why, which recommendations are baked into the schema.
   plugin in `app/vite.config.ts`) that precaches each build so the app opens with no signal.
   Install offers on Home and Me (`components/layout/InstallOffer.tsx`, `lib/pwa.ts`); a
   6-digit code in the sign-in emails for iPhone home-screen apps.
-- **Not started:** milestones + combo engine, achievements, the offline queue.
+- **Milestones** (C9/C12/G5, D54–D61). `supabase/migrations/20261019120000_milestones.sql`:
+  the ladder in `milestones`, crossings in `milestone_events` written by
+  `beers_20_milestones`, history replayed by `backfill_milestones()`. The app's takeover is
+  `components/celebrate/MilestoneTakeover.tsx` (hosted in AppShell); the trophy cabinet sits
+  on the crew page.
+- **Not started:** combo engine, achievements, the offline queue.
 - **`main` is production.** Friends use it, so it must always run: do new work on a branch
   and merge when it's tested. A push to `main` deploys.
 
@@ -141,6 +146,12 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
   `npm --prefix app run build && npm --prefix app run preview` (port 4173, never 5173, so a
   worker can't haunt the dev server). `/?sw-reset` removes it from one browser. A browser
   pane hidden from view freezes motion there too, and `?raf-shim` is dev-only.
+- **Milestone crossings are exact.** `beers_20_milestones` records a rung when a total
+  lands *on* it, reading the totals `beers_10_count` just moved for the same row; Postgres
+  fires AFTER row triggers row by row in name order, so a round credits the right row (the
+  round test fails if that changes). Anything that jumps a total — `recompute_stats()`, a
+  new low rung — skips crossings: run `select backfill_milestones();` afterwards. Replayed
+  rows are `backfilled` and never celebrate.
 - **The build refuses an uninstallable app**: a missing icon, a wrong PNG size, a manifest
   key gone, or a file `index.html` names that isn't precached all fail `vite build`. The
   worker must stay a classic script (no `import`/`export`), which the build also checks.

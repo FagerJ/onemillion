@@ -25,6 +25,158 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D61 — A global rung names its scorer only to their crew-mates
+**Decided.** Global crossings are readable by everyone signed in. The scorer's and the
+assist's names and caps come through the `profiles` embed, which RLS already limits to
+crew-mates (`shares_crew_with`). Everyone else sees "Scored by another crew, somewhere out
+there."
+
+*Why:* D39 shows a profile only to crew-mates, and a takeover is no reason to widen that.
+
+*Cost:*
+- Strangers won't see the millionth beer's name until there is a public opt-in (P2); that
+  is an additive read later.
+- A global row carries the scorer's, night's and crew's ids to every signed-in user. They
+  are opaque ids, and RLS hides what they point at.
+
+---
+
+### D60 — The pint reads the ladder from the database; no cached `next_milestone` *(amends D2)*
+**Decided.** `useCrewRungs()` fetches the ladder's 18 rows once a session, and
+`rungFor(total, rungs)` stays a pure function in the app. The `LADDER` constant is gone.
+D2's "cache `next_milestone` on the stats row" is dropped.
+
+*Why:* one source of truth. A stored next rung would be a second counter to keep in step with
+voids, for a lookup in an 18-row list.
+
+*Cost:* one more request on a cold start. Opened with no signal, Home shows the number
+without the rung until the offline queue keeps the app's data on the phone.
+
+---
+
+### D59 — Crew and global rungs take over the screen; personal ones never do
+**Decided.** A full-screen takeover appears for a `crew` or `global` crossing that is not
+backfilled, happened less than 24 hours ago, and hasn't been dismissed on this device by this
+user (kept in `localStorage`, per user). A phone reloaded before anyone taps "Back to it"
+shows it again. Several rungs of
+one scope crossed in one go collapse into the highest; global goes before crew. The flaps
+tick over (`99 → 100`), bottle caps burst, and the scorer's cap spins in on a mat with the
+assist under it. Only the button or Escape closes it. Personal rungs (including 67 and 69)
+show on Me, never as a takeover.
+
+*Why:* crew and global rungs are shared moments (D20's spirit). A personal takeover in the
+middle of a night would celebrate one person's volume at the table. The 24 hours let a
+crew-mate at home see "last night" in the morning and bound repeats on a new phone.
+
+*Cost:*
+- Each device shows it once, so two phones of one person both show it.
+- A phone opened more than a day later misses it; the trophy cabinet still has it.
+- A home-screen app on iPhone and Safari keep separate storage, as do two addresses.
+- Combo toasts (G4) must wait while a takeover is open.
+
+---
+
+### D58 — History is replayed once and flagged; replayed crossings never celebrate
+**Decided.** `backfill_milestones()` replays every change to the counts in order: +1 when
+each beer went in (`created_at`, with `global_seq` breaking ties), −1 when it was voided. It
+records the first landing on each rung that has no event yet, with `backfilled = true` and
+`crossed_at` set to that beer's time, and never re-attributes an existing one. The migration
+ran it once; it is kept for after `recompute_stats()` or a ladder change. The seed marks its
+own crossings the same way.
+
+*Why:* crossings from before the migration must exist (the trophy cabinet, the achievements
+engine), but nobody should get a takeover for last week.
+
+*Cost:* `voided_at` is the clock of the phone that tapped `−`, and an un-void leaves no
+trace, so a replay can credit a different beer than a live trigger would have. Within one
+moment, the replay counts every new beer before any void. For production's 17 beers that
+didn't matter.
+
+---
+
+### D57 — The Golden Goal is the beer that hit the number; whoever tapped it gets the assist
+**Decided.** A crossing records the beer's drinker (`profile_id`, the scorer) and its tapper
+(`added_by`, the assist), the night and the round. In a `+ ROUND` — one INSERT of many rows —
+the credited beer is the row whose +1 made the total equal the rung, counting in the order
+the app sent them (table order).
+
+*Why:* it is exactly what a tally could never answer (D5). How many rows a round still needs
+to reach the rung is effectively random, so the seat doesn't bias who scores.
+
+*Cost:* inside a round, seat order decides: fair on average, arbitrary each time.
+
+---
+
+### D56 — Crossings are recorded by their own trigger after the counter, and never cost a beer
+**Decided.** `beers_20_milestones` fires after insert, and after an update of `voided_at`,
+for each row. It acts only when a beer becomes live (a new one, or the owner's un-void). It
+reads the global, crew and personal totals that `beers_10_count` has just moved for the same
+row, and records a crossing when a total lands **exactly** on a rung that lists that scope.
+The insert sits in an exception block: if it fails, the beer still lands and a warning is
+logged.
+
+*Why:* `count_beer()` (D40) stays untouched and tested; the stats migration reserved this
+slot. No new locks: the trigger only reads rows its own transaction already holds, and the
+`global_stats` row lock already serialises beers, so two beers can never both record a rung.
+Exact equality is what "the counter hits a rung" means; `>=` would turn every gap (a counter
+repair, a new low rung) into a storm of takeovers.
+
+*Cost:*
+- It relies on Postgres firing row-level AFTER triggers row by row in name order, so a
+  round's rows interleave (`beers_10`, `beers_20`, `beers_10`, …). The round test fails if
+  that ever stops being true.
+- A rung that `recompute_stats()` jumps over stays unrecorded until someone runs
+  `backfill_milestones()`.
+- A bug in the trigger becomes a missing event and a log line, not an error.
+
+---
+
+### D55 — A rung is crossed once per scope, for good
+**Decided.** `milestone_events` is unique on (scope, crew or person, rung), and nothing
+updates or deletes a row. A void that takes a count back under a rung leaves the event alone;
+landing on it again records nothing; the event keeps pointing at its beer even if that beer
+is voided later.
+
+*Why:* D16 and D28: voids never revoke anything. Re-celebrating after every `−`/`+` pair
+would be noise, and farmable.
+
+*Cost:*
+- A mis-tapped Golden Goal that is then voided keeps the wrong name forever. A captain's
+  "reassign" would be an additive fix later.
+- After a dip, the pint honestly says "1 to go" to a rung already celebrated, and the next
+  beer lands on it silently.
+
+---
+
+### D54 — The ladder lives in the database, with the scopes each rung applies to
+**Decided** (owner, 2026-10-19: "Go for 1,2,3,4,5!", milestones second). A `milestones`
+table holds one row per threshold, with the scopes it applies to and a tier:
+
+| Scope | Rungs |
+|---|---|
+| Crew | 10 · 25 · 50 · 100 · 250 · 500 · 1.000 · 2.500 · 5.000 · 10.000 · 25.000 · 50.000 · 100.000 |
+| The Million (global) | 1.000 · 2.500 · 5.000 · 10.000 · 25.000 · 50.000 · 100.000 · 250.000 · 500.000 · 1.000.000 |
+| A person | 50 · 100 · 250 · 500 · 1.000, plus 67 and 69 as easter eggs |
+
+Eggs are recorded like rungs but never drive a gauge. Rung names live in `en.ts`, keyed by
+threshold: the owner's own lines for 67 ("The Kids Think This Is Fun"), 69 ("hehehe"), 500
+and 1.000 (A4), the rest from the catalogue.
+
+*Why:* ARCHITECTURE §4's `applies_to`. The Million gets no "10 beers" party: while the app is
+two crews, the global count below 1.000 is just those crews, and their own takeovers mark it.
+Crew rungs run to 100.000 so a big crew never sits under a full pint. Person rungs match the
+lifetime badges already drafted, and recording 67 and 69 here gives the achievements an exact
+beer and moment for the owner's two jokes.
+
+*Cost:*
+- Changing the ladder takes a migration, and a rung added below today's totals also takes a
+  `backfill_milestones()` run.
+- A new rung's name needs an app release; until then it shows as its number.
+- The Million has no celebration until 1.000.
+- Guilds later mean one migration widening two CHECKs.
+
+---
+
 ### D53 — Email sign-in carries a 6-digit code as well as the link
 **Decided.** The sign-in and sign-up emails add "Or type this code in the app", with the
 code from Supabase (`{{ .Token }}`). The "Check your inbox" panel takes it (`verifyOtp`,
@@ -622,7 +774,9 @@ to matter. One gauge does dopamine, the other does ambition.
 
 *Cost:* two progress systems to keep in sync, and milestone resolution has to be fast
 enough to render on every dashboard load (solved by caching `next_milestone` on
-`party_stats`).
+`party_stats`). *Amended by
+[D60](#d60--the-pint-reads-the-ladder-from-the-database-no-cached-next_milestone-amends-d2):
+nothing is cached; the app reads the 18-row ladder once and does the lookup itself.*
 
 ---
 

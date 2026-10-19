@@ -1,11 +1,13 @@
+import { Trophy } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Cap } from '@/components/brand/Cap'
 import { LiveBadge, useNow } from '@/components/brand/LiveBadge'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useFeed, useMyCrew } from '@/data/queries'
+import { useCrewMilestones, useFeed, useMyCrew } from '@/data/queries'
 import { duration, fmt, nightLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +16,17 @@ export function Nights() {
   const { t } = useTranslation()
   const { data: mine } = useMyCrew()
   const { data: nights, isLoading } = useFeed(mine?.crew.id)
+  const { data: events = [] } = useCrewMilestones(mine?.crew.id)
   const now = useNow()
+  // the rungs each night crossed, highest first (C12)
+  const rungsByNight = useMemo(() => {
+    const m = new Map<string, typeof events>()
+    for (const e of events) {
+      if (!e.session_id) continue
+      m.set(e.session_id, [...(m.get(e.session_id) ?? []), e].sort((a, b) => b.threshold - a.threshold))
+    }
+    return m
+  }, [events])
 
   return (
     <div>
@@ -58,6 +70,21 @@ export function Nights() {
                     <p className="kicker -mt-0.5 text-[10px]">{t('common.beerWord', { count: n.total_beers })}</p>
                   </div>
                 </header>
+                {rungsByNight.get(n.session_id) && (
+                  <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                    {rungsByNight.get(n.session_id)!.map((e) => (
+                      <li
+                        key={e.id}
+                        className="flex items-center gap-1 rounded-full bg-gold/14 px-2 py-0.5 text-[11px] font-bold text-gold ring-1 ring-gold/35"
+                      >
+                        <Trophy className="size-3" strokeWidth={2.6} />
+                        {e.scope === 'global'
+                          ? t('milestones.chipGlobal', { rung: fmt(e.threshold) })
+                          : t('milestones.chip', { rung: fmt(e.threshold) })}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <ul className="mt-3 flex flex-wrap gap-1.5">
                   {drinkers.map((a) => (
                     <li

@@ -60,13 +60,13 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ✅ C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
 | C8 | **Offline write queue** + idempotent replay *(pulled in, D35)* | L | — |
 | ✅ C4 | Counter roll-ups: `crew_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
-| C9 | Milestone ladder table + seed | S | — |
-| C12 | `milestone_events` — crossing attribution | S | — |
+| ✅ C9 | Milestone ladder table + seed ([D54](DECISIONS.md#d54--the-ladder-lives-in-the-database-with-the-scopes-each-rung-applies-to)) | S | guild scope |
+| ✅ C12 | `milestone_events` — crossing attribution, the Golden Goal and the assist ([D55](DECISIONS.md#d55--a-rung-is-crossed-once-per-scope-for-good)–[D58](DECISIONS.md#d58--history-is-replayed-once-and-flagged-replayed-crossings-never-celebrate)) | S | — |
 | ✅ C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
 | ✅ C6 | Crew leaderboard (on the dashboard, not its own screen) | S | — |
 | ✅ C7 | Feed — a list of closed sessions | S | reactions, photos |
 | G4 | **Live combo toasts** — 10 / 25 / 50 / 100 session totals | M | — |
-| G5 | **Milestone celebration** + Golden Goal attribution | M | — |
+| ✅ G5 | **Milestone celebration** + Golden Goal attribution: the takeover, the trophy cabinet ([D59](DECISIONS.md#d59--crew-and-global-rungs-take-over-the-screen-personal-ones-never-do)) | M | sound (G7) |
 | G1 | Achievement engine — `achievement_unlocks` + rule evaluation *(pulled in, D35)* | L | — |
 | G2 | Seed the catalogue *(pulled in, D35)* | M | — |
 | G3 | Achievements grid — locked / unlocked, progress *(pulled in, D35)* | M | — |

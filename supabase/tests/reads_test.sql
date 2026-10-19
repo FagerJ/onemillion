@@ -97,8 +97,9 @@ begin
   -- ── Realtime carries the tables the app watches ─────────────
   select count(*) into n from pg_publication_tables
    where pubname = 'supabase_realtime' and schemaname = 'public'
-     and tablename in ('beers', 'session_attendees', 'sessions', 'global_stats', 'crew_stats');
-  if n <> 5 then raise exception 'TEST FAIL: Realtime is missing tables the app subscribes to'; end if;
+     and tablename in ('beers', 'session_attendees', 'sessions', 'global_stats', 'crew_stats',
+                       'milestone_events');
+  if n <> 6 then raise exception 'TEST FAIL: Realtime is missing tables the app subscribes to'; end if;
 
   raise notice 'ALL READS TESTS PASSED';
 end;

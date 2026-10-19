@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/auth/AuthProvider'
 import { Cap } from '@/components/brand/Cap'
 import { FlapWord } from '@/components/brand/Flaps'
+import { TrophyCabinet } from '@/components/crew/TrophyCabinet'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import {
   AlertDialog,
@@ -90,6 +91,8 @@ export function CrewPage() {
           </AlertDialog>
         )}
       </section>
+
+      <TrophyCabinet crewId={crew.id} />
 
       <section className="mat p-4">
         <h2 className="display mb-2 text-[24px] text-foam">{t('crew.members')}</h2>

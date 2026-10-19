@@ -332,30 +332,44 @@ One ladder, shared by every scope. Each scope simply enters and exits at a diffe
   · 25.000 · 50.000 · 100.000 · 250.000 · 500.000 · 1.000.000
 ```
 
+**As built** (`20261019120000_milestones.sql`,
+[D54](DECISIONS.md#d54--the-ladder-lives-in-the-database-with-the-scopes-each-rung-applies-to)–[D61](DECISIONS.md#d61--a-global-rung-names-its-scorer-only-to-their-crew-mates)):
+
+| Scope | Rungs |
+|---|---|
+| Crew | 10 · 25 · 50 · 100 · 250 · 500 · 1.000 · 2.500 · 5.000 · 10.000 · 25.000 · 50.000 · 100.000 |
+| The Million (global) | 1.000 · 2.500 · 5.000 · 10.000 · 25.000 · 50.000 · 100.000 · 250.000 · 500.000 · 1.000.000 |
+| A person | 50 · 100 · 250 · 500 · 1.000, and the eggs 67 and 69 |
+
 ```sql
 milestones (
   threshold     bigint primary key,
-  label         text not null,           -- "500" / "HALF A MILLION"
-  tier          text not null,           -- 'bronze'|'silver'|'gold'|'legendary'
-  applies_to    text[] not null          -- {'profile','crew','guild','global'}
+  kind          text not null,           -- 'rung' drives a gauge; 'egg' is only recorded
+  scopes        text[] not null,         -- {'global','crew','profile'}; guilds widen the CHECK
+  tier          text not null            -- 'bronze'|'silver'|'gold'|'legendary'
 )
 
-milestone_events (                        -- who crossed what, when
+milestone_events (                        -- who crossed what, once per scope, for good
   id            uuid pk,
-  threshold     bigint references milestones,
   scope         text not null,
-  scope_id      uuid,                     -- null for global
+  scope_id      uuid,                     -- the crew or person; null for global
+  threshold     bigint references milestones,
   beer_id       uuid references beers,    -- the Golden Goal
-  profile_id    uuid references profiles,
-  crossed_at    timestamptz
+  profile_id    uuid references profiles, -- its drinker: the scorer
+  added_by      uuid references profiles, -- who tapped it: the assist
+  crew_id, session_id, round_id,
+  crossed_at    timestamptz,
+  backfilled    boolean                   -- replayed history: never celebrated
 )
 ```
 
-`applies_to` keeps it honest — a crew never sees the 250.000 rung dangling unreachably,
-and the global counter isn't cluttered with a "10 beers" celebration.
+`beers_20_milestones` runs after the counter trigger and records a crossing when a total
+lands exactly on a rung. Names live in the app (`en.ts`), keyed by threshold, so the table
+has no `label`. `scopes` keeps it honest — a crew never sees the 250.000 rung dangling
+unreachably, and the global counter isn't cluttered with a "10 beers" celebration.
 
-**Easter-egg rungs** fire a toast but don't drive the gauge: `442` (the formation), `1337`
-(leet), `1966`, `9001` (IT'S OVER 9000), `20000` (midi-chlorians), `90` (full time).
+**More easter eggs** could join 67 and 69 as rows: `442` (the formation), `1337` (leet),
+`1966`, `9001` (IT'S OVER 9000), `20000` (midi-chlorians), `90` (full time).
 
 ### 4.1 The two gauges
 
@@ -532,5 +546,5 @@ accident. Not moralising — just choosing:
 
 Not built from the original plan, because nothing needs them yet: a shared
 `packages/core` (the app imports the generated database types directly), Edge Functions,
-and CI. The ladder lives in `app/src/lib/milestones.ts` until milestones move into the
-database (`C9`).
+and CI. The ladder lives in the database (`milestones`); `app/src/lib/milestones.ts` only
+does the arithmetic.

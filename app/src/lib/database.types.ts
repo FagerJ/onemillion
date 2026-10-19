@@ -149,6 +149,64 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"milestone_events": {
+                  Row: {
+                    "added_by": string,"backfilled": boolean,"beer_id": string | null,"crew_id": string,"crossed_at": string,"id": string,"profile_id": string,"round_id": string | null,"scope": string,"scope_id": string | null,"session_id": string | null,"threshold": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "added_by": string,"backfilled"?: boolean,"beer_id"?: string | null,"crew_id": string,"crossed_at"?: string,"id"?: string,"profile_id": string,"round_id"?: string | null,"scope": string,"scope_id"?: string | null,"session_id"?: string | null,"threshold": number
+                  }
+                  Update: {
+                    "added_by"?: string,"backfilled"?: boolean,"beer_id"?: string | null,"crew_id"?: string,"crossed_at"?: string,"id"?: string,"profile_id"?: string,"round_id"?: string | null,"scope"?: string,"scope_id"?: string | null,"session_id"?: string | null,"threshold"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "milestone_events_added_by_fkey"
+      columns: ["added_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "milestone_events_beer_id_fkey"
+      columns: ["beer_id"]
+isOneToOne: false
+      referencedRelation: "beers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "milestone_events_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "milestone_events_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "sessions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "milestone_events_threshold_fkey"
+      columns: ["threshold"]
+isOneToOne: false
+      referencedRelation: "milestones"
+      referencedColumns: ["threshold"]
+    }
+                  ]
+                },"milestones": {
+                  Row: {
+                    "kind": string,"scopes": (string)[],"threshold": number,"tier": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "kind"?: string,"scopes": (string)[],"threshold": number,"tier": string
+                  }
+                  Update: {
+                    "kind"?: string,"scopes"?: (string)[],"threshold"?: number,"tier"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"poll_votes": {
                   Row: {
                     "choice": string,"comment": string | null,"created_at": string,"name": string,"poll_id": string,"updated_at": string,"voter": string
@@ -281,7 +339,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "cast_vote":
+            "backfill_milestones":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"cast_vote":
 { Args: { "p_choice": string,"p_comment"?: string,"p_name": string,"p_poll": string,"p_voter": string }; Returns: undefined
                            },
 "close_session":

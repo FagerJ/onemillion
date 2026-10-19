@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthProvider'
 import type { Database, Tables, TablesInsert } from '@/lib/database.types'
+import type { MilestoneEvent } from '@/lib/milestones'
 import { apiOrigin, publishableKey, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/uuid'
 
@@ -332,7 +333,7 @@ export function useSetInRounds(sessionId: string) {
  * shared round_id). The tally moves before the network answers; a refusal puts it
  * back. client_uuid makes a retried tap count once (D8).
  */
-export function useLogBeers(sessionId: string) {
+export function useLogBeers(sessionId: string, crewId: string) {
   const queryClient = useQueryClient()
   const key = ['session', sessionId, 'beers']
   return useMutation({
@@ -358,6 +359,9 @@ export function useLogBeers(sessionId: string) {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
       void queryClient.invalidateQueries({ queryKey: ['global'] })
+      // the tapper's own phone sees a Golden Goal even when Realtime is slow (D59)
+      void queryClient.invalidateQueries({ queryKey: ['crew', crewId, 'milestones'] })
+      void queryClient.invalidateQueries({ queryKey: ['milestones', 'global'] })
     },
   })
 }
@@ -404,5 +408,79 @@ export function useCloseNight(crewId: string) {
   return useMutation({
     mutationFn: async (sessionId: string) => must(await supabase.rpc('close_session', { p_session: sessionId })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crew', crewId] }),
+  })
+}
+
+// ── milestones (C9, C12, G5) ──────────────────────────────────
+
+// Who scored and who assisted come through the profiles embed, which RLS limits to
+// crew-mates: a global rung scored by another crew arrives without names (D61).
+const EVENT_COLUMNS = `id, scope, scope_id, threshold, crew_id, session_id, round_id, profile_id,
+  added_by, crossed_at, backfilled, rung:milestones(tier),
+  scorer:profiles!milestone_events_profile_id_fkey(display_name, initials, avatar_color),
+  assist:profiles!milestone_events_added_by_fkey(display_name, initials, avatar_color)`
+
+type LadderRow = { threshold: number; kind: string; scopes: string[] }
+const crewRungs = (rows: LadderRow[]) =>
+  rows.filter((m) => m.kind === 'rung' && m.scopes.includes('crew')).map((m) => m.threshold)
+
+/** The crew's rungs (D54). The whole ladder is 18 rows, fetched once a session. */
+export function useCrewRungs() {
+  return useQuery({
+    queryKey: ['milestones', 'ladder'],
+    staleTime: Infinity,
+    queryFn: async () => must(await supabase.from('milestones').select('threshold, kind, scopes').order('threshold')),
+    select: crewRungs,
+  })
+}
+
+/** The crew's rungs crossed, plus the global ones its members scored. Newest first. */
+export function useCrewMilestones(crewId: string | undefined) {
+  return useQuery({
+    queryKey: ['crew', crewId, 'milestones'],
+    enabled: !!crewId,
+    queryFn: async () =>
+      must(
+        await supabase
+          .from('milestone_events')
+          .select(EVENT_COLUMNS)
+          .eq('crew_id', crewId!)
+          .in('scope', ['crew', 'global'])
+          .order('crossed_at', { ascending: false })
+          .order('threshold', { ascending: false }),
+      ) as unknown as MilestoneEvent[],
+  })
+}
+
+/** The latest global rungs, whoever scored them. */
+export function useGlobalMilestones() {
+  return useQuery({
+    queryKey: ['milestones', 'global'],
+    queryFn: async () =>
+      must(
+        await supabase
+          .from('milestone_events')
+          .select(EVENT_COLUMNS)
+          .eq('scope', 'global')
+          .order('crossed_at', { ascending: false })
+          .limit(20),
+      ) as unknown as MilestoneEvent[],
+  })
+}
+
+/** A person's own rungs, the 67 and 69 eggs included. Lowest first. */
+export function useMyMilestones(profileId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile', profileId, 'milestones'],
+    enabled: !!profileId,
+    queryFn: async () =>
+      must(
+        await supabase
+          .from('milestone_events')
+          .select(EVENT_COLUMNS)
+          .eq('scope', 'profile')
+          .eq('scope_id', profileId!)
+          .order('threshold'),
+      ) as unknown as MilestoneEvent[],
   })
 }

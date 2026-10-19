@@ -65,7 +65,7 @@ export function Home() {
       </motion.div>
 
       <motion.div {...rise(2)}>
-        <CrewHero total={summary?.total_beers ?? 0} />
+        <CrewHero total={summary?.total_beers ?? 0} crewId={crew.id} />
       </motion.div>
 
       <motion.div {...rise(3)} className="grid grid-cols-3 gap-3">

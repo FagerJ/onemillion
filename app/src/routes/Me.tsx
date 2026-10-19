@@ -1,4 +1,4 @@
-import { LogOut, Pencil } from 'lucide-react'
+import { Check, LogOut, Pencil } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +8,9 @@ import { CountUp } from '@/components/brand/CountUp'
 import { Button } from '@/components/ui/button'
 import { InstallCard } from '@/components/layout/InstallOffer'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
-import { useProfile, useProfileSummary } from '@/data/queries'
+import { useMyMilestones, useProfile, useProfileSummary } from '@/data/queries'
+import { fmt } from '@/lib/format'
+import { rungName } from '@/lib/milestones'
 import { supabase } from '@/lib/supabase'
 import { ProfileForm } from './setup/ProfileForm'
 
@@ -17,6 +19,7 @@ export function Me() {
   const { user } = useAuth()
   const { data: profile } = useProfile()
   const { data: s } = useProfileSummary(user?.id)
+  const { data: mine = [] } = useMyMilestones(user?.id)
   const [editing, setEditing] = useState(false)
   if (!profile) return null
 
@@ -35,6 +38,24 @@ export function Me() {
         <Big label={t('me.thisWeek')} value={s?.beers_this_week ?? 0} />
         <Big label={t('me.streak')} value={s?.current_streak_weeks ?? 0} unit={t('home.weeks')} hot />
         <Big label={t('me.best')} value={s?.best_streak_weeks ?? 0} unit={t('home.weeks')} />
+      </section>
+
+      {/* personal rungs never take over the screen (D59); they collect here */}
+      <section className="mat p-4">
+        <h2 className="kicker text-gold/80">{t('milestones.mine.title')}</h2>
+        {mine.length === 0 ? (
+          <p className="mt-2 text-[14px] text-foam/45">{t('milestones.mine.empty')}</p>
+        ) : (
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+            {mine.map((e) => (
+              <li key={e.id} className="flex items-center gap-1 rounded-full bg-hop/12 px-2.5 py-1 text-[12px] font-bold text-hop">
+                <Check className="size-3" strokeWidth={3.5} />
+                {fmt(e.threshold)}
+                {rungName(t, e.threshold) && <span className="font-semibold text-hop/75">· {rungName(t, e.threshold)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <InstallCard />

@@ -136,3 +136,11 @@ end;
 $$;
 
 drop table demo_people;
+
+-- The demo history went in through the live milestone trigger a moment ago (D58). Make its
+-- milestones look like production's backfill: recorded when the beer was logged, never
+-- celebrated, so a fresh database doesn't greet you with a takeover.
+update public.milestone_events e
+   set backfilled = true, crossed_at = b.logged_at
+  from public.beers b
+ where b.id = e.beer_id;

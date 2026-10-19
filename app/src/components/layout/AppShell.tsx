@@ -2,6 +2,7 @@ import { CircleUser, House, Plus, ScrollText, Users } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import { CelebrationHost } from '@/components/celebrate/MilestoneTakeover'
 import { useMyCrew, useOpenNight } from '@/data/queries'
 import { useCrewRealtime } from '@/data/realtime'
 import { cn } from '@/lib/utils'
@@ -12,19 +13,23 @@ export function AppShell() {
   useCrewRealtime(crewId)
   const { data: night } = useOpenNight(crewId)
   const { pathname } = useLocation()
+  if (!mine) return null // RequireCrew guarantees one; this covers the instant of a sign-out
 
   return (
-    <div className="relative mx-auto min-h-dvh w-full max-w-[480px] px-4 pt-[max(env(safe-area-inset-top),22px)] pb-40">
-      <motion.main
-        key={pathname}
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <Outlet />
-      </motion.main>
-      <Dock live={!!night} />
-    </div>
+    // the takeover sits over every tab (G5)
+    <CelebrationHost crewId={mine.crew.id} crewName={mine.crew.name}>
+      <div className="relative mx-auto min-h-dvh w-full max-w-[480px] px-4 pt-[max(env(safe-area-inset-top),22px)] pb-40">
+        <motion.main
+          key={pathname}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Outlet />
+        </motion.main>
+        <Dock live={!!night} />
+      </div>
+    </CelebrationHost>
   )
 }
 

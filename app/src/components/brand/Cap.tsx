@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 // Everyone is a bottle cap: a crimped disc in their colour with their initials
 // pressed into it. The crimp is computed once — 21 teeth around a 100-unit circle.
 const TEETH = 21
-const CRIMP = (() => {
+export const CRIMP = (() => {
   const points: string[] = []
   for (let i = 0; i < TEETH * 2; i++) {
     const a = (Math.PI * i) / TEETH - Math.PI / 2
