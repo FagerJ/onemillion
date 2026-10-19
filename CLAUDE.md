@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (47 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (53 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -32,7 +32,7 @@ and why, which recommendations are baked into the schema.
   the tables, columns, functions, policies, triggers and constraints in place. **It is now
   where every function and policy that touches a crew is defined** — the earlier files
   below still show the `party` versions they created, which that migration replaced.
-- **Design: done.** 47 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 53 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written. A parked draft of 150 more achievements, split
   into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
@@ -55,8 +55,12 @@ and why, which recommendations are baked into the schema.
   create/join crew, kick-off, + / + ROUND / −, live updates, home, feed, crew, me.
   `supabase/migrations/20261007120000_app_reads.sql` adds `crew_leaderboard()`,
   `crew_feed()` and the Realtime publication. `supabase/seed.sql` loads a demo crew.
-- **Not started:** milestones + combo engine, achievements, the offline queue, PWA install
-  (manifest/icons — unblocked now that the app is on HTTPS).
+- **Installable app** (D48–D53). A manifest, the pint icon (`app/design/`, rendered by
+  `app/scripts/make-icons.ps1`), and a hand-written service worker (`app/sw/sw.ts`, built by a
+  plugin in `app/vite.config.ts`) that precaches each build so the app opens with no signal.
+  Install offers on Home and Me (`components/layout/InstallOffer.tsx`, `lib/pwa.ts`); a
+  6-digit code in the sign-in emails for iPhone home-screen apps.
+- **Not started:** milestones + combo engine, achievements, the offline queue.
 - **`main` is production.** Friends use it, so it must always run: do new work on a branch
   and merge when it's tested. A push to `main` deploys.
 
@@ -125,12 +129,21 @@ version, below) or `npx supabase db push` — and before the app code that needs
 
 In Claude Code, `.claude/launch.json` starts the same dev server in the browser pane. A
 pane that is open but not on screen paints no animation frames, so motion freezes on its
-first frame — add `?raf-shim` to the URL (dev only; see `app/vite.config.ts`).
+first frame — add `?raf-shim` to the URL (dev only; see `app/vite.config.ts`). The
+`app-preview` entry serves the last build on port 4173, where the service worker runs.
 
 `./supabase/tests/run.sh` is the bare-Postgres fallback from the cloud session. It is
 Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 
 ## Gotchas already paid for
+
+- **The service worker runs only in a build**, never on the dev server: test it with
+  `npm --prefix app run build && npm --prefix app run preview` (port 4173, never 5173, so a
+  worker can't haunt the dev server). `/?sw-reset` removes it from one browser. A browser
+  pane hidden from view freezes motion there too, and `?raf-shim` is dev-only.
+- **The build refuses an uninstallable app**: a missing icon, a wrong PNG size, a manifest
+  key gone, or a file `index.html` names that isn't precached all fail `vite build`. The
+  worker must stay a classic script (no `import`/`export`), which the build also checks.
 
 - **Real `auth.users.id` has no default.** Fixtures must insert
   `(id) values (gen_random_uuid())`; the bare-Postgres stub hid this.
@@ -201,6 +214,9 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 - **Migrations are append-only.** Production has run every one of them (D43), so a schema
   change is a new migration — never an edit to an old one — tested locally, then applied to
   production before the app code that needs it merges.
+- **Migrations must also work with the previous app build** (D50): installed apps open from
+  their cache and run the old build until the next launch. Add tables, columns and
+  functions; don't rename, drop or change the signature of anything the live app calls.
 - Numbers in docs and UI use European formatting: `428.391`, `42,8%`.
 - Every non-obvious decision goes in `docs/DECISIONS.md` as a new ADR with what it costs,
   not just what was chosen. Superseded ADRs are struck through and kept.

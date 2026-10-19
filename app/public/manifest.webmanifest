@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "One Million Beers",
+  "short_name": "1M Beers",
+  "description": "Log every beer you share with your friends. One shared count toward one million.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0d0905",
+  "background_color": "#0d0905",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/home.jpg", "sizes": "750x1624", "type": "image/jpeg", "form_factor": "narrow", "label": "Your crew's count, and the Million" },
+    { "src": "/screenshots/night.jpg", "sizes": "750x1624", "type": "image/jpeg", "form_factor": "narrow", "label": "A night at the table" }
+  ]
+}

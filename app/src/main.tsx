@@ -8,6 +8,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { RedirectIfSignedIn, RequireAuth, RequireCrew, RequireProfile } from '@/components/layout/Gates'
 import { Toaster } from '@/components/ui/sonner'
 import '@/i18n'
+import { registerServiceWorker } from '@/lib/pwa'
 import { CrewPage } from '@/routes/CrewPage'
 import { Home } from '@/routes/Home'
 import { Me } from '@/routes/Me'
@@ -75,3 +76,5 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 )
+
+registerServiceWorker()

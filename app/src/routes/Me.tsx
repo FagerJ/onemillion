@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/AuthProvider'
 import { Cap } from '@/components/brand/Cap'
 import { CountUp } from '@/components/brand/CountUp'
 import { Button } from '@/components/ui/button'
+import { InstallCard } from '@/components/layout/InstallOffer'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { useProfile, useProfileSummary } from '@/data/queries'
 import { supabase } from '@/lib/supabase'
@@ -36,6 +37,8 @@ export function Me() {
         <Big label={t('me.best')} value={s?.best_streak_weeks ?? 0} unit={t('home.weeks')} />
       </section>
 
+      <InstallCard />
+
       <div className="mt-2 grid gap-2.5">
         <Drawer open={editing} onOpenChange={setEditing}>
           <DrawerTrigger asChild>
@@ -56,6 +59,9 @@ export function Me() {
           <LogOut /> {t('me.signOut')}
         </Button>
       </div>
+
+      {/* which deploy this phone runs: how an update is checked on a real device */}
+      <p className="kicker mt-6 text-center text-[10px] text-foam/25">{t('me.build', { id: import.meta.env.VITE_APP_BUILD })}</p>
     </div>
   )
 }

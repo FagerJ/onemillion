@@ -130,8 +130,8 @@ or create your own account and join with the invite code **`SKAL42`**.
 - ✅ The global counter, the crew's milestone pint, weekly streaks, the table, the nights
 - ✅ Live updates on every phone in the crew
 - ✅ Hosted, at [onemillion.fager.tech](https://onemillion.fager.tech), with [release notes and questions](https://news.onemillion.fager.tech) beside it
+- ✅ Installs to the home screen as an app, and opens with no signal
 - ⏳ **Next:** the game layer — badges, combos and milestone celebrations
-- ⏳ Installing it to the home screen as an app
 - ⏳ The offline queue, for taps in a pub with no signal
 - 💤 Guilds — designed for, deliberately parked
 

@@ -52,6 +52,7 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ✅ F3 | React + Vite + Tailwind + shadcn/ui app ([D42](DECISIONS.md#d42--the-client-is-a-react-web-app-with-tailwind-and-shadcnui-supersedes-d11)) + design tokens (palette, Anton/Space Grotesk) + translation layer ([D37](DECISIONS.md#d37--the-app-is-in-english-with-every-string-translatable)); builds for web and Android ([D38](DECISIONS.md#d38--v0-ships-to-android-as-an-installable-app-and-to-iphones-as-a-web-app)) | M | iOS build |
 | ✅ F4 | Schema: the five tables above, with nullable `guild_id` | M | guild tables themselves |
 | ✅ F5 | RLS: crew-scoped + `is_crew_member` helper | S | guild policies |
+| ✅ C13 | **Installable app** — manifest, the pint icon, a service worker so it opens with no signal, install offers, a sign-in code for iPhone ([D48](DECISIONS.md#d48--the-app-installs-to-the-home-screen-and-its-mark-is-the-pint)–[D53](DECISIONS.md#d53--email-sign-in-carries-a-6-digit-code-as-well-as-the-link)) | M | iOS startup images |
 | ✅ C1 | Auth — email + password, magic link ([D31](DECISIONS.md#d31--sign-in-is-email-and-password-with-magic-link-as-well)), Google ([D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)) | M | Apple |
 | ✅ C2 | Create a crew · share the invite code · join by code | M | — |
 | ✅ C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |

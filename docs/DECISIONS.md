@@ -25,6 +25,148 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D53 — Email sign-in carries a 6-digit code as well as the link
+**Decided.** The sign-in and sign-up emails add "Or type this code in the app", with the
+code from Supabase (`{{ .Token }}`). The "Check your inbox" panel takes it (`verifyOtp`,
+type `email`, which covers both). On an iPhone home-screen app, a line explains why.
+Password reset stays a link: you reset in Safari, then sign in with the new password.
+
+*Why:* on iPhone, a link tapped in Mail opens in Safari, which keeps its own sign-in apart
+from the home-screen app, so a magic link signs Safari in and not the app. A code typed into
+the app works everywhere: in the iPhone app, or on a laptop with the email on a phone.
+
+*Cost:*
+- Two templates to paste into the dashboard again (DEPLOY.md § 3). Until then production's
+  emails carry no code, and the field waits for one that never comes; the link still works.
+- The dashboard's "Email OTP length" must match: the field takes 6 to 10 digits.
+- A code in an email can be read aloud or forwarded: the same trust as the link.
+
+---
+
+### D52 — Install offers: a one-time banner on Home, a card on Me, a link on Welcome for iPhone
+**Decided.** Chrome's install event is caught before the app draws, and its own mini-bar is
+held back. Where one tap can install (Chrome, Edge and Samsung on Android, Chrome and Edge on
+a computer), Install opens the browser's dialog; on iPhone and iPad, "Show me how" opens a
+sheet with the three steps through Safari's Share menu. **Home** shows a slim banner once,
+dismissed for good in that browser, and never during a live night. **Me** keeps a card for
+as long as the app isn't installed. **Welcome** has a link for iPhone users, because a
+home-screen app on iPhone keeps its own sign-in apart from Safari's: install first, sign in
+once. An installed app asks the browser to keep its storage (`navigator.storage.persist()`).
+
+*Why:* Home is where everyone lands, and once is the right amount of nudging; Me is where it
+stays. A live night is for logging. iPhone has no install API, so steps are the only route,
+and D38 wants iPhone users to install, because Safari clears a site's storage after weeks
+unused.
+
+*Cost:*
+- One more card and one more drawer.
+- Dismissing the banner counts per browser.
+- Nothing shows where there is no way to install (Firefox, in-app browsers on Android, an
+  app already installed). Safari can't tell whether the app is already on the home screen,
+  so the banner may show once more there.
+
+---
+
+### D51 — The worker never touches Supabase, and opening offline waits on the splash
+**Decided.** The worker ignores anything that isn't a GET to its own address: Supabase's
+API, Auth and Storage, Google, everything else. Realtime is a WebSocket, which workers never
+see. Nothing is cached at runtime. Opening with no signal therefore gives the app but no
+data, so three things keep it from landing on the wrong screen:
+- **Gates:** "couldn't ask" (no data yet) is a splash, never "you have no profile" or "you
+  have no crew". Only an actual empty answer sends you to setup.
+- **Sign-in:** an expired login that can't be refreshed for lack of signal keeps you on the
+  splash instead of signing you out; the library refreshes it once there is signal.
+- **Splash:** says "No signal. Holding your seat." when offline, or after 8 seconds of
+  nothing coming back.
+
+*Why:* caching API answers in the worker would carry one person's crew across a sign-out
+(the app clears its cache on sign-out for that reason), and it is the offline queue's job,
+not the worker's. Before this, a failed profile request sent you to profile setup; with an
+app that opens offline, that would have been everyone's first offline experience.
+
+*Cost:*
+- Until the offline queue keeps the app's data on the phone, opening offline shows the
+  splash, not your crew.
+- A weak connection takes 8 seconds to say "No signal".
+- An expired login opened offline comes back up to a minute after signal returns: the auth
+  library waits that long before retrying a refresh that failed.
+
+---
+
+### D50 — The app opens from its cache; a new version takes over at once and asks before reloading
+**Decided.** Every page load is answered from the cache, so the app opens at once with or
+without signal. The browser checks for a new worker on launch, and the app also asks every
+time it comes back on screen (at most every 10 minutes) and hourly while open. A new worker
+precaches its build in the background, takes over straight away (`skipWaiting`,
+`clients.claim`) and deletes the old cache. The page then shows a toast, "Fresh version on
+tap · Reload"; it never reloads by itself.
+
+*Why:* the pub has bad signal. A network-first app waits out a weak connection on every
+launch, and the offline queue needs the app to open with none. Taking over at once means the
+next launch is the new build; a waiting worker could keep an installed app on the old one for
+days, because a phone rarely closes it. Reloading by itself could drop a tap mid-round, so
+until taps are durable, reloading is the user's tap.
+
+*Cost:*
+- A deploy reaches a phone on the launch after the one that found it, or when they tap
+  Reload: **phones run one build behind for one launch**. So a migration must keep working
+  with the previous app build for a release: add things, don't rename or drop what the live
+  app calls. That is a new rule for every migration from here on.
+- A page that was already open can't fetch an old file after the takeover. Today that is only
+  rare font subsets, which fall back to a system font. A missing `/assets/` file is now a real
+  404 rather than the app's page served as JavaScript.
+
+---
+
+### D49 — A hand-written service worker, not vite-plugin-pwa
+**Decided.** `app/sw/sw.ts` is a plain worker of about 70 lines with no imports. A plugin in
+`app/vite.config.ts` runs after each build: it lists `dist/`, checks the manifest and icon
+sizes, strips the worker's TypeScript with Vite's own `transformWithOxc`, and writes
+`dist/sw.js` with this build's file list and a version hash on its first line. The build
+fails if any of that is wrong. `app/tsconfig.sw.json` type-checks the worker against the
+WebWorker library. `VITE_SW_OFF=1` builds a kill switch instead (`app/sw/off.ts`), which
+clears every cache, unregisters itself and reloads open windows.
+
+*Why:* the worker needs three behaviours: precache the build, answer navigations with the
+app's one page, stay out of everything else. vite-plugin-pwa supports Vite 8, but it brings
+Workbox's build tool and with it Babel, a second Rollup and a dozen more packages, for
+features this worker doesn't use. Its biggest extra, Background Sync, doesn't exist on
+iPhone, so the offline queue can't lean on it anyway. Seventy lines read line by line, with
+build checks that were each broken once on purpose, match how this repo treats its SQL.
+
+*Cost:* service-worker correctness is ours. A bad worker can pin phones to an old build.
+Five things guard against that: `sw.js` is served `no-cache`; the worker is registered with
+`updateViaCache: 'none'`; the app checks for a new one every time it comes back on screen;
+`/?sw-reset` clears one phone; `VITE_SW_OFF=1` and a redeploy clear every phone.
+
+---
+
+### D48 — The app installs to the home screen, and its mark is the pint
+**Decided** (owner, 2026-10-19: "Go for 1,2,3,4,5!", the installable app first). The app has
+a web manifest (`app/public/manifest.webmanifest`): `id` and `start_url` `/`, standalone,
+portrait, cellar `#0d0905` for the theme and the splash, name "One Million Beers", short
+name "1M Beers". The icon is PintGauge's nonic pint, nearly full, on stout under the pub
+lamp: a rounded tile for the favicon and the 192/512 icons, and a full-bleed version for
+Android's maskable icon and the iPhone's apple-touch icon, which each platform cuts to its
+own shape. `app/scripts/make-icons.ps1` renders the PNGs from `app/design/*.svg` with
+headless Edge, and they are committed. Two screenshots fill Chrome's install sheet.
+
+*Why:* Android shows its install prompt only with 192 and 512 icons and a maskable one
+(without that, the icon sits on a white disc); iPhone wants a PNG apple-touch icon. `id`
+fixes the app's identity, so `start_url` can change later without a second install. People
+are bottle caps; the app is the pint everyone fills together, so a cap would read as a person.
+
+*Cost:*
+- The PNGs are binaries regenerated by a Windows-only script; Vercel builds on Linux and
+  never renders them.
+- The manifest's strings sit outside i18next (D37). Swedish later means a second manifest
+  or English there.
+- An icon on an iPhone home screen never changes until it is added again, so the owner
+  approves it before friends install.
+- The screenshots go stale as the screens change.
+
+---
+
 ### D47 — Polls on the news site: anyone can vote, through two functions
 **Decided** (owner, 2026-10-11: "build a poll on the website for how guilds should work and
 for what domain name we should use"). A question on the news site can carry a poll. Votes

@@ -82,6 +82,25 @@ Installing it as an app needs HTTPS, which only the live version has.
 
 `npm --prefix app run build` type-checks and builds; `npm --prefix app run lint` lints.
 
+### The installed app and its service worker
+
+The service worker ([D49](DECISIONS.md#d49--a-hand-written-service-worker-not-vite-plugin-pwa))
+only runs in a build, never on the dev server. To try it, build and serve the build:
+
+```bash
+npm --prefix app run build
+npm --prefix app run preview          # http://localhost:4173
+```
+
+The preview has its own port so a worker can never serve a stale build to the dev server.
+DevTools → Application shows the manifest, the worker and its cache; tick **Offline** in the
+Network panel to open the app with no signal. `http://localhost:4173/?sw-reset` removes the
+worker. Sign-in links work there too: `supabase/config.toml` lists port 4173 as a redirect
+address (restart the stack after pulling that change).
+
+The icons are committed PNGs. After changing `app/design/*.svg`, render them again on
+Windows: `powershell -ExecutionPolicy Bypass -File app/scripts/make-icons.ps1`.
+
 ### Signing in locally
 
 It works like the live app ([D44](DECISIONS.md#d44--google-sign-in-joins-email-and-auth-email-goes-through-resend-amends-d31)),

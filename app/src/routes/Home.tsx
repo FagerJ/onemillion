@@ -8,6 +8,7 @@ import { CrewHero } from '@/components/home/CrewHero'
 import { LeagueTable } from '@/components/home/LeagueTable'
 import { MillionBoard } from '@/components/home/MillionBoard'
 import { TonightCard } from '@/components/home/TonightCard'
+import { InstallBanner } from '@/components/layout/InstallOffer'
 import {
   useGlobalTotal,
   useLeaderboard,
@@ -51,6 +52,13 @@ export function Home() {
           </Link>
         )}
       </motion.header>
+
+      {/* a live night is for logging, not for installing */}
+      {night === null && (
+        <motion.div {...rise(1)}>
+          <InstallBanner />
+        </motion.div>
+      )}
 
       <motion.div {...rise(1)}>
         <MillionBoard total={global} />

@@ -1,16 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background:#0d0905">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>One Million Beers</title>
+    <meta name="description" content="Log every beer you share with your friends. One shared count toward one million." />
     <meta name="theme-color" content="#0d0905" />
     <meta name="color-scheme" content="dark" />
-    <meta name="description" content="Log every beer you share with your friends. One shared count toward one million." />
-    <title>One Million Beers</title>
+    <!-- sizes on the PNG makes Chromium prefer the SVG; a Safari without SVG favicons takes the PNG -->
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- use-credentials: preview deployments sit behind Vercel's login cookie -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="1M Beers" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The first frame, before any JavaScript: Splash's empty pint, same size and place.
+         React replaces it and pours. No text here, so nothing escapes i18next. -->
+    <div id="root"><div style="display:grid;place-items:center;min-height:100dvh"><svg viewBox="0 0 160 236" style="height:144px" aria-hidden="true"><path d="M20 6 L140 6 C145 18 149 30 147 44 L124 216 C123.4 220 121 222 117 222 L43 222 C39 222 36.6 220 36 216 L13 44 C11 30 15 18 20 6 Z" fill="rgb(251 244 228 / .035)" stroke="rgb(251 244 228 / .32)" stroke-width="2" stroke-linejoin="round"/></svg></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

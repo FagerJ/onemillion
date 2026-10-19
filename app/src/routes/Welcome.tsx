@@ -4,10 +4,12 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlapNumber } from '@/components/brand/Flaps'
 import { PintGauge } from '@/components/brand/PintGauge'
+import { IosInstallSheet } from '@/components/layout/InstallOffer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthSettings } from '@/data/queries'
+import { isIOS, isStandalone, useInstall } from '@/lib/pwa'
 import { linkError, supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +30,7 @@ const ERRORS = {
   signup_disabled: 'welcome.signupClosed',
   email_address_invalid: 'welcome.badEmail',
   weak_password: 'welcome.passwordHint',
+  otp_expired: 'welcome.codeWrong', // a wrong code, as well as an old one
 } as const
 
 function errorKey(code: string | undefined) {
@@ -41,6 +44,8 @@ function throwIf({ error }: { error: unknown }) {
 export function Welcome() {
   const { t } = useTranslation()
   const settings = useAuthSettings()
+  const install = useInstall()
+  const [howTo, setHowTo] = useState(false)
   const emailInput = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<Mode>('signIn')
   const [magic, setMagic] = useState(false)
@@ -49,6 +54,7 @@ export function Welcome() {
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState<Sent | null>(null)
   const [resent, setResent] = useState(false)
+  const [code, setCode] = useState('')
   const [unconfirmed, setUnconfirmed] = useState(false)
   const [error, setError] = useState<string | null>(() =>
     linkError ? t(linkError === 'otp_expired' ? 'welcome.linkExpired' : 'welcome.linkFailed') : null,
@@ -116,6 +122,16 @@ export function Welcome() {
     })
   }
 
+  // The 6-digit code in the sign-in and sign-up emails (D53). A home-screen app on iPhone
+  // can't receive the link — it opens in Safari, which keeps its own sign-in.
+  function verifyCode(e: FormEvent) {
+    e.preventDefault()
+    void run(async () => {
+      throwIf(await supabase.auth.verifyOtp({ email, token: code, type: 'email' }))
+      // SIGNED_IN: RedirectIfSignedIn takes it from here
+    })
+  }
+
   function forgot() {
     if (!emailInput.current?.checkValidity()) {
       setError(t('welcome.needEmail'))
@@ -152,6 +168,7 @@ export function Welcome() {
   function startOver() {
     setSent(null)
     setResent(false)
+    setCode('')
     setError(null)
   }
 
@@ -201,6 +218,31 @@ export function Welcome() {
             </span>
             <h2 className="display text-[30px] text-foam">{t('welcome.sentTitle')}</h2>
             <p className="text-[15px] leading-relaxed text-pretty text-foam/75">{t(sentText[sent], { email })}</p>
+            {sent !== 'reset' && (
+              <form onSubmit={verifyCode} className="mt-2 grid w-full gap-2 text-left">
+                <Label htmlFor="code" className="kicker">
+                  {t('welcome.codeLabel')}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6,10}"
+                    maxLength={10}
+                    required
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder={t('welcome.codePlaceholder')}
+                    className="min-w-0 text-center font-display text-[22px] tracking-[0.3em] tabular"
+                  />
+                  <Button type="submit" disabled={busy}>
+                    {t('welcome.codeSubmit')}
+                  </Button>
+                </div>
+                {isIOS() && isStandalone() && <p className="text-[13px] text-foam/45">{t('welcome.codeHint')}</p>}
+              </form>
+            )}
             {error ? (
               <p role="alert" className="rounded-xl bg-fire/10 px-3 py-2 text-[14px] text-fire">
                 {error}
@@ -329,6 +371,18 @@ export function Welcome() {
           </form>
         )}
       </motion.div>
+
+      {/* iPhone keeps a home-screen app's sign-in apart from Safari's: install first, sign in once */}
+      {install.state === 'ios' && (
+        <button
+          type="button"
+          onClick={() => setHowTo(true)}
+          className="mt-5 text-[14px] font-medium text-gold/80 underline-offset-4 hover:text-gold hover:underline"
+        >
+          {t('welcome.iosInstallFirst')}
+        </button>
+      )}
+      <IosInstallSheet open={howTo} onOpenChange={setHowTo} />
     </div>
   )
 }

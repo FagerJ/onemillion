@@ -13,6 +13,17 @@
       "port": 5173
     },
     {
+      "name": "app-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "app",
+        "run",
+        "preview"
+      ],
+      "port": 4173
+    },
+    {
       "name": "site",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

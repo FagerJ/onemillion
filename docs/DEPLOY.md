@@ -60,6 +60,34 @@ afterwards, so `supabase migration list` shows local and production in step. A s
 fingerprint — functions, policies, grants, triggers, constraints, indexes, cron jobs,
 publication — matched the local database section for section.
 
+## How a deploy reaches a phone
+
+The app installs to the home screen and opens from its own cache, so it works with no signal
+([D48](DECISIONS.md#d48--the-app-installs-to-the-home-screen-and-its-mark-is-the-pint)–[D52](DECISIONS.md#d52--install-offers-a-one-time-banner-on-home-a-card-on-me-a-link-on-welcome-for-iphone)).
+A service worker (`app/sw/sw.ts`, built into `dist/sw.js`) keeps this build's files and
+answers every page load with them. It never touches Supabase.
+
+- **A deploy lands on the next launch.** A phone checks for a new worker on launch and every
+  time the app comes back on screen. The new one downloads the build in the background and
+  takes over; the app then shows "Fresh version on tap · Reload". Tapping Reload switches at
+  once; otherwise the next launch is the new build.
+- **So phones run the previous build for a while.** A migration must keep working with the
+  app build before it: add tables, columns and functions; don't rename, drop or change the
+  signature of anything the live app calls. Migration first, app second, as before.
+- **Headers** (`app/vercel.json`): `sw.js` and `manifest.webmanifest` are `no-cache`, so a
+  phone always sees the newest worker; `/assets/*` are immutable; icons and screenshots keep
+  a day. A missing `/assets/` file is a real 404, not the app's page.
+- **One phone stuck on a bad build:** open `https://onemillion.fager.tech/?sw-reset`. It
+  removes the worker and its cache and reloads from the network.
+- **Every phone stuck:** set `VITE_SW_OFF=1` in the Vercel project and redeploy. That ships a
+  worker that clears every cache, unregisters itself and reloads open windows. Remove the
+  variable and redeploy to bring the worker back.
+- **Which build is a phone running?** The bottom of Me shows "Build" and the commit.
+
+The build checks the manifest, the icon sizes and that every file `index.html` names is
+cached, and fails if anything is off. The icons are PNGs rendered by hand from
+`app/design/*.svg` (`app/scripts/make-icons.ps1`, Windows) and committed.
+
 ## One-time setup in the dashboards
 
 These hold secrets or live outside the repo, so they're done by hand, in this order. The
@@ -120,6 +148,13 @@ For each template, set the subject and paste the whole file as the body:
 | Reset password | `Pick a new password · One Million Beers` | [`supabase/templates/recovery.html`](../supabase/templates/recovery.html) |
 | Invite user | `You're invited · One Million Beers` | [`supabase/templates/invite.html`](../supabase/templates/invite.html) |
 | Change email address | `Confirm your new email · One Million Beers` | [`supabase/templates/email_change.html`](../supabase/templates/email_change.html) |
+
+The sign-up and magic-link emails carry a 6-digit code as well as the link
+([D53](DECISIONS.md#d53--email-sign-in-carries-a-6-digit-code-as-well-as-the-link)): an
+iPhone home-screen app can't receive a link, because it opens in Safari. A template pasted
+before the code was added sends no code, so paste these two again whenever the files change.
+Under **Sign In / Providers → Email**, "Email OTP length" must be between 6 and 10; the
+default 6 is right.
 
 The local stack sends the same files (`supabase/config.toml`), so what lands in Mailpit is
 what friends get. Reauthentication is the one template left at Supabase's default: the app never
