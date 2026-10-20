@@ -4,6 +4,13 @@ Status: **draft for curation.** This is deliberately over-supplied — cut the o
 don't land. Every entry maps to a rule type in
 [ARCHITECTURE.md §6.1](ARCHITECTURE.md#61-rule-vocabulary).
 
+> **Built so far:** a starter set of 25 —
+> [D68](DECISIONS.md#d68--the-starter-catalogue-rewards-the-table-showing-up-giving-driving-and-rest)
+> lists them, and `supabase/migrations/20261019130000_achievements.sql` holds their exact
+> words and rules. The combos are 10 / 25 / 50 / 100 (the owner's answer to C1 in
+> QUESTIONS.md), not the ladder below. Everything else here is still a draft; adding one of a
+> built rule type is an insert in a migration, no app release.
+
 > ### 🍻 The Crew Rule
 > **You cannot log a beer alone.** Every session needs at least two attendees, each a real
 > account that joined your crew with its invite code

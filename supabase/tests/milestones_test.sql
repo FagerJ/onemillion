@@ -326,6 +326,12 @@ begin
   if backfill_milestones() <> 0 then
     raise exception 'TEST FAIL: a second replay found more to record';
   end if;
+  -- Tisdagar's pours and voids share one timestamp, so the replay counts every pour before
+  -- any void and runs past the live peak of 99: it must not invent a 100 the crew never hit
+  if exists (select 1 from milestone_events me join crew_stats cs on cs.crew_id = me.scope_id
+              where me.scope = 'crew' and me.backfilled and me.threshold > cs.total_beers) then
+    raise exception 'TEST FAIL: the replay recorded a rung above where the count stands';
+  end if;
 
   -- ── 13. Realtime carries crossings ──────────────────────────
   if not exists (select 1 from pg_publication_tables

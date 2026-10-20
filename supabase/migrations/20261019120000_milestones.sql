@@ -183,6 +183,16 @@ begin
                                ('profile', r.profile_id, r.p_total)) as x(scope, scope_id, total)
     join public.milestones m on m.threshold = x.total and x.scope = any (m.scopes)
     where r.delta = 1
+      -- A count moves by one from zero, so every rung up to today's total really was
+      -- landed on. Above it, the replay's order (phone clocks, ties) may have overshot what
+      -- the live count reached; those are left for the live trigger to find (D58).
+      and m.threshold <= case x.scope
+            when 'global' then (select g.total_beers from public.global_stats g where g.id = 1)
+            when 'crew'   then coalesce((select c.total_beers from public.crew_stats c
+                                          where c.crew_id = x.scope_id), 0)
+            else               coalesce((select p.total_beers from public.profile_stats p
+                                          where p.profile_id = x.scope_id), 0)
+          end
     order by x.scope, x.scope_id, m.threshold, r.at, r.step, r.seq
   )
   insert into public.milestone_events

@@ -144,3 +144,7 @@ update public.milestone_events e
    set backfilled = true, crossed_at = b.logged_at
   from public.beers b
  where b.id = e.beer_id;
+
+-- Badges the demo history earned went in live, as it was poured. The sweep adds what only
+-- time can show (a week off), flagged as history, so nothing toasts (D63, D65).
+select public.sweep_achievements('backfill');

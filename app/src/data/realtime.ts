@@ -1,5 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { celebrate } from '@/components/celebrate/bus'
+import type { ComboRow, UnlockRow } from '@/data/queries'
 import { supabase } from '@/lib/supabase'
 
 // C11: when anyone at the table taps, every phone in the crew refreshes. Realtime
@@ -34,6 +36,22 @@ export function useCrewRealtime(crewId: string | undefined) {
         { event: 'INSERT', schema: 'public', table: 'milestone_events', filter: 'scope=eq.global' },
         () => queryClient.invalidateQueries({ queryKey: ['milestones', 'global'] }),
       )
+      // G4: a night reaching a rung, and badges unlocking. Only live unlocks celebrate (D65);
+      // a sweep or backfill row just refreshes the grids.
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'session_combos', filter }, (p) => {
+        const row = p.new as ComboRow
+        void queryClient.invalidateQueries({ queryKey: ['session', row.session_id, 'combos'] })
+        void queryClient.invalidateQueries({ queryKey: ['crew', crewId, 'combos'] })
+        celebrate({ kind: 'combo', row })
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'achievement_unlocks', filter }, (p) => {
+        const row = p.new as UnlockRow
+        void queryClient.invalidateQueries({ queryKey: ['badges'] }) // a secret may now be revealed
+        void queryClient.invalidateQueries({
+          queryKey: row.tier === 'crew' ? ['crew', crewId, 'badges'] : ['profile', row.profile_id, 'badges'],
+        })
+        if (row.source === 'live') celebrate({ kind: 'unlock', row })
+      })
       .subscribe()
     return () => {
       void supabase.removeChannel(channel)

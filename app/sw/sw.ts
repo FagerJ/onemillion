@@ -60,6 +60,8 @@ self.addEventListener('fetch', (event) => {
     // Every page is index.html. The router reads the path; Supabase reads the #hash (which
     // never reaches a worker) or a ?code. A path that looks like a file isn't a page.
     if (/\.[a-z0-9]+$/i.test(url.pathname)) return
+    // /?sw-reset comes from the network, so a cached build that breaks can't stop its own reset
+    if (url.searchParams.has('sw-reset')) return
     event.respondWith(fromShell('/index.html', request))
   } else if (PRECACHED.has(url.pathname)) {
     event.respondWith(fromShell(url.pathname, request))

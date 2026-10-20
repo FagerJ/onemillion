@@ -5,7 +5,83 @@ export type Database = {
   
   "public": {
           Tables: {
-            "beer_types": {
+            "achievement_unlocks": {
+                  Row: {
+                    "achievement_code": string,"beer_id": string | null,"created_at": string,"crew_id": string | null,"guild_id": string | null,"id": string,"profile_id": string | null,"session_id": string | null,"source": string,"tier": string,"unlocked_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "achievement_code": string,"beer_id"?: string | null,"created_at"?: string,"crew_id"?: string | null,"guild_id"?: string | null,"id"?: string,"profile_id"?: string | null,"session_id"?: string | null,"source"?: string,"tier": string,"unlocked_at": string
+                  }
+                  Update: {
+                    "achievement_code"?: string,"beer_id"?: string | null,"created_at"?: string,"crew_id"?: string | null,"guild_id"?: string | null,"id"?: string,"profile_id"?: string | null,"session_id"?: string | null,"source"?: string,"tier"?: string,"unlocked_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "achievement_unlocks_achievement_code_tier_fkey"
+      columns: ["achievement_code","tier"]
+isOneToOne: false
+      referencedRelation: "achievements"
+      referencedColumns: ["code","tier"]
+    },{
+      foreignKeyName: "achievement_unlocks_beer_id_fkey"
+      columns: ["beer_id"]
+isOneToOne: false
+      referencedRelation: "beers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "achievement_unlocks_beer_id_fkey"
+      columns: ["beer_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["first_beer_id"]
+    },{
+      foreignKeyName: "achievement_unlocks_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "achievement_unlocks_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "achievement_unlocks_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "achievement_unlocks_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "driven_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "achievement_unlocks_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "sessions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"achievements": {
+                  Row: {
+                    "art": NonNullable<Json>,"category": string,"code": string,"created_at": string,"description": string,"flavor": string | null,"is_secret": boolean,"points": number,"retired_at": string | null,"rule": NonNullable<Json>,"sort": number,"tier": string,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "art"?: NonNullable<Json>,"category": string,"code": string,"created_at"?: string,"description": string,"flavor"?: string | null,"is_secret"?: boolean,"points": number,"retired_at"?: string | null,"rule": NonNullable<Json>,"sort": number,"tier": string,"title": string
+                  }
+                  Update: {
+                    "art"?: NonNullable<Json>,"category"?: string,"code"?: string,"created_at"?: string,"description"?: string,"flavor"?: string | null,"is_secret"?: boolean,"points"?: number,"retired_at"?: string | null,"rule"?: NonNullable<Json>,"sort"?: number,"tier"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"beer_types": {
                   Row: {
                     "code": string,"label": string,"sort_order": number
                   }
@@ -49,6 +125,18 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "beers_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "beers_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "driven_nights"
+      referencedColumns: ["session_id"]
     },{
       foreignKeyName: "beers_session_id_fkey"
       columns: ["session_id"]
@@ -174,11 +262,29 @@ isOneToOne: false
       referencedRelation: "beers"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "milestone_events_beer_id_fkey"
+      columns: ["beer_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["first_beer_id"]
+    },{
       foreignKeyName: "milestone_events_profile_id_fkey"
       columns: ["profile_id"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "milestone_events_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "milestone_events_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "driven_nights"
+      referencedColumns: ["session_id"]
     },{
       foreignKeyName: "milestone_events_session_id_fkey"
       columns: ["session_id"]
@@ -303,6 +409,74 @@ isOneToOne: false
       foreignKeyName: "session_attendees_session_id_fkey"
       columns: ["session_id"]
 isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "session_attendees_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "driven_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "session_attendees_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "sessions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"session_combos": {
+                  Row: {
+                    "achievement_code": string,"beer_id": string | null,"created_at": string,"crew_id": string,"reached_at": string,"session_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "achievement_code": string,"beer_id"?: string | null,"created_at"?: string,"crew_id": string,"reached_at": string,"session_id": string
+                  }
+                  Update: {
+                    "achievement_code"?: string,"beer_id"?: string | null,"created_at"?: string,"crew_id"?: string,"reached_at"?: string,"session_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "session_combos_achievement_code_fkey"
+      columns: ["achievement_code"]
+isOneToOne: false
+      referencedRelation: "achievements"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "session_combos_beer_id_fkey"
+      columns: ["beer_id"]
+isOneToOne: false
+      referencedRelation: "beers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "session_combos_beer_id_fkey"
+      columns: ["beer_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["first_beer_id"]
+    },{
+      foreignKeyName: "session_combos_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "session_combos_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "counted_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "session_combos_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "driven_nights"
+      referencedColumns: ["session_id"]
+    },{
+      foreignKeyName: "session_combos_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
       referencedRelation: "sessions"
       referencedColumns: ["id"]
     }
@@ -336,11 +510,109 @@ isOneToOne: false
                 }
           }
           Views: {
-            [_ in never]: never
+            "counted_nights": {
+                  Row: {
+                    "closed_at": string | null,"crew_id": string | null,"first_beer_at": string | null,"first_beer_id": string | null,"first_beer_seq": number | null,"guild_id": string | null,"session_id": string | null,"started_at": string | null,"week": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "sessions_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"driven_nights": {
+                  Row: {
+                    "closed_at": string | null,"crew_id": string | null,"guild_id": string | null,"profile_id": string | null,"session_id": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "session_attendees_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "sessions_crew_id_fkey"
+      columns: ["crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"poured_rounds": {
+                  Row: {
+                    "beer_id": string | null,"crew_id": string | null,"first_seq": number | null,"guild_id": string | null,"poured_at": string | null,"profile_id": string | null,"round_id": string | null,"session_id": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "beers_added_by_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                }
           }
           Functions: {
-            "backfill_milestones":
+            "achievement_catalogue":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "art": Json,"category": string,"code": string,"description": string,"flavor": string,"is_retired": boolean,"is_secret": boolean,"points": number,"sort": number,"target": number,"tier": string,"title": string
+            }[]
+                           },
+"achievement_rule_ok":
+{ Args: { "p_rule": Json,"p_tier": string }; Returns: boolean
+                           },
+"award_alcohol_free_beers":
+{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_combo_rungs":
+{ Args: { "p_crews": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_full_crew":
+{ Args: { "p_crews": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_lifetime_beers":
+{ Args: { "p_crews": (string)[],"p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_members":
+{ Args: { "p_crews": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_nights":
+{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_nights_driving":
+{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_rounds_poured":
+{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_session":
+{ Args: { "p_night_level": boolean,"p_session": string,"p_source": string }; Returns: undefined
+                           },
+"award_session_size":
+{ Args: { "p_crews": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_session_total":
+{ Args: { "p_sessions": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_streak_weeks":
+{ Args: { "p_crews": (string)[],"p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"award_week_off":
+{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+                           },
+"backfill_milestones":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"can_see_unlock":
+{ Args: { "p_crew": string,"p_profile": string,"p_tier": string }; Returns: boolean
                            },
 "cast_vote":
 { Args: { "p_choice": string,"p_comment"?: string,"p_name": string,"p_poll": string,"p_voter": string }; Returns: undefined
@@ -369,6 +641,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"crew_achievement_progress":
+{ Args: { "p_crew": string }; Returns: {
+              "code": string,"progress": number,"target": number
+            }[]
+                           },
 "crew_feed":
 { Args: { "p_before"?: string,"p_crew": string,"p_limit"?: number }; Returns: {
               "attendees": Json,"closed_at": string,"closes_at": string,"note": string,"session_id": string,"started_at": string,"status": string,"total_beers": number
@@ -422,6 +699,11 @@ isOneToOne: false
               "choice": string,"comment": string,"name": string,"voted_at": string
             }[]
                            },
+"profile_achievement_progress":
+{ Args: { "p_profile": string }; Returns: {
+              "code": string,"progress": number,"target": number
+            }[]
+                           },
 "profile_summary":
 { Args: { "p_profile": string }; Returns: {
               "beers_this_week": number,"best_streak_weeks": number,"current_streak_weeks": number,"last_logged_at": string,"total_beers": number
@@ -447,6 +729,9 @@ isOneToOne: false
                            },
 "streak_of":
 { Args: { "p_this_week": string,"p_weeks": (string)[] }; Returns: Record<string, unknown>
+                           },
+"sweep_achievements":
+{ Args: { "p_source"?: string }; Returns: number
                            },
 "week_start":
 { Args: { "p_at": string,"p_tz": string }; Returns: string

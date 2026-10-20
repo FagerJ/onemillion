@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAuth } from '@/auth/AuthProvider'
+import { BadgeGrid } from '@/components/badges/BadgeGrid'
 import { Cap } from '@/components/brand/Cap'
 import { FlapWord } from '@/components/brand/Flaps'
 import { TrophyCabinet } from '@/components/crew/TrophyCabinet'
@@ -19,7 +20,15 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { useLeaveCrew, useMembers, useMyCrew, useRegenerateCode } from '@/data/queries'
+import {
+  useBadgeCatalogue,
+  useCrewBadgeProgress,
+  useCrewBadges,
+  useLeaveCrew,
+  useMembers,
+  useMyCrew,
+  useRegenerateCode,
+} from '@/data/queries'
 
 export function CrewPage() {
   const { t } = useTranslation()
@@ -29,6 +38,9 @@ export function CrewPage() {
   const crew = mine!.crew
   const captain = mine!.role === 'captain'
   const { data: members = [] } = useMembers(crew.id)
+  const { data: catalogue } = useBadgeCatalogue()
+  const { data: badges } = useCrewBadges(crew.id)
+  const { data: progress = [] } = useCrewBadgeProgress(crew.id)
   const regenerate = useRegenerateCode(crew.id)
   const leave = useLeaveCrew()
 
@@ -91,6 +103,9 @@ export function CrewPage() {
           </AlertDialog>
         )}
       </section>
+
+      {/* the NEW chips are this viewer's: a shared phone has two of them */}
+      <BadgeGrid tier="crew" scope={`crew:${crew.id}:${user!.id}`} catalogue={catalogue} unlocks={badges} progress={progress} />
 
       <TrophyCabinet crewId={crew.id} />
 

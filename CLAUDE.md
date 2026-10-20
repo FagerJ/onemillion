@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (61 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (69 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -32,7 +32,7 @@ and why, which recommendations are baked into the schema.
   the tables, columns, functions, policies, triggers and constraints in place. **It is now
   where every function and policy that touches a crew is defined** — the earlier files
   below still show the `party` versions they created, which that migration replaced.
-- **Design: done.** 61 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 69 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written. A parked draft of 150 more achievements, split
   into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
@@ -65,7 +65,13 @@ and why, which recommendations are baked into the schema.
   `beers_20_milestones`, history replayed by `backfill_milestones()`. The app's takeover is
   `components/celebrate/MilestoneTakeover.tsx` (hosted in AppShell); the trophy cabinet sits
   on the crew page.
-- **Not started:** combo engine, achievements, the offline queue.
+- **Combos and badges** (G1–G4, D62–D69). `supabase/migrations/20261019130000_achievements.sql`:
+  the catalogue (`achievements`, 25 starter badges, a closed rule vocabulary),
+  `achievement_unlocks`, `session_combos`, twelve evaluators run live by triggers and nightly
+  by `sweep_achievements()` (pg_cron). The app: `components/celebrate/Celebrations.tsx`
+  (banners and slips, waiting for any milestone takeover), `components/badges/` (the grids),
+  `components/brand/BadgeArt.tsx`.
+- **Not started:** the offline queue.
 - **`main` is production.** Friends use it, so it must always run: do new work on a branch
   and merge when it's tested. A push to `main` deploys.
 
@@ -144,7 +150,7 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 
 - **The service worker runs only in a build**, never on the dev server: test it with
   `npm --prefix app run build && npm --prefix app run preview` (port 4173, never 5173, so a
-  worker can't haunt the dev server). `/?sw-reset` removes it from one browser. A browser
+  worker can't haunt the dev server). `/?sw-reset`, or Me → Reset the app, removes it. A browser
   pane hidden from view freezes motion there too, and `?raf-shim` is dev-only.
 - **Milestone crossings are exact.** `beers_20_milestones` records a rung when a total
   lands *on* it, reading the totals `beers_10_count` just moved for the same row; Postgres
@@ -152,6 +158,10 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
   round test fails if that changes). Anything that jumps a total — `recompute_stats()`, a
   new low rung — skips crossings: run `select backfill_milestones();` afterwards. Replayed
   rows are `backfilled` and never celebrate.
+- **Badges are written live and by the sweep, with the same SQL.** A live unlock has
+  `source = 'live'` and is the only kind that toasts. After changing an evaluator or a rule,
+  `select sweep_achievements();` brings history up to date quietly. A failing evaluator
+  never fails a beer: look for "achievements skipped" warnings in the Postgres logs.
 - **The build refuses an uninstallable app**: a missing icon, a wrong PNG size, a manifest
   key gone, or a file `index.html` names that isn't precached all fail `vite build`. The
   worker must stay a classic script (no `import`/`export`), which the build also checks.
@@ -225,9 +235,11 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
 - **Migrations are append-only.** Production has run every one of them (D43), so a schema
   change is a new migration — never an edit to an old one — tested locally, then applied to
   production before the app code that needs it merges.
-- **Migrations must also work with the previous app build** (D50): installed apps open from
-  their cache and run the old build until the next launch. Add tables, columns and
-  functions; don't rename, drop or change the signature of anything the live app calls.
+- **Migrations must also work with older app builds** (D50): installed apps open from
+  their cache and run whatever build they last saw — weeks old for a phone that hasn't opened
+  the app. Add tables, columns and functions; don't rename, drop or change the signature of
+  anything an app build calls; keep an old name working for some weeks before dropping it.
+  Never roll Vercel back to a deployment from before `app/sw/` (DEPLOY.md).
 - Numbers in docs and UI use European formatting: `428.391`, `42,8%`.
 - Every non-obvious decision goes in `docs/DECISIONS.md` as a new ADR with what it costs,
   not just what was chosen. Superseded ADRs are struck through and kept.

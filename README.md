@@ -25,8 +25,9 @@ and everyone at the table is on it. Anyone can tap **+** for anyone, or **+ ROUN
 pour one for the whole table at once — and the tally climbs live on every phone.
 
 Each night lands in the crew's history. The crew chases its next milestone on a ladder
-that runs 10 → 25 → 50 → 100 → … → 1.000.000. And every beer anyone logs, anywhere, ticks
-one shared global counter one step closer to seven figures.
+that runs 10 → 25 → 50 → 100 → … → 100.000. And every beer anyone logs, anywhere, ticks
+one shared global counter, the Million, one step closer to seven figures: its own ladder
+runs 1.000 → 2.500 → … → 1.000.000.
 
 <p align="center">
   <img src="docs/screenshots/welcome.jpg" width="19%" alt="Welcome screen: the wordmark beside a pouring pint, the target on scoreboard flaps, and sign-in">
@@ -131,7 +132,7 @@ or create your own account and join with the invite code **`SKAL42`**.
 - ✅ Live updates on every phone in the crew
 - ✅ Hosted, at [onemillion.fager.tech](https://onemillion.fager.tech), with [release notes and questions](https://news.onemillion.fager.tech) beside it
 - ✅ Installs to the home screen as an app, and opens with no signal
-- ⏳ **Next:** the game layer — badges, combos and milestone celebrations
+- ✅ The game layer: milestone takeovers and the Golden Goal, combos, 25 badges
 - ⏳ The offline queue, for taps in a pub with no signal
 - 💤 Guilds — designed for, deliberately parked
 
@@ -142,7 +143,7 @@ or create your own account and join with the invite code **`SKAL42`**.
 | **Crew** | Your group of friends. Joined with an invite code. |
 | **Night** | One evening out, inside a crew — a *session* in the code. Needs two people before anyone can log. |
 | **Round** | One tap that adds a beer for everyone at the table who isn't driving. |
-| **The ladder** | The milestones every crew climbs: 10, 25, 50, 100 … 1.000.000. |
+| **The ladder** | The milestones: a crew climbs 10, 25, 50, 100 … 100.000; the Million climbs 1.000 … 1.000.000. |
 | **Guild** | Many crews under one banner, like a supporters' club. Later. |
 
 ## The docs

@@ -1,4 +1,4 @@
-import { Car, Eye, Flag, Minus, Plus, UserPlus } from 'lucide-react'
+import { Car, Eye, Flag, Leaf, Minus, Plus, UserPlus } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +31,7 @@ import {
   makeBeers,
   useAddAttendees,
   useAttendees,
+  useBadgeCatalogue,
   useCloseNight,
   useKickOff,
   useLiveBeers,
@@ -38,6 +39,7 @@ import {
   useMembers,
   useMyCrew,
   useOpenNight,
+  useSessionCombos,
   useSetInRounds,
   useTakeBack,
   type Attendee,
@@ -133,6 +135,8 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   const { user } = useAuth()
   const { data: attendees = [] } = useAttendees(night.id)
   const { data: beers = [] } = useLiveBeers(night.id)
+  const { data: combos = [] } = useSessionCombos(night.id)
+  const { data: catalogue = [] } = useBadgeCatalogue()
   const log = useLogBeers(night.id, night.crew_id)
   const takeBack = useTakeBack(night.id)
   const checkIn = useAddAttendees(night.id)
@@ -153,11 +157,14 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   const failed = (e: unknown) => toast.error(t(refused(e) ? 'night.notAtTable' : 'night.failed'))
   const closes = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(night.closes_at))
 
-  const pour = (ids: string[], round = false) => {
+  // only the rungs tonight has reached, never how far off the next one is (D68)
+  const comboTitle = (code: string) => catalogue.find((a) => a.code === code)?.title ?? code
+
+  const pour = (ids: string[], round = false, alcoholFree = false) => {
     if (ids.length === 0 || alone || !here) return
     buzz(round ? [12, 30, 12, 30, 12] : 12)
     log.mutate(
-      { profileIds: ids, rows: makeBeers(ids, user!.id, round) },
+      { profileIds: ids, rows: makeBeers(ids, user!.id, round, alcoholFree) },
       { onError: failed },
     )
   }
@@ -183,6 +190,23 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
           <CapStack people={attendees.map((a) => a.profile)} size="xs" max={8} />
           <span className="text-[12px] font-semibold text-foam/40">{t('night.closesAt', { time: closes })}</span>
         </div>
+        {combos.length > 0 && (
+          <ul aria-label={t('night.combos')} className="mt-3 flex flex-wrap justify-center gap-1.5">
+            <AnimatePresence initial={false}>
+              {combos.map((c) => (
+                <motion.li
+                  key={c.achievement_code}
+                  initial={{ scale: 1.8, opacity: 0, rotate: -10 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                  className="rounded-full bg-fire/14 px-2.5 py-1 font-display text-[13px] leading-none tracking-[0.08em] text-fire uppercase ring-1 ring-fire/35"
+                >
+                  {comboTitle(c.achievement_code)}
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        )}
       </section>
 
       {!here ? (
@@ -208,6 +232,7 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
             disabled={alone || !here}
             canEdit={here}
             onPlus={() => pour([a.profile_id])}
+            onAlcoholFree={() => pour([a.profile_id], false, true)}
             onMinus={() => undo(a.profile_id)}
           />
         ))}
@@ -273,6 +298,7 @@ function DrinkerRow({
   disabled,
   canEdit,
   onPlus,
+  onAlcoholFree,
   onMinus,
 }: {
   attendee: Attendee
@@ -283,6 +309,8 @@ function DrinkerRow({
   /** at the table: may void beers and mark drivers */
   canEdit: boolean
   onPlus: () => void
+  /** a beer on the tally like any other (D9), just without the alcohol */
+  onAlcoholFree: () => void
   onMinus: () => void
 }) {
   const { t } = useTranslation()
@@ -305,6 +333,9 @@ function DrinkerRow({
             onSelect={() => setInRounds.mutate({ profileId: attendee.profile_id, inRounds: !attendee.in_rounds })}
           >
             <Car /> {attendee.in_rounds ? t('night.skipRounds') : t('night.backInRounds')}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={disabled} onSelect={onAlcoholFree}>
+            <Leaf /> {t('night.alcoholFree')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

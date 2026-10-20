@@ -53,6 +53,7 @@ declare
   dag  uuid := gen_random_uuid(); erik  uuid := gen_random_uuid();
   olle uuid := gen_random_uuid(); nils  uuid := gen_random_uuid();
   hanna uuid := gen_random_uuid(); hugo uuid := gen_random_uuid();
+  hedda uuid := gen_random_uuid();   -- only at last week's night: her week off isn't over yet
   outsider uuid := gen_random_uuid();
   big uuid[] := array(select gen_random_uuid() from generate_series(1, 9));
   p uuid;   -- Onsdagar: anna, bjorn, cilla, dag, erik
@@ -71,11 +72,11 @@ declare
     date_trunc('week', now() at time zone 'Europe/Stockholm') at time zone 'Europe/Stockholm';
 begin
   insert into auth.users (id)
-  select x from unnest(array[anna, bjorn, cilla, dag, erik, olle, nils, hanna, hugo, outsider] || big) x;
+  select x from unnest(array[anna, bjorn, cilla, dag, erik, olle, nils, hanna, hugo, hedda, outsider] || big) x;
   insert into profiles (id, display_name, initials) values
     (anna, 'Anna', 'A'), (bjorn, 'Björn', 'B'), (cilla, 'Cilla', 'C'), (dag, 'Dag', 'D'),
     (erik, 'Erik', 'E'), (olle, 'Olle', 'O'), (nils, 'Nils', 'N'), (hanna, 'Hanna', 'H'),
-    (hugo, 'Hugo', 'HU'), (outsider, 'Ute', 'U');
+    (hugo, 'Hugo', 'HU'), (hedda, 'Hedda', 'HE'), (outsider, 'Ute', 'U');
   insert into profiles (id, display_name, initials)
   select x, 'Big ' || o, 'B' || o from unnest(big) with ordinality as t(x, o);
 
@@ -107,7 +108,7 @@ begin
   insert into crews (name, created_by) values ('Elsewhere', olle) returning id into q;
   insert into crew_members (crew_id, profile_id, role) values (q, olle, 'captain'), (q, nils, 'member');
   insert into crews (name, created_by) values ('History', hanna) returning id into h;
-  insert into crew_members (crew_id, profile_id, role) values (h, hanna, 'captain'), (h, hugo, 'member');
+  insert into crew_members (crew_id, profile_id, role) values (h, hanna, 'captain'), (h, hugo, 'member'), (h, hedda, 'member');
   insert into crews (name, created_by) values ('Big table', big[1]) returning id into r;
   insert into crew_members (crew_id, profile_id) select r, x from unnest(big) x;
 
@@ -311,8 +312,8 @@ begin
 
   -- ── 9, 10. A night a week for eleven weeks; week −6's beers voided
   foreach k in array array[-11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1] loop
-    s := test_helpers.night(h, hanna, array[hanna, hugo], '{}',
-                            monday + make_interval(days => 7 * k + 1, hours => 19));
+    s := test_helpers.night(h, hanna, case when k = -1 then array[hanna, hugo, hedda] else array[hanna, hugo] end,
+                            '{}', monday + make_interval(days => 7 * k + 1, hours => 19));
     nights := nights || s;
     perform test_helpers.pour(s, array[hanna, hugo], hanna);
     if k = -6 then
@@ -356,6 +357,9 @@ begin
     raise exception 'TEST FAIL: Hanna''s week off should be credited on the Monday of week −5, got %', u.unlocked_at;
   end if;
   if test_helpers.has('CLEAN_SHEET', cilla) then          -- break: drop the empty-week "not exists"
+    raise exception 'TEST FAIL: someone out this week got a week off';
+  end if;
+  if test_helpers.has('CLEAN_SHEET', hedda) then          -- break: w.week + 14 → + 7
     raise exception 'TEST FAIL: a week that isn''t over yet counted as a week off';
   end if;
   if sweep_achievements() <> 0 then raise exception 'TEST FAIL: the sweep is not idempotent'; end if;

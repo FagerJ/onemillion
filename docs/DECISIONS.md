@@ -25,6 +25,146 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D69 — A closed night's table is frozen
+**Decided.** The `session_attendees_update` policy now also requires the night to be open:
+after full time nobody can switch someone in or out of the rounds.
+
+*Why:* the designated driver is decided at full time (D68), so "driving" must not change
+afterwards.
+
+*Cost:* a forgotten "Driving" mark can't be fixed after the whistle. It can still be set
+until 09:00 the next morning, when the night closes by itself.
+
+---
+
+### D68 — The starter catalogue rewards the table, showing up, giving, driving and rest
+**Decided.** 25 badges: 17 for people (bottle caps) and 8 for crews (beer mats), 4 of them
+secret.
+
+| Kind | Badges |
+|---|---|
+| Combos (the night's total across the table) | ON FIRE 10 · BOOMSHAKALAKA 25 · WORLDIE 50 · RAMPAGE 100 |
+| Showing up | Debut (first night) · Regular (10 nights, drinking or driving) |
+| Streaks (weeks with a night) | On a Run 3 · Form of Your Life 10 |
+| Giving | Get the Drinks In (10 rounds of two or more) |
+| Looking after each other | Designated Driver 1 · The Chauffeur 10 · Clear Head (an alcohol-free beer) · Clean Sheet (a week off after a week out) |
+| The owner's numbers (lifetime) | 67 "The Kids Think This Is Fun" 🔒 · 69 "hehehe" 🔒 · 500 · 1.000 🔒 |
+| Crew | Off the Mark · The Invite · Five-a-Side · Table for Eight · Full House (everyone, four or more) · Back-to-Back · A Month of Fixtures · All Four Rungs 🔒 |
+
+The designated driver is someone at the table marked "Driving" (`in_rounds = false`), with no
+live alcoholic beer of their own, on a night where someone else had a beer — decided at full
+time. An "Alcohol-free one" item on each person's menu makes Clear Head earnable. Progress
+bars exist only for showing up, rounds, driving, streaks, members and night size — **never**
+toward a beer count or a night's total.
+
+*Why:* ARCHITECTURE §9: celebrate, never nudge. Driving, alcohol-free and rest are worth more
+points (115 of the person tier's 340) than the volume jokes (20).
+
+*Cost:*
+- 67, 69, 500 and 1.000 are lifetime volume; they're worth 5 points each, and secret where a
+  surprise lands better.
+- Combos reward headcount, but they are still totals.
+- The point values are a first guess (D14's balancing cost).
+
+---
+
+### D67 — Badge text lives in the catalogue, in English *(amends D37 for this copy)*
+**Decided.** Titles, descriptions and flavour lines live in the database and the app renders
+them as data, the way it renders crew names. The words around them (headings, "Secret", the
+banner's frame) go through i18next.
+
+*Why:* D7: a new badge must not need a release.
+
+*Cost:* words in two places, and translating badges later needs an
+`achievement_texts(code, lang, …)` table.
+
+---
+
+### D66 — Who sees unlocks; secrets go through a function
+**Decided.** A person's unlocks are visible to them and their crew-mates (like
+`profile_stats`, D40); a crew's to its members. The `achievements` table is closed to
+clients: they read it through `achievement_catalogue()`, which blanks a secret's title,
+description, flavour and art until the caller can see someone's unlock of it. Your own grid
+shows a secret as "?" until you hold it.
+
+*Cost:* when a crew-mate unlocks a secret, its name is revealed to you (the toast says it
+anyway). A person's unlocks earned in another crew are visible to mates in this one, with that
+crew's id.
+
+---
+
+### D65 — An unlock records when it happened, what caused it, and whether it may toast
+**Decided.** Count-based unlocks credit the beer that took the count there, in arrival order
+(`global_seq` among live beers): D28's counter-crossing. Night-based unlocks credit the night,
+at the moment it counted for that person (the later of its first live beer and them sitting
+down). `unlocked_at` is when it happened, `created_at` when the row was written, and `source`
+is `live`, `sweep` or `backfill` — **only `live` rows toast**. Every unlock keeps a snapshot of
+`guild_id` from its beer or night (D6), so D14 can add up points per guild later under any D5
+model.
+
+*Cost:* an offline beer replayed later toasts late — D8's "toast in the taxi". Unlocks already
+written never move, even if a later void would credit a different beer.
+
+---
+
+### D64 — A combo is first a record of the night; the badge unlocks once per person
+**Decided.** When a night's total across the table reaches 10, 25, 50 or 100, it gets a
+`session_combos` row, credited to the beer that took it there, **every night it happens** — the
+banner listens to that. Everyone at the table holds that rung's badge once ever, including
+anyone who sits down later while the night is still open (the schema already refuses joining a
+closed night "because it would hand out its combos after the fact"). Voids never remove a rung,
+and crossing it again doesn't fire twice.
+
+*Why:* D20. If the badge alone carried the banner, nobody would ever see ON FIRE again after
+their first night.
+
+*Cost:*
+- Two records for one moment.
+- A crew-mate at home can tap "I'm here" and collect the night's rungs; they could already
+  check in before the crossing, and D22a trusts the crew.
+- Tapping and then voiding beers can fake a rung, D16's accepted trade-off.
+
+---
+
+### D63 — Evaluation runs live in triggers and again nightly in a sweep, with the same SQL
+**Decided.** Statement-level AFTER triggers on `beers` and `session_attendees`, a row trigger
+when a night closes and one on crew membership call the evaluators that event can move,
+limited to the people, crews and nights involved. A `+ ROUND` is one statement, so it is
+evaluated once. `sweep_achievements()` runs every evaluator over all history: pg_cron runs it
+at 04:37 UTC, and the migration ran it once as the backfill. A failure in the live path never
+fails a beer: it is logged as a warning and the sweep catches up.
+
+*Why:* evaluation is idempotent (unique indexes, `not exists`, `on conflict do nothing`). A
+week off happens by time passing, which only a scheduled job can notice. One code path means
+the live result and the backfill agree, and a test proves it.
+
+*Cost:*
+- The sweep reads all history every night: fine for friends for years; revisit at guild scale.
+- A caught live error means a badge arrives overnight.
+- The sweep locks the two unlock tables for its few milliseconds.
+
+---
+
+### D62 — Badges are a catalogue table with a closed rule vocabulary; an unlock is once per holder, for good
+**Decided** (owner, 2026-10-19: "Go for 1,2,3,4,5!", combos and badges third and fourth).
+`achievements` holds each badge as data: code, tier (person, crew; guild later), category,
+title, description, flavour, points, secret, art, sort, and a `rule` whose `type` must be one
+of 12 — `session_total`, `lifetime_beers`, `alcohol_free_beers`, `nights`, `streak_weeks`,
+`rounds_poured`, `nights_driving`, `week_off`, `members`, `session_size`, `full_crew`,
+`combo_rungs` — enforced by a CHECK. Each type has one evaluator function.
+`achievement_unlocks` is unique per badge and holder, and nothing updates or deletes a row: a
+void never revokes (D16, D28).
+
+*Why:* D7, the way ROADMAP suggests: the code is per rule *type*, each badge is data. Another
+badge of a known type, a retuned threshold or a retired badge is an insert or update in a
+migration, with no app release.
+
+*Cost:* a new kind of rule needs a migration and an evaluator. The CHECK has to stay in step
+with the evaluators. ARCHITECTURE §6.1's time-of-day, distinct-partner, venue, beer-type and
+duration types come later.
+
+---
+
 ### D61 — A global rung names its scorer only to their crew-mates
 **Decided.** Global crossings are readable by everyone signed in. The scorer's and the
 assist's names and caps come through the `profiles` embed, which RLS already limits to
@@ -89,8 +229,10 @@ engine), but nobody should get a takeover for last week.
 
 *Cost:* `voided_at` is the clock of the phone that tapped `−`, and an un-void leaves no
 trace, so a replay can credit a different beer than a live trigger would have. Within one
-moment, the replay counts every new beer before any void. For production's 17 beers that
-didn't matter.
+moment, the replay counts every new beer before any void, so its running total can overshoot
+what the live count ever reached; it therefore only records rungs at or below each scope's
+total today (a count moves one at a time, so those really were landed on). A rung above it
+is left for the live trigger. For production's 17 beers none of this mattered.
 
 ---
 
@@ -159,10 +301,11 @@ table holds one row per threshold, with the scopes it applies to and a tier:
 | A person | 50 · 100 · 250 · 500 · 1.000, plus 67 and 69 as easter eggs |
 
 Eggs are recorded like rungs but never drive a gauge. Rung names live in `en.ts`, keyed by
-threshold: the owner's own lines for 67 ("The Kids Think This Is Fun"), 69 ("hehehe"), 500
-and 1.000 (A4), the rest from the catalogue.
+threshold and the same for every scope: the owner's own lines for 67 ("The Kids Think This
+Is Fun"), 69 ("hehehe"), 500 and 1.000 (A4), some from ACHIEVEMENTS §4 (Century, Ten
+Thousand Club), and new ones for the rest (Quarter Century, Half Century, Testimonial …).
 
-*Why:* ARCHITECTURE §4's `applies_to`. The Million gets no "10 beers" party: while the app is
+*Why:* ARCHITECTURE §4's `applies_to`. The Million gets no "10 beers" celebration: while the app is
 two crews, the global count below 1.000 is just those crews, and their own takeovers mark it.
 Crew rungs run to 100.000 so a big crew never sits under a full pint. Person rungs match the
 lifetime badges already drafted, and recording 67 and 69 here gives the achievements an exact
@@ -261,9 +404,11 @@ until taps are durable, reloading is the user's tap.
 
 *Cost:*
 - A deploy reaches a phone on the launch after the one that found it, or when they tap
-  Reload: **phones run one build behind for one launch**. So a migration must keep working
-  with the previous app build for a release: add things, don't rename or drop what the live
-  app calls. That is a new rule for every migration from here on.
+  Reload. **A phone runs whatever build it last cached**: one launch behind for a phone in
+  daily use, weeks behind for one that hasn't opened the app since. So a migration must keep
+  working with older app builds: add things, don't rename or drop what an app build calls,
+  and keep an old name working for some weeks before removing it. That is a new rule for
+  every migration from here on.
 - A page that was already open can't fetch an old file after the takeover. Today that is only
   rare font subsets, which fall back to a system font. A missing `/assets/` file is now a real
   404 rather than the app's page served as JavaScript.
@@ -288,8 +433,11 @@ build checks that were each broken once on purpose, match how this repo treats i
 
 *Cost:* service-worker correctness is ours. A bad worker can pin phones to an old build.
 Five things guard against that: `sw.js` is served `no-cache`; the worker is registered with
-`updateViaCache: 'none'`; the app checks for a new one every time it comes back on screen;
-`/?sw-reset` clears one phone; `VITE_SW_OFF=1` and a redeploy clear every phone.
+`updateViaCache: 'none'`; the app checks for a new one when it comes back on screen; Me's
+"Reset the app" (or `/?sw-reset` in a browser) clears one phone; `VITE_SW_OFF=1` and a
+redeploy clear every phone. A link can't reach an iPhone home-screen app, so there the reset
+lives in the app itself. Rolling Vercel back to a deployment from before the worker would
+strand installed phones, so that is never done (DEPLOY.md).
 
 ---
 
@@ -616,7 +764,9 @@ screen.
 
 *Cost:* every string is a key lookup instead of a literal — slightly slower to write.
 Number formatting is fixed to the European style (`428.391`, `42,8%`) regardless of
-language.
+language. *Amended by
+[D67](#d67--badge-text-lives-in-the-catalogue-in-english-amends-d37-for-this-copy): badge
+titles and descriptions live in the database as data, so a new badge needs no release.*
 
 ---
 

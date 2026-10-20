@@ -67,18 +67,31 @@ The app installs to the home screen and opens from its own cache, so it works wi
 A service worker (`app/sw/sw.ts`, built into `dist/sw.js`) keeps this build's files and
 answers every page load with them. It never touches Supabase.
 
-- **A deploy lands on the next launch.** A phone checks for a new worker on launch and every
-  time the app comes back on screen. The new one downloads the build in the background and
-  takes over; the app then shows "Fresh version on tap · Reload". Tapping Reload switches at
-  once; otherwise the next launch is the new build.
-- **So phones run the previous build for a while.** A migration must keep working with the
-  app build before it: add tables, columns and functions; don't rename, drop or change the
-  signature of anything the live app calls. Migration first, app second, as before.
+- **A deploy lands on the next launch.** A phone checks for a new worker on launch, the
+  first time the app comes back on screen, and after that at most every 10 minutes and hourly
+  while it's open. The new one downloads the build in the background and takes over; the app
+  then shows "Fresh version on tap · Reload". Tapping Reload switches at once; otherwise the
+  next launch is the new build.
+- **So phones run older builds for a while** — not just the previous one: a phone that
+  hasn't opened the app in weeks still has the build it last saw, until it next opens with
+  signal. A migration must keep working with the builds before it: add tables, columns and
+  functions; don't rename, drop or change the signature of anything an app build calls. When
+  something must go, keep the old name working for some weeks first. Migration first, app
+  second, as before.
+- **Never roll back past the worker.** Vercel's Instant Rollback (or a revert) to a deployment
+  from before `app/sw/` existed serves no `sw.js`, so installed phones keep their cached build
+  and can no longer be reached — not even by the kill switch. Roll forward instead: revert
+  the app change and keep `app/sw/`, the plugin and `vercel.json`, or deploy with
+  `VITE_SW_OFF=1`.
 - **Headers** (`app/vercel.json`): `sw.js` and `manifest.webmanifest` are `no-cache`, so a
   phone always sees the newest worker; `/assets/*` are immutable; icons and screenshots keep
   a day. A missing `/assets/` file is a real 404, not the app's page.
-- **One phone stuck on a bad build:** open `https://onemillion.fager.tech/?sw-reset`. It
-  removes the worker and its cache and reloads from the network.
+- **One phone stuck on a bad build:** in the app, **Me → Reset the app** (at the bottom,
+  under the build). In a browser, or the installed app on Android,
+  `https://onemillion.fager.tech/?sw-reset` does the same. Both remove the worker and its
+  cache and reload from the network. A link can't reach an iPhone home-screen app — it opens
+  in Safari, which keeps its own storage — so if that app can't even reach Me, remove its
+  icon (that deletes its data), add it again from Safari, and sign in with the emailed code.
 - **Every phone stuck:** set `VITE_SW_OFF=1` in the Vercel project and redeploy. That ships a
   worker that clears every cache, unregisters itself and reloads open windows. Remove the
   variable and redeploy to bring the worker back.

@@ -2,6 +2,7 @@ import { CircleUser, House, Plus, ScrollText, Users } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import { Celebrations } from '@/components/celebrate/Celebrations'
 import { CelebrationHost } from '@/components/celebrate/MilestoneTakeover'
 import { useMyCrew, useOpenNight } from '@/data/queries'
 import { useCrewRealtime } from '@/data/realtime'
@@ -28,6 +29,8 @@ export function AppShell() {
           <Outlet />
         </motion.main>
         <Dock live={!!night} />
+        {/* combos and badges (G4): inside the host, so they wait for its takeover */}
+        <Celebrations crewId={mine.crew.id} crewName={mine.crew.name} />
       </div>
     </CelebrationHost>
   )

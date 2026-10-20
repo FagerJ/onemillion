@@ -462,6 +462,30 @@ One function, `evaluate_achievements(session_id uuid)`, runs after each beer com
 again on session close, evaluates every rule whose category could be affected, and inserts
 unlocks. Server-authoritative and deterministic.
 
+### 6.2 As built
+
+`20261019130000_achievements.sql`
+([D62](DECISIONS.md#d62--badges-are-a-catalogue-table-with-a-closed-rule-vocabulary-an-unlock-is-once-per-holder-for-good)–[D69](DECISIONS.md#d69--a-closed-nights-table-is-frozen)):
+
+- **Tables.** `achievements` (the catalogue, closed to clients; read through
+  `achievement_catalogue()`, which hides a secret until you can see it held),
+  `achievement_unlocks` (once per badge and holder, never deleted; `source` is `live`,
+  `sweep` or `backfill`, and only `live` toasts) and `session_combos` (one row per night per
+  combo rung, every night: what the banner listens to).
+- **Twelve rule types**, one evaluator each, enforced by a CHECK: `session_total`,
+  `lifetime_beers`, `alcohol_free_beers`, `nights`, `streak_weeks`, `rounds_poured`,
+  `nights_driving`, `week_off`, `members`, `session_size`, `full_crew`, `combo_rungs`. Of the
+  table above, `round_size`, `time_of_day`, `distinct_*`, `session_duration` and
+  `crossed_milestone` come later.
+- **When.** `beers_30_achievements` (statement-level, after the counter and milestone
+  triggers, so a round is one evaluation), `session_attendees_30_achievements`,
+  `sessions_30_achievements` (full time decides the driver) and
+  `crew_members_30_achievements`; plus `sweep_achievements()` nightly at 04:37 UTC, which
+  notices a week off and repairs anything the live path missed. A badge never costs a beer.
+- **Reads.** `achievement_catalogue()`, `profile_achievement_progress()` and
+  `crew_achievement_progress()` (progress only for showing up, giving, driving, streaks and
+  the squad: never toward a beer count).
+
 See [ACHIEVEMENTS.md](ACHIEVEMENTS.md) for the catalogue.
 
 ---

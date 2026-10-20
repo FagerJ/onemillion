@@ -7,7 +7,7 @@ import { Cap } from '@/components/brand/Cap'
 import { LiveBadge, useNow } from '@/components/brand/LiveBadge'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCrewMilestones, useFeed, useMyCrew } from '@/data/queries'
+import { useBadgeCatalogue, useCrewCombos, useCrewMilestones, useFeed, useMyCrew } from '@/data/queries'
 import { duration, fmt, nightLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +17,8 @@ export function Nights() {
   const { data: mine } = useMyCrew()
   const { data: nights, isLoading } = useFeed(mine?.crew.id)
   const { data: events = [] } = useCrewMilestones(mine?.crew.id)
+  const { data: combos = [] } = useCrewCombos(mine?.crew.id)
+  const { data: catalogue = [] } = useBadgeCatalogue()
   const now = useNow()
   // the rungs each night crossed, highest first (C12)
   const rungsByNight = useMemo(() => {
@@ -27,6 +29,18 @@ export function Nights() {
     }
     return m
   }, [events])
+  // the combo rungs each night reached (D64); a card shows only the highest
+  const combosByNight = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const c of combos) m.set(c.session_id, [...(m.get(c.session_id) ?? []), c.achievement_code])
+    return m
+  }, [combos])
+  const badges = useMemo(() => new Map(catalogue.map((a) => [a.code, a])), [catalogue])
+  const topCombo = (sessionId: string) => {
+    const codes = combosByNight.get(sessionId)
+    const rank = (code: string) => badges.get(code)?.sort ?? -1
+    return codes?.reduce((best, code) => (rank(code) > rank(best) ? code : best))
+  }
 
   return (
     <div>
@@ -43,6 +57,7 @@ export function Nights() {
         <ol className="flex flex-col gap-3">
           {nights.map((n, i) => {
             const live = n.status === 'open' && new Date(n.closes_at).getTime() > now
+            const combo = topCombo(n.session_id)
             const drinkers = [...n.attendees].sort((a, b) => b.beers - a.beers)
             const card = (
               <motion.article
@@ -63,6 +78,13 @@ export function Nights() {
                     )}
                     {!live && n.closed_at && (
                       <p className="mt-1 text-[12px] font-semibold text-foam/40">{duration(n.started_at, n.closed_at)}</p>
+                    )}
+                    {combo && (
+                      <ul aria-label={t('feed.combos')} className="mt-2 flex">
+                        <li className="rounded-full bg-fire/14 px-2.5 py-1 font-display text-[13px] leading-none tracking-[0.08em] text-fire uppercase ring-1 ring-fire/35">
+                          {badges.get(combo)?.title ?? combo}
+                        </li>
+                      </ul>
                     )}
                   </div>
                   <div className="text-right">

@@ -10,8 +10,10 @@ import i18n from '@/i18n'
 
 export function registerServiceWorker() {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
-  // VITE_SW_OFF (every phone) or /?sw-reset (this phone): drop the worker and its caches.
-  if (import.meta.env.VITE_SW_OFF === '1' || location.search.includes('sw-reset')) return void retire()
+  // VITE_SW_OFF (every phone) or /?sw-reset (this browser): drop the worker and its caches.
+  // Read the flag now: the router may redirect, and drop the query, before retire() is done.
+  const reset = location.search.includes('sw-reset')
+  if (import.meta.env.VITE_SW_OFF === '1' || reset) return void retire(reset)
 
   // The first worker taking over a fresh page isn't an update; every later takeover is.
   let hadWorker = !!navigator.serviceWorker.controller
@@ -29,7 +31,7 @@ export function registerServiceWorker() {
     const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
     // An installed app can stay open for days without a navigation, which is when browsers look
     // for a new worker. Ask on every return to the app (at most every 10 min), hourly on screen.
-    let last = Date.now()
+    let last = 0
     const check = () => {
       if (document.visibilityState !== 'visible' || Date.now() - last < 10 * 60_000) return
       last = Date.now()
@@ -44,11 +46,16 @@ export function registerServiceWorker() {
   else window.addEventListener('load', () => void start(), { once: true })
 }
 
-async function retire() {
+async function retire(reload: boolean) {
   for (const reg of await navigator.serviceWorker.getRegistrations()) await reg.unregister()
   if ('caches' in window) for (const key of await caches.keys()) if (key.startsWith('omb-shell-')) await caches.delete(key)
-  if (location.search.includes('sw-reset')) location.replace('/') // fresh from the network
+  if (reload) location.replace('/') // fresh from the network
 }
+
+/** Me's "Reset the app": the same as /?sw-reset, for an iPhone home-screen app, which has no
+ *  address bar and opens links in Safari, whose storage it doesn't share. */
+export const canReset = () => import.meta.env.PROD && 'serviceWorker' in navigator && !!navigator.serviceWorker.controller
+export const resetApp = () => retire(true)
 
 // ── installing (D52) ──────────────────────────────────────────
 

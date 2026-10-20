@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthProvider'
 import type { Database, Tables, TablesInsert } from '@/lib/database.types'
 import type { MilestoneEvent } from '@/lib/milestones'
@@ -26,7 +26,14 @@ export type Attendee = {
   profile: Pick<Profile, 'display_name' | 'initials' | 'avatar_color'>
 }
 
-export type LiveBeer = { id: string; profile_id: string; added_by: string; round_id: string | null; logged_at: string }
+export type LiveBeer = {
+  id: string
+  profile_id: string
+  added_by: string
+  round_id: string | null
+  logged_at: string
+  is_alcohol_free: boolean
+}
 
 export type FeedAttendee = { profile_id: string; display_name: string; initials: string; avatar_color: string; beers: number }
 
@@ -244,19 +251,22 @@ export function useOpenNight(crewId: string | undefined) {
   })
 }
 
-export function useAttendees(sessionId: string | undefined) {
-  return useQuery({
+// Shared with the celebration host, which fetches a night's table to name who got what.
+export const attendeesQuery = (sessionId: string) =>
+  queryOptions({
     queryKey: ['session', sessionId, 'attendees'],
-    enabled: !!sessionId,
     queryFn: async () =>
       must(
         await supabase
           .from('session_attendees')
           .select('profile_id, in_rounds, joined_at, profile:profiles(display_name, initials, avatar_color)')
-          .eq('session_id', sessionId!)
+          .eq('session_id', sessionId)
           .order('joined_at'),
       ) as Attendee[],
   })
+
+export function useAttendees(sessionId: string | undefined) {
+  return useQuery({ ...attendeesQuery(sessionId!), enabled: !!sessionId })
 }
 
 export function useLiveBeers(sessionId: string | undefined) {
@@ -267,7 +277,7 @@ export function useLiveBeers(sessionId: string | undefined) {
       must(
         await supabase
           .from('beers')
-          .select('id, profile_id, added_by, round_id, logged_at')
+          .select('id, profile_id, added_by, round_id, logged_at, is_alcohol_free')
           .eq('session_id', sessionId!)
           .is('voided_at', null)
           .order('logged_at'),
@@ -345,6 +355,7 @@ export function useLogBeers(sessionId: string, crewId: string) {
             profile_id: b.profile_id,
             added_by: b.added_by,
             round_id: b.round_id,
+            is_alcohol_free: b.is_alcohol_free,
             client_uuid: b.id,
           }))),
         ),
@@ -366,10 +377,17 @@ export function useLogBeers(sessionId: string, crewId: string) {
   })
 }
 
-export function makeBeers(profileIds: string[], addedBy: string, round = false): LiveBeer[] {
+export function makeBeers(profileIds: string[], addedBy: string, round = false, alcoholFree = false): LiveBeer[] {
   const roundId = round ? uuid() : null
   const now = new Date().toISOString()
-  return profileIds.map((profile_id) => ({ id: uuid(), profile_id, added_by: addedBy, round_id: roundId, logged_at: now }))
+  return profileIds.map((profile_id) => ({
+    id: uuid(),
+    profile_id,
+    added_by: addedBy,
+    round_id: roundId,
+    logged_at: now,
+    is_alcohol_free: alcoholFree,
+  }))
 }
 
 /** "−": voids that person's most recent live beer tonight (D28). */
@@ -482,5 +500,100 @@ export function useMyMilestones(profileId: string | undefined) {
           .eq('scope_id', profileId!)
           .order('threshold'),
       ) as unknown as MilestoneEvent[],
+  })
+}
+
+// ── badges and combos (G1–G4) ─────────────────────────────────
+
+export type BadgeTier = 'person' | 'crew'
+export type BadgeArt = {
+  glyph?: string
+  text?: string
+  metal?: 'tin' | 'brass' | 'gold' | 'foil'
+  finish?: 'print' | 'emboss' | 'foil' | 'framed'
+  accent?: 'gold' | 'fire' | 'hop'
+}
+type CatalogueRow = Database['public']['Functions']['achievement_catalogue']['Returns'][number]
+/** A catalogue entry. A secret's title, description, flavor, target and art come back
+ *  empty until you can see someone's unlock of it (D66). */
+export type Badge = Omit<CatalogueRow, 'art' | 'tier'> & { tier: BadgeTier; art: BadgeArt }
+export type Unlock = Pick<Tables<'achievement_unlocks'>, 'achievement_code' | 'unlocked_at' | 'created_at' | 'session_id' | 'crew_id'>
+export type UnlockRow = Tables<'achievement_unlocks'>
+export type ComboRow = Tables<'session_combos'>
+export type BadgeProgress = { code: string; progress: number; target: number }
+
+// Invalidated by every unlock: a crew-mate's unlock can reveal a secret's name.
+export const catalogueQuery = queryOptions({
+  queryKey: ['badges', 'catalogue'],
+  staleTime: 5 * 60_000,
+  queryFn: async () => must(await supabase.rpc('achievement_catalogue')) as unknown as Badge[],
+})
+
+export const useBadgeCatalogue = () => useQuery(catalogueQuery)
+
+const UNLOCK_COLUMNS = 'achievement_code, unlocked_at, created_at, session_id, crew_id'
+
+export function useProfileBadges(profileId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile', profileId, 'badges'],
+    enabled: !!profileId,
+    queryFn: async () =>
+      must(
+        await supabase.from('achievement_unlocks').select(UNLOCK_COLUMNS).eq('tier', 'person').eq('profile_id', profileId!),
+      ) as Unlock[],
+  })
+}
+
+export function useCrewBadges(crewId: string | undefined) {
+  return useQuery({
+    queryKey: ['crew', crewId, 'badges'],
+    enabled: !!crewId,
+    queryFn: async () =>
+      must(await supabase.from('achievement_unlocks').select(UNLOCK_COLUMNS).eq('tier', 'crew').eq('crew_id', crewId!)) as Unlock[],
+  })
+}
+
+/** Progress for showing up, giving, driving, streaks and the squad only; never toward a
+ *  beer count or a night's total (D68). */
+export function useProfileBadgeProgress(profileId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile', profileId, 'badge-progress'],
+    enabled: !!profileId,
+    queryFn: async () =>
+      must(await supabase.rpc('profile_achievement_progress', { p_profile: profileId! })) as BadgeProgress[],
+  })
+}
+
+export function useCrewBadgeProgress(crewId: string | undefined) {
+  return useQuery({
+    queryKey: ['crew', crewId, 'badge-progress'],
+    enabled: !!crewId,
+    queryFn: async () => must(await supabase.rpc('crew_achievement_progress', { p_crew: crewId! })) as BadgeProgress[],
+  })
+}
+
+/** The rungs tonight has reached: the stamps under the tally. */
+export function useSessionCombos(sessionId: string | undefined) {
+  return useQuery({
+    queryKey: ['session', sessionId, 'combos'],
+    enabled: !!sessionId,
+    queryFn: async () =>
+      must(
+        await supabase
+          .from('session_combos')
+          .select('achievement_code, reached_at')
+          .eq('session_id', sessionId!)
+          .order('reached_at'),
+      ),
+  })
+}
+
+/** Every rung every night of the crew has reached: the feed's stamps. */
+export function useCrewCombos(crewId: string | undefined) {
+  return useQuery({
+    queryKey: ['crew', crewId, 'combos'],
+    enabled: !!crewId,
+    queryFn: async () =>
+      must(await supabase.from('session_combos').select('session_id, achievement_code').eq('crew_id', crewId!)),
   })
 }

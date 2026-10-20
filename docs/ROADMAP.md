@@ -65,11 +65,11 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ✅ C5 | **Dashboard** — milestone ring + the 1M bar + stat tiles | L | — |
 | ✅ C6 | Crew leaderboard (on the dashboard, not its own screen) | S | — |
 | ✅ C7 | Feed — a list of closed sessions | S | reactions, photos |
-| G4 | **Live combo toasts** — 10 / 25 / 50 / 100 session totals | M | — |
+| ✅ G4 | **Live combo toasts** — 10 / 25 / 50 / 100 session totals ([D64](DECISIONS.md#d64--a-combo-is-first-a-record-of-the-night-the-badge-unlocks-once-per-person)) | M | — |
 | ✅ G5 | **Milestone celebration** + Golden Goal attribution: the takeover, the trophy cabinet ([D59](DECISIONS.md#d59--crew-and-global-rungs-take-over-the-screen-personal-ones-never-do)) | M | sound (G7) |
-| G1 | Achievement engine — `achievement_unlocks` + rule evaluation *(pulled in, D35)* | L | — |
-| G2 | Seed the catalogue *(pulled in, D35)* | M | — |
-| G3 | Achievements grid — locked / unlocked, progress *(pulled in, D35)* | M | — |
+| ✅ G1 | Achievement engine — `achievement_unlocks` + rule evaluation *(pulled in, D35)*: live triggers and a nightly sweep ([D62](DECISIONS.md#d62--badges-are-a-catalogue-table-with-a-closed-rule-vocabulary-an-unlock-is-once-per-holder-for-good), [D63](DECISIONS.md#d63--evaluation-runs-live-in-triggers-and-again-nightly-in-a-sweep-with-the-same-sql)) | L | 7 of the 13 rule types |
+| ✅ G2 | Seed the catalogue *(pulled in, D35)*: 25 starter badges ([D68](DECISIONS.md#d68--the-starter-catalogue-rewards-the-table-showing-up-giving-driving-and-rest)) | M | the full catalogue |
+| ✅ G3 | Achievements grid — locked / unlocked, progress *(pulled in, D35)*: caps on Me, mats on the crew page | M | — |
 | ✅ S6' | Weekly streaks, Monday-start weeks *(pulled in, D35)* | S | the weekly recap |
 
 **Deliberately out of v0, all additive:** every guild item (`U1`–`U7`), easter-egg rungs

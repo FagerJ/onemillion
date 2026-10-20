@@ -27,6 +27,13 @@ const queryClient = new QueryClient({
   },
 })
 
+// Opened with no signal, the first requests fail rather than wait: TanStack only pauses
+// queries after an `offline` event, and a launch without signal never fires one. When the
+// signal comes back, ask again for whatever failed, so the splash moves on by itself (D51).
+window.addEventListener('online', () => {
+  void queryClient.refetchQueries({ type: 'active', predicate: (q) => q.state.status === 'error' })
+})
+
 const router = createBrowserRouter([
   {
     element: <RedirectIfSignedIn />,

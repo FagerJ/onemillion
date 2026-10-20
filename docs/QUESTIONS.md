@@ -303,6 +303,11 @@ achievements are data ([D7](DECISIONS.md#d7--achievements-are-data-not-code)).
 
 **Answer:** Hmm! THees are not really good. As you said before, if it's a big group it screws this up! Let's have 10-25-50-100 combo instead. (The 67 and 69 thing we discuseed earlier comes as achivements anyway?)
 
+**Built** (2026-10-19): ON FIRE 10, BOOMSHAKALAKA 25, WORLDIE 50, RAMPAGE 100, for everyone at
+the table ([D64](DECISIONS.md#d64--a-combo-is-first-a-record-of-the-night-the-badge-unlocks-once-per-person)).
+And yes: the 67th and 69th beer are secret badges, and milestones too
+([D68](DECISIONS.md#d68--the-starter-catalogue-rewards-the-table-showing-up-giving-driving-and-rest)).
+
 ---
 
 ### C2 — Any badges you want that aren't in the catalogue?

@@ -13,9 +13,17 @@ export function Splash({ onRetry }: { onRetry?: () => void }) {
   const [slow, setSlow] = useState(false) // lie-fi: on Wi-Fi, but nothing comes back
   useEffect(() => {
     const pour = window.setTimeout(() => setP(0.82), 60)
-    const wait = window.setTimeout(() => setSlow(true), 8000)
-    return () => [pour, wait].forEach(window.clearTimeout)
+    return () => window.clearTimeout(pour)
   }, [])
+  // Counted from the last time the signal came back, so a reconnect clears "No signal".
+  useEffect(() => {
+    if (!online) return
+    const wait = window.setTimeout(() => setSlow(true), 8000)
+    return () => {
+      window.clearTimeout(wait)
+      setSlow(false)
+    }
+  }, [online])
   const label = !online || slow ? t('pwa.offline') : onRetry ? t('pwa.cantReach') : t('common.loading')
   return (
     <div className="grid min-h-dvh place-items-center px-6">
