@@ -169,8 +169,7 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   const pour = (ids: string[], round = false, alcoholFree = false) => {
     if (ids.length === 0 || alone || !here || over) return
     buzz(round ? [12, 30, 12, 30, 12] : 12)
-    const saved = q.pour(night, ids, round, alcoholFree)
-    if (saved) void saved.then((ok) => ok || toast.error(t('sync.storageFull')))
+    q.pour(night, ids, round, alcoholFree)
   }
 
   const undo = (profileId: string) => {

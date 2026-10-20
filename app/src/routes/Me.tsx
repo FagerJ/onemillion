@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from '@supabase/supabase-js'
 import { Check, LogOut, Pencil, RotateCcw } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
@@ -28,11 +29,12 @@ import {
   useProfileBadges,
   useProfileSummary,
 } from '@/data/queries'
+import { persister } from '@/data/persist'
 import { fmt } from '@/lib/format'
 import { canReset, resetApp } from '@/lib/pwa'
 import { useQueue } from '@/data/queue'
 import { rungName } from '@/lib/milestones'
-import { supabase } from '@/lib/supabase'
+import { forgetSession, supabase } from '@/lib/supabase'
 import { ProfileForm } from './setup/ProfileForm'
 
 export function Me() {
@@ -134,7 +136,22 @@ function Big({ label, value, unit, gold, hot }: { label: string; value: number; 
 function SignOut() {
   const { t } = useTranslation()
   const { waiting } = useQueue()
-  const signOut = () => void supabase.auth.signOut()
+  const signOut = async () => {
+    // With an expired token auth-js refreshes before it signs out, and without signal it
+    // retries for ~25 s and then gives up. Give it 3 s, then sign out on this phone. The
+    // slate stays, keyed to the account (C8).
+    const slow = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3_000))
+    const result = await Promise.race([supabase.auth.signOut(), slow])
+    if (result && (!result.error || !isAuthRetryableFetchError(result.error))) return
+    // No queryClient.clear(): its events would save the cache again behind the removal. The
+    // reload drops memory, and a next open with nobody signed in drops what's on the phone.
+    forgetSession()
+    try {
+      await persister.removeClient()
+    } finally {
+      window.location.replace('/welcome')
+    }
+  }
   if (waiting.length === 0) {
     return (
       <Button variant="ghost" size="lg" onClick={signOut}>

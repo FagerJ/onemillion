@@ -169,10 +169,13 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
   (`useQueue().pour/takeBack`), which owns `client_uuid`, order and replay; the tally comes
   from `useNightTally`. A query whose cached shape changes needs the persister's `BUSTER`
   bumped (`data/persist.ts`), or phones restore the old shape.
-- **Badges are written live and by the sweep, with the same SQL.** A live unlock has
-  `source = 'live'` and is the only kind that toasts. After changing an evaluator or a rule,
-  `select sweep_achievements();` brings history up to date quietly. A failing evaluator
-  never fails a beer: look for "achievements skipped" warnings in the Postgres logs.
+- **Badges are written live and by the sweep, with the same SQL.** A live unlock or combo
+  has `source = 'live'` and is the only kind that toasts. After changing an evaluator or a
+  rule, `select sweep_achievements();` brings history up to date quietly. A failing evaluator
+  never fails a beer: look for "achievements skipped" warnings in the Postgres logs. Two
+  things wait on the clock, so tests pass it in: the driver is settled two days after the night
+  ends (`settle_drivers()`, every 10 minutes; `award_nights_driving(…, p_now)`), and a week
+  off from the Wednesday 09:00 after it (`award_week_off(…, p_now)`).
 - **The build refuses an uninstallable app**: a missing icon, a wrong PNG size, a manifest
   key gone, or a file `index.html` names that isn't precached all fail `vite build`. The
   worker must stay a classic script (no `import`/`export`), which the build also checks.

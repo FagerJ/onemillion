@@ -198,13 +198,14 @@ export function settleRefusal(e: BeerEntry, found: Set<string>, reason: Reason, 
   return missing.length === 0 ? null : { ...e, rows: missing, failed: { reason, at: now } }
 }
 
-export type Found = { id: string; voided_at: string | null; logged_at: string }
+export type Found = { id: string; voided_at: string | null; logged_at: string; created_at: string }
 
 /** A void that changed nothing: the beer never landed or is already voided (both fine),
- *  or it's too old, or it isn't ours to void. */
+ *  or it's too old, or it isn't ours to void. The day to take one back runs from when it was
+ *  tapped or, for a late tap (D74), from when it arrived. */
 export function settleVoid(found: Found | null, now: number): Reason | null {
   if (!found || found.voided_at) return null
-  return now - at(found.logged_at) >= DAY ? 'too-late' : 'refused'
+  return now - Math.max(at(found.logged_at), at(found.created_at)) >= DAY ? 'too-late' : 'refused'
 }
 
 export function backoff(failures: number, random: () => number = Math.random): number {

@@ -118,13 +118,21 @@ function Tile({ tier, tile, onOpen }: { tier: BadgeTier; tile: BadgeTile; onOpen
   const { t } = useTranslation()
   const { badge, unlock, progress, secret, fresh } = tile
   const title = secret ? t('badges.secret') : (badge.title ?? t('badges.secret'))
+  // what a sighted person reads off the tile: held or not, new, how close
+  const label = secret
+    ? t('badges.secretTile')
+    : unlock
+      ? t(fresh ? 'badges.tileNew' : 'badges.tileHeld', { title })
+      : progress
+        ? t('badges.tileProgress', { title, count: progress.progress, target: progress.target })
+        : t('badges.tileLocked', { title })
 
   return (
     <li>
       <button
         type="button"
         onClick={onOpen}
-        aria-label={secret ? t('badges.secretTile') : t('badges.open', { title })}
+        aria-label={label}
         className="flex w-full flex-col items-center gap-2 rounded-[14px] px-0.5 pt-1 pb-0.5 text-center transition-transform active:scale-95"
       >
         <span className="relative">

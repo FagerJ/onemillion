@@ -19,8 +19,14 @@
 -- A refusal carries hint 'session_closed', which PostgREST passes through, so the app can
 -- say why without matching the message.
 --
--- Replaced in place: its trigger, beers_01_stamp_parents, stays attached and still runs
--- first. Not SECURITY DEFINER, as before — the lookup runs under the caller's RLS, and a
+-- A late tap can be taken back too. D16's day to void a beer ran from logged_at, so a tap
+-- from 21:00 that lands the next evening arrived already past it — and its "−" may be
+-- queued right behind it. The day now runs from when the beer was tapped or arrived,
+-- whichever is later. created_at is stamped by the server and isn't in the insert grant, so
+-- a phone can't stretch it.
+--
+-- stamp_beer_from_session() is replaced in place: its trigger, beers_01_stamp_parents,
+-- stays attached and still runs first. Not SECURITY DEFINER, as before — the lookup runs under the caller's RLS, and a
 -- night they can't see is "not open".
 
 create or replace function public.stamp_beer_from_session()
@@ -57,3 +63,14 @@ begin
   return new;
 end;
 $$;
+
+-- "−" (D16, D28): any attendee voids a live beer within a day of it being tapped or arriving.
+drop policy beers_void on public.beers;
+create policy beers_void on public.beers
+  for update to authenticated
+  using (
+    voided_at is null
+    and greatest(logged_at, created_at) > now() - interval '24 hours'
+    and public.is_session_attendee(session_id)
+  )
+  with check (voided_at is not null and voided_by = (select auth.uid()));

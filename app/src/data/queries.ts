@@ -379,7 +379,11 @@ export async function voidBeer(id: string, at: string, by: string) {
 }
 
 export async function findBeers(ids: string[]) {
-  const r = await supabase.from('beers').select('id, voided_at, logged_at').in('id', ids).abortSignal(timeout(15_000))
+  const r = await supabase
+    .from('beers')
+    .select('id, voided_at, logged_at, created_at')
+    .in('id', ids)
+    .abortSignal(timeout(15_000))
   return { error: apiError(r), rows: (r.data ?? []) as Found[] }
 }
 

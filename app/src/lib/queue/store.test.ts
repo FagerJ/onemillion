@@ -88,6 +88,66 @@ describe('the slate', () => {
     expect(slate.list('me').map((e) => e.id)).toEqual(['ok'])
   })
 
+  it('carries on in memory when IndexedDB refuses a write, and stops reloading from it', async () => {
+    const backend = memoryBackend()
+    const channel = fakeChannel()
+    let refuse = false
+    const flaky: QueueBackend = { ...backend, put: (e) => (refuse ? Promise.reject(new Error('full')) : backend.put(e)) }
+    const slate = createSlate(flaky, channel)
+    await slate.ready
+    expect(slate.isDurable()).toBe(true)
+    refuse = true
+    await slate.put(entry('only-in-memory', 1)) // settles, refused
+    expect(slate.isDurable()).toBe(false)
+    channel.fire() // another tab: a reload now would drop the tap that never got saved
+    await new Promise((r) => setTimeout(r, 0))
+    expect(slate.list('me').map((e) => e.id)).toEqual(['only-in-memory'])
+  })
+
+  it('keeps a refused tap when a reload was already on its way', async () => {
+    const backend = memoryBackend()
+    let reads = 0
+    let open!: () => void
+    const gate = new Promise<void>((r) => (open = r))
+    const slow: QueueBackend = {
+      ...backend,
+      all: () => (reads++ === 0 ? backend.all() : gate.then(() => backend.all())),
+      put: () => Promise.reject(new Error('full')),
+    }
+    const channel = fakeChannel()
+    const slate = createSlate(slow, channel)
+    await slate.ready
+    channel.fire() // another tab: a reload starts, and takes its time
+    await slate.put(entry('tap', 1)) // refused: the copy is on its own now
+    open()
+    for (let i = 0; i < 3; i++) await new Promise((r) => setTimeout(r, 0))
+    expect(slate.list('me').map((e) => e.id)).toEqual(['tap']) // break: adopt the read anyway
+  })
+
+  it('treats storage that throws like storage that refuses', async () => {
+    const denied = () => {
+      throw new DOMException('denied', 'SecurityError')
+    }
+    const slate = createSlate({ all: async () => [], put: denied, del: denied }, null)
+    await slate.ready
+    await slate.put(entry('tap', 1)) // break: call the backend outside the promise
+    expect(slate.isDurable()).toBe(false)
+    expect(slate.list('me').map((e) => e.id)).toEqual(['tap'])
+  })
+
+  it('says so when it starts with nowhere to keep taps', async () => {
+    const slate = createSlate(memoryBackend(), null, { durable: false })
+    await slate.ready
+    expect(slate.isDurable()).toBe(false)
+  })
+
+  it('starts in memory when IndexedDB cannot be read', async () => {
+    const slate = createSlate({ ...memoryBackend(), all: () => Promise.reject(new Error('blocked')) }, null)
+    await slate.ready
+    expect(slate.isReady()).toBe(true)
+    expect(slate.isDurable()).toBe(false)
+  })
+
   it('survives a reopen through IndexedDB', async () => {
     const one = createSlate(idbBackend(), null)
     await one.ready

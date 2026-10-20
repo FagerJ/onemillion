@@ -42,16 +42,21 @@ was broken once on purpose and a test failed.
 ### D76 — The app opens offline on what it last saw *(amends D51)*
 **Decided.** The query cache is kept on the phone (IndexedDB, through TanStack's persister):
 only answers that came from the server, nothing about auth, for 36 hours, with a buster to bump
-when a cached shape changes. If the access token can't be refreshed for lack of signal, the app
-opens on the session saved on the phone instead of waiting on the splash. And no request to the
-API goes out with the publishable key while a session is saved: it fails like a dropped
-connection. When the Realtime channel joins, the crew's data is refetched once, so nothing that
-changed while it was away is missed.
+when a cached shape changes. A query keeps its last answer through a failed refetch, on the
+phone too. If the access token can't be refreshed for lack of signal, the app opens on the
+session saved on the phone instead of waiting on the splash: at once offline, after 1,5 s on a
+weak signal (auth-js retries a refresh for about 25 s). Signing out without signal then signs
+out on this phone only, and an open with nobody signed in drops whatever the phone kept. And no
+request to the API goes out with the publishable key while a session is saved: it fails like a
+dropped connection. When the Realtime channel joins, the crew's data is refetched once, so
+nothing that changed while it was away is missed.
 
 *Why:* a home-screen app is reloaded often, and a pub has no signal; without this the phone
-opens on "No signal" with the night out of reach. The guard matters on its own: supabase-js
-falls back to the publishable key when a refresh fails, RLS answers that with empty lists, and
-the gates would read them as "no crew" and the queue as a refusal.
+opens on "No signal" with the night out of reach. On one bar every refetch fails, and keeping
+only successful answers would drop the night from the phone the first time one did. The guard
+matters on its own: supabase-js falls back to the publishable key when a refresh fails, RLS
+answers that with empty lists, and the gates would read them as "no crew" and the queue as a
+refusal.
 
 *Cost:*
 - What the phone last saw sits in IndexedDB until sign-out clears it.
@@ -63,8 +68,9 @@ the gates would read them as "no crew" and the queue as a refusal.
 ### D75 — The tally is the server's beers plus the slate; celebrations only come from the server
 **Decided.** The night's count is the server's live beers, minus any a queued `−` names, plus
 queued beers the server doesn't have yet, each beer once by id. A tap that lands is written into
-the night's cache before it leaves the slate, so the count never dips. Nothing celebrates from
-the local count: milestones, combos and badges arrive as server events.
+the night's cache before it leaves the slate, and a refetch already in flight is dropped, so the
+count never dips. Nothing celebrates from the local count: milestones, combos and badges arrive
+as server events.
 
 *Why:* optimistic cache patches can't survive a reload or see another tab. A merge of two sources
 of truth can't drift, and it is tested.
@@ -80,16 +86,24 @@ taps appear when they reconnect. Two offline phones logging the same round count
 that has ended when it was tapped before the end and arrives within 24 hours of it. The end is
 the whistle if it came before 09:00, otherwise 09:00. A live night behaves as before. A tap
 after the end is still refused, now with `hint = 'session_closed'`; nobody new can sit down.
+D16's day to take a beer back runs from when it was tapped or from when it arrived, whichever
+is later (`beers_void`, same migration), so a late tap can still be taken back.
 
 *Why:* one phone in the cellar, another blows the whistle at 01:00, and the first phone's last
-taps would otherwise be refused forever. 24 hours matches D16's take-back window, and inside it a
-lost-answer replay after the close is a no-op instead of a false failure.
+taps would otherwise be refused forever. 24 hours is D16's take-back day, and inside it a
+lost-answer replay after the close is a no-op instead of a false failure. A `−` queued behind a
+late tap must land too: measured from the tap alone, a beer tapped at 21:00 that arrives the
+next evening could never be taken back.
 
 *Cost:*
 - For a day after a night, anyone who was at the table can add beers timed inside it — the same
   power they had during the night.
 - Counters, milestones and combos can move after the whistle: D8's "celebration in the taxi",
   possibly the next morning.
+- A beer that arrived late can be taken back for a day after it arrived, possibly two days after
+  the night.
+- Taps only go while the app is open: one left on a phone for more than a day after the night
+  is refused.
 
 ---
 
@@ -117,7 +131,7 @@ it's still live. Web Locks keep one flusher per phone across tabs. Only an answe
 tap is final; a network error, an expired token, "permission denied", 5xx and the like keep it
 and back off (2 s, doubling, up to a minute). Before a refusal is believed, the beers are looked
 up: if they're there, the answer was lost and they landed. Sending starts on a tap, on `online`,
-on returning to the app, on a fresh token and when Realtime rejoins.
+on returning to the app, on a fresh token and when Realtime rejoins: only while the app is open.
 
 *Why:* order makes "void after insert" true by construction; batching matters on one bar of 3G;
 checking refusals closes the gap where triggers run before the duplicate check.
@@ -130,14 +144,18 @@ purpose: the chip says "waiting" and the server gets fixed, rather than beers be
 ### D71 — The slate lives in IndexedDB, one record per tap, mirrored in memory
 **Decided.** Each tap is one IndexedDB record (database `omb-queue`), carrying its account. Each
 tab keeps an in-memory copy that answers at once and writes through; a `BroadcastChannel` tells
-other tabs to reload theirs. An installed app asks the browser to keep its storage.
+other tabs to reload theirs. An installed app asks the browser to keep its storage. If IndexedDB
+refuses a read or a write (blocked, broken, the phone full), or isn't there at all, the copy
+carries on alone: taps still go in while the app is open, and a warning says to keep it open
+until they have.
 
 *Why:* surviving a killed app is the queue's whole job, and a committed IndexedDB write does; a
 localStorage write can be lost if the app dies a moment later. The memory copy keeps the tally and
 `−` synchronous, so three quick `−` taps pick three different beers.
 
 *Cost:* one small dependency (idb-keyval). Safari clears an unused tab's storage after a week;
-home-screen apps are exempt. A Safari tab and the iPhone app keep separate slates.
+home-screen apps are exempt. A Safari tab and the iPhone app keep separate slates. On storage
+that fails, a tap still counts but is lost if the app closes before it goes in.
 
 ---
 
@@ -161,8 +179,8 @@ screen says to start while you still have a bar.
 **Decided.** The `session_attendees_update` policy now also requires the night to be open:
 after full time nobody can switch someone in or out of the rounds.
 
-*Why:* the designated driver is decided at full time (D68), so "driving" must not change
-afterwards.
+*Why:* the designated driver is judged by who was marked "Driving" when the night ended
+(D68), so the mark must not change afterwards.
 
 *Cost:* a forgotten "Driving" mark can't be fixed after the whistle. It can still be set
 until 09:00 the next morning, when the night closes by itself.
@@ -178,25 +196,35 @@ secret.
 | Combos (the night's total across the table) | ON FIRE 10 · BOOMSHAKALAKA 25 · WORLDIE 50 · RAMPAGE 100 |
 | Showing up | Debut (first night) · Regular (10 nights, drinking or driving) |
 | Streaks (weeks with a night) | On a Run 3 · Form of Your Life 10 |
-| Giving | Get the Drinks In (10 rounds of two or more) |
+| Giving | Get the Drinks In (a round of two or more, on 10 nights) |
 | Looking after each other | Designated Driver 1 · The Chauffeur 10 · Clear Head (an alcohol-free beer) · Clean Sheet (a week off after a week out) |
 | The owner's numbers (lifetime) | 67 "The Kids Think This Is Fun" 🔒 · 69 "hehehe" 🔒 · 500 · 1.000 🔒 |
 | Crew | Off the Mark · The Invite · Five-a-Side · Table for Eight · Full House (everyone, four or more) · Back-to-Back · A Month of Fixtures · All Four Rungs 🔒 |
 
 The designated driver is someone at the table marked "Driving" (`in_rounds = false`), with no
-live alcoholic beer of their own, on a night where someone else had a beer — decided at full
-time. An "Alcohol-free one" item on each person's menu makes Clear Head earnable. Progress
-bars exist only for showing up, rounds, driving, streaks, members and night size — **never**
-toward a beer count or a night's total.
+live alcoholic beer of their own, on a night where someone else had a beer (alcohol-free
+counts) — all tapped by the night's end. It is settled two days after the end: late taps land
+for a day after it (D74), and each can be taken back for a day after it lands (D16).
+`settle_drivers()` runs every 10 minutes and writes a live unlock, so the slip still shows; the
+nightly sweep leaves a night that came due in the last 15 minutes to it. Get the Drinks In counts nights with a round, not rounds:
+ten in one sitting is one night. An "Alcohol-free one" item on each person's menu makes Clear
+Head earnable. Progress bars exist only for showing up, nights with a round, settled nights
+driving, the streak you're on (as the dashboard counts it: a broken streak starts again),
+members and night size — **never** toward a beer count or a night's total.
 
 *Why:* ARCHITECTURE §9: celebrate, never nudge. Driving, alcohol-free and rest are worth more
-points (115 of the person tier's 340) than the volume jokes (20).
+points (115 of the person tier's 340) than the volume jokes (20). Rounds by the night reward
+being generous often, never pouring more tonight. Judged at the whistle, a driver could keep
+the badge for a night a late tap showed they drank on, and unlocks are never revoked.
 
 *Cost:*
 - 67, 69, 500 and 1.000 are lifetime volume; they're worth 5 points each, and secret where a
   surprise lands better.
 - Combos reward headcount, but they are still totals.
 - The point values are a first guess (D14's balancing cost).
+- Designated Driver lands two days after the night, not in the taxi home.
+- Get the Drinks In by the night is a call the owner can reverse: by the round it was ten
+  taps in one sitting.
 
 ---
 
@@ -216,8 +244,8 @@ banner's frame) go through i18next.
 **Decided.** A person's unlocks are visible to them and their crew-mates (like
 `profile_stats`, D40); a crew's to its members. The `achievements` table is closed to
 clients: they read it through `achievement_catalogue()`, which blanks a secret's title,
-description, flavour and art until the caller can see someone's unlock of it. Your own grid
-shows a secret as "?" until you hold it.
+description, flavour and art, and swaps its code for an opaque `secret-…` one, until the caller
+can see someone's unlock of it. Your own grid shows a secret as "?" until you hold it.
 
 *Cost:* when a crew-mate unlocks a secret, its name is revealed to you (the toast says it
 anyway). A person's unlocks earned in another crew are visible to mates in this one, with that
@@ -230,9 +258,11 @@ crew's id.
 (`global_seq` among live beers): D28's counter-crossing. Night-based unlocks credit the night,
 at the moment it counted for that person (the later of its first live beer and them sitting
 down). `unlocked_at` is when it happened, `created_at` when the row was written, and `source`
-is `live`, `sweep` or `backfill` — **only `live` rows toast**. Every unlock keeps a snapshot of
-`guild_id` from its beer or night (D6), so D14 can add up points per guild later under any D5
-model.
+is `live`, `sweep` or `backfill` — **only `live` rows toast**. A night's combos carry the same
+`source`, and only live ones raise a banner. Where a lifetime badge's number is also a milestone
+rung (67, 69, 500, 1.000), it credits the beer the milestone recorded, so a later sweep can't
+credit a different one. Every unlock keeps a snapshot of `guild_id` from its beer or night
+(D6), so D14 can add up points per guild later under any D5 model.
 
 *Cost:* an offline beer replayed later toasts late — D8's "toast in the taxi". Unlocks already
 written never move, even if a later void would credit a different beer.
@@ -259,16 +289,18 @@ their first night.
 ---
 
 ### D63 — Evaluation runs live in triggers and again nightly in a sweep, with the same SQL
-**Decided.** Statement-level AFTER triggers on `beers` and `session_attendees`, a row trigger
-when a night closes and one on crew membership call the evaluators that event can move,
-limited to the people, crews and nights involved. A `+ ROUND` is one statement, so it is
-evaluated once. `sweep_achievements()` runs every evaluator over all history: pg_cron runs it
-at 04:37 UTC, and the migration ran it once as the backfill. A failure in the live path never
-fails a beer: it is logged as a warning and the sweep catches up.
+**Decided.** Statement-level AFTER triggers on `beers` and `session_attendees`, and a row
+trigger on crew membership, call the evaluators that event can move, limited to the people,
+crews and nights involved. A `+ ROUND` is one statement, so it is evaluated once. Two things
+happen by time passing, so pg_cron runs them: `settle_drivers()` every 10 minutes, for nights
+two days past their end (D68), and `sweep_achievements()` at 04:37 UTC, every evaluator over all
+history; the migration ran the sweep once as the backfill. A week off counts once the empty
+week can't get a night any more: Wednesday 09:00 after it, since a Sunday night can be opened
+on the Monday (D16) and topped up by late taps for a day (D74). A failure in the live path
+never fails a beer: it is logged as a warning and the sweep catches up.
 
-*Why:* evaluation is idempotent (unique indexes, `not exists`, `on conflict do nothing`). A
-week off happens by time passing, which only a scheduled job can notice. One code path means
-the live result and the backfill agree, and a test proves it.
+*Why:* evaluation is idempotent (unique indexes, `not exists`, `on conflict do nothing`). One
+code path means the live result and the backfill agree, and a test proves it.
 
 *Cost:*
 - The sweep reads all history every night: fine for friends for years; revisit at guild scale.

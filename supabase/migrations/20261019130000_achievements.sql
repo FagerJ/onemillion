@@ -79,13 +79,15 @@ comment on table achievements is
   'D7/D62 — the catalogue. A new achievement of a known rule type is an insert, in a '
   'migration; a new rule type is a new evaluator. Text is English, rendered as data (D67).';
 
--- One row per night per rung (D64). The banner fires on this, every night.
+-- One row per night per rung (D64). The banner fires on this, every night — for a live
+-- row only: one the sweep or a backfill finds later is history and stays quiet (D65).
 create table session_combos (
   session_id       uuid not null references sessions on delete cascade,
   achievement_code text not null references achievements,
   crew_id          uuid not null references crews,
   beer_id          uuid references beers on delete set null,  -- the beer that took the tally there
   reached_at       timestamptz not null,
+  source           text not null default 'live' check (source in ('live', 'sweep', 'backfill')),
   created_at       timestamptz not null default now(),
   primary key (session_id, achievement_code)
 );
@@ -149,20 +151,27 @@ cross join lateral (
 ) fb;
 
 -- D68: drove the night — out of the rounds, nothing alcoholic of their own, and
--- somebody else had a beer. Decided at full time (only closed nights; D69 freezes it).
+-- somebody else had a beer: the live beers tapped by the night's end (the whistle, or
+-- 09:00). The "Driving" mark itself is frozen at full time (D69). award_nights_driving()
+-- waits until the end is two days old: late taps arrive for a day after it (D74), and each
+-- can be taken back for a day after it arrives (D16), so by then the answer can't change.
 create view public.driven_nights
 with (security_invoker = true) as
-select sa.profile_id, s.id as session_id, s.crew_id, s.guild_id, s.closed_at
+select sa.profile_id, s.id as session_id, s.crew_id, s.guild_id, s.closed_at, e.ended_at
 from public.session_attendees sa
 join public.sessions s on s.id = sa.session_id
+cross join lateral (
+  select least(coalesce(s.closed_at, s.closes_at), s.closes_at) as ended_at
+) e
 where s.status = 'closed'
   and not sa.in_rounds
   and not exists (select 1 from public.beers b
                    where b.session_id = s.id and b.profile_id = sa.profile_id
-                     and b.voided_at is null and not b.is_alcohol_free)
+                     and not b.is_alcohol_free and b.voided_at is null
+                     and b.logged_at <= e.ended_at)
   and exists (select 1 from public.beers b
                where b.session_id = s.id and b.profile_id <> sa.profile_id
-                 and b.voided_at is null);
+                 and b.voided_at is null and b.logged_at <= e.ended_at);
 
 -- A round is for the table: one tap, two or more live beers. A round of one is a +.
 create view public.poured_rounds
@@ -234,21 +243,33 @@ language sql
 security definer
 set search_path = ''
 as $$
-  -- A person's counter passing the rung (D28), credited to the beer that took it there:
-  -- the min-th live beer in arrival order. The stats row is the cheap gate, so the
-  -- ranking only runs at the crossing.
+  -- A person's counter passing the rung (D28), credited to the beer that took it there.
+  -- Where the ladder recorded that crossing (67, 69, 500, 1.000 are milestone rows), the
+  -- badge takes the same beer, so a later sweep or repair can't credit another one.
+  -- Otherwise: the min-th live beer in arrival order, which is the same thing when it runs
+  -- live. The stats row is the cheap gate, so the ranking only runs at the crossing.
   insert into public.achievement_unlocks
     (achievement_code, tier, profile_id, crew_id, guild_id, session_id, beer_id, unlocked_at, source)
   select a.code, 'person', ps.profile_id, k.crew_id, k.guild_id, k.session_id, k.id, k.logged_at, p_source
   from public.achievements a
   join public.profile_stats ps on ps.total_beers >= (a.rule->>'min')::bigint
   cross join lateral (
-    select x.id, x.crew_id, x.guild_id, x.session_id, x.logged_at
-    from (select b.id, b.crew_id, b.guild_id, b.session_id, b.logged_at,
-                 row_number() over (order by b.global_seq) as n
-          from public.beers b
-          where b.profile_id = ps.profile_id and b.voided_at is null) x
-    where x.n = (a.rule->>'min')::int
+    select y.* from (
+      select b.id, b.crew_id, b.guild_id, b.session_id, b.logged_at, 0 as pick
+      from public.milestone_events me
+      join public.beers b on b.id = me.beer_id
+      where me.scope = 'profile' and me.scope_id = ps.profile_id
+        and me.threshold = (a.rule->>'min')::bigint
+      union all
+      select x.id, x.crew_id, x.guild_id, x.session_id, x.logged_at, 1
+      from (select b.id, b.crew_id, b.guild_id, b.session_id, b.logged_at,
+                   row_number() over (order by b.global_seq) as n
+            from public.beers b
+            where b.profile_id = ps.profile_id and b.voided_at is null) x
+      where x.n = (a.rule->>'min')::int
+    ) y
+    order by y.pick
+    limit 1
   ) k
   where a.tier = 'person' and a.rule->>'type' = 'lifetime_beers' and a.retired_at is null
     and (p_profiles is null or ps.profile_id = any (p_profiles))
@@ -403,10 +424,17 @@ language sql
 security definer
 set search_path = ''
 as $$
-  with ranked as (
-    select r.*, row_number() over (partition by r.profile_id order by r.first_seq) as k
+  -- Nights on which you got a round in, not rounds: ten rounds in one sitting is one night,
+  -- so the badge rewards being generous often, never pouring more tonight (D68).
+  with first_per_night as (
+    select distinct on (r.profile_id, r.session_id) r.*
     from public.poured_rounds r
     where p_profiles is null or r.profile_id = any (p_profiles)
+    order by r.profile_id, r.session_id, r.first_seq
+  ),
+  ranked as (
+    select f.*, row_number() over (partition by f.profile_id order by f.first_seq) as k
+    from first_per_night f
   )
   insert into public.achievement_unlocks
     (achievement_code, tier, profile_id, crew_id, guild_id, session_id, beer_id, unlocked_at, source)
@@ -420,20 +448,23 @@ as $$
   on conflict do nothing;
 $$;
 
-create function public.award_nights_driving(p_profiles uuid[], p_source text)
+-- A night is settled two days after its end, once no late tap (D74) or take-back (D16) can
+-- change it. p_now is for the sweep's lag and the tests; the job passes nothing: now().
+create function public.award_nights_driving(p_profiles uuid[], p_source text, p_now timestamptz default now())
 returns void
 language sql
 security definer
 set search_path = ''
 as $$
   with ranked as (
-    select d.*, row_number() over (partition by d.profile_id order by d.closed_at, d.session_id) as k
+    select d.*, row_number() over (partition by d.profile_id order by d.ended_at, d.session_id) as k
     from public.driven_nights d
-    where p_profiles is null or d.profile_id = any (p_profiles)
+    where (p_profiles is null or d.profile_id = any (p_profiles))
+      and d.ended_at + interval '48 hours' <= p_now
   )
   insert into public.achievement_unlocks
     (achievement_code, tier, profile_id, crew_id, guild_id, session_id, beer_id, unlocked_at, source)
-  select a.code, 'person', r.profile_id, r.crew_id, r.guild_id, r.session_id, null, r.closed_at, p_source
+  select a.code, 'person', r.profile_id, r.crew_id, r.guild_id, r.session_id, null, r.ended_at, p_source
   from public.achievements a
   join ranked r on r.k = (a.rule->>'min')::int
   where a.rule->>'type' = 'nights_driving' and a.retired_at is null
@@ -443,15 +474,17 @@ as $$
   on conflict do nothing;
 $$;
 
-create function public.award_week_off(p_profiles uuid[], p_source text)
+create function public.award_week_off(p_profiles uuid[], p_source text, p_now timestamptz default now())
 returns void
 language sql
 security definer
 set search_path = ''
 as $$
-  -- Rest counts (ARCHITECTURE §9): a week out, then a whole week without a night that
-  -- is already over in your own timezone. Nothing happens in an empty week, so only
-  -- the sweep can notice it. Credited at the Monday the empty week ended.
+  -- Rest counts (ARCHITECTURE §9): a week out, then a whole week without a night. Nothing
+  -- happens in an empty week, so only the sweep can notice it, and only once the week can
+  -- no longer get a night: a Sunday night can be opened on the Monday (D41's yesterday
+  -- window), logged into until Tuesday 09:00 and topped up by late taps until Wednesday
+  -- 09:00 (D74). Credited at the Monday the empty week ended. p_now is for the tests.
   with weeks as (
     select distinct sa.profile_id, n.week
     from public.session_attendees sa
@@ -462,7 +495,7 @@ as $$
     select w.profile_id, w.week, p.timezone
     from weeks w
     join public.profiles p on p.id = w.profile_id
-    where w.week + 14 <= public.week_start(now(), p.timezone)
+    where ((w.week + 16)::timestamp + time '09:00') at time zone p.timezone <= p_now
       and not exists (select 1 from weeks x
                        where x.profile_id = w.profile_id and x.week = w.week + 7)
   )
@@ -587,8 +620,8 @@ begin
   -- The night reaches a rung: once per night, credited to the beer that took the live
   -- count there — the min-th live beer in arrival order (D28). Voids never remove it.
   with reached as (
-    insert into public.session_combos (session_id, achievement_code, crew_id, beer_id, reached_at)
-    select s.id, a.code, s.crew_id, k.id, k.logged_at
+    insert into public.session_combos (session_id, achievement_code, crew_id, beer_id, reached_at, source)
+    select s.id, a.code, s.crew_id, k.id, k.logged_at, p_source
     from public.sessions s
     cross join public.achievements a
     cross join lateral (
@@ -687,7 +720,7 @@ begin
   perform public.award_nights(null, p_source);
   perform public.award_streak_weeks(null, null, p_source);
   perform public.award_rounds_poured(null, p_source);
-  perform public.award_nights_driving(null, p_source);
+  perform public.award_nights_driving(null, p_source, now() - interval '15 minutes'); -- the job first: its slip shows
   perform public.award_week_off(null, p_source);
   perform public.award_members(null, p_source);
   perform public.award_session_size(null, p_source);
@@ -777,31 +810,21 @@ create trigger session_attendees_30_achievements
   referencing new table as new_attendees
   for each statement execute function public.achievements_after_attendees();
 
--- Full time decides the driver (D68): the whistle, or the 09:00 job.
-create function public.achievements_after_close()
-returns trigger
+-- The driver is decided once a night has settled, two days after its end, when late taps
+-- (D74) and take-backs (D16) can no longer change it. A job runs that every 10 minutes; its
+-- unlocks are 'live', so the slip shows to whoever has the app open (D68).
+create function public.settle_drivers()
+returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
 begin
-  begin
-    perform public.award_nights_driving(
-      coalesce((select array_agg(a.profile_id) from public.session_attendees a
-                 where a.session_id = new.id), '{}'),
-      'live');
-  exception when others then
-    raise warning 'achievements skipped for night %: % (%)', new.id, sqlerrm, sqlstate;
-  end;
-  return null;
+  perform public.award_nights_driving(null, 'live');
+exception when others then
+  raise warning 'achievements skipped for drivers: % (%)', sqlerrm, sqlstate;
 end;
 $$;
-
-create trigger sessions_30_achievements
-  after update of status on public.sessions
-  for each row
-  when (old.status = 'open' and new.status = 'closed')
-  execute function public.achievements_after_close();
 
 create function public.achievements_after_members()
 returns trigger
@@ -855,7 +878,10 @@ stable
 security definer
 set search_path = ''
 as $$
-  select a.code, a.tier, a.category,
+  -- A secret nobody you can see holds comes back under an opaque code: the real one
+  -- (SIX_SEVEN, NICE …) would give it away. Nothing can match it until it's shown.
+  select case when v.shown then a.code else 'secret-' || md5(a.code) end,
+         a.tier, a.category,
          case when v.shown then a.title end,
          case when v.shown then a.description end,
          case when v.shown then a.flavor end,
@@ -891,14 +917,19 @@ as $$
                         join public.counted_nights n on n.session_id = sa.session_id
                        where sa.profile_id = p_profile)
     union all
-    select 'rounds_poured', (select count(*) from public.poured_rounds r where r.profile_id = p_profile)
+    select 'rounds_poured', (select count(distinct r.session_id) from public.poured_rounds r
+                               where r.profile_id = p_profile)
     union all
-    select 'nights_driving', (select count(*) from public.driven_nights d where d.profile_id = p_profile)
+    select 'nights_driving', (select count(*) from public.driven_nights d
+                                where d.profile_id = p_profile and d.ended_at + interval '48 hours' <= now())
     union all
-    select 'streak_weeks', (select st.best_weeks::bigint from public.streak_of(
+    -- the run you're on, not your best: a broken streak starts again (as profile_summary())
+    select 'streak_weeks', (select st.current_weeks::bigint from public.streak_of(
              (select array_agg(distinct n.week) from public.session_attendees sa
                 join public.counted_nights n on n.session_id = sa.session_id
-               where sa.profile_id = p_profile), current_date) st)
+               where sa.profile_id = p_profile),
+             (select public.week_start(now(), p.timezone) from public.profiles p
+               where p.id = coalesce((select auth.uid()), p_profile))) st)
   )
   select a.code, least(f.value, (a.rule->>'min')::bigint), (a.rule->>'min')::int
   from public.achievements a
@@ -925,9 +956,11 @@ as $$
              where n.crew_id = p_crew
              group by n.session_id) z)
     union all
-    select 'streak_weeks', (select st.best_weeks::bigint from public.streak_of(
+    select 'streak_weeks', (select st.current_weeks::bigint from public.streak_of(
              (select array_agg(distinct n.week) from public.counted_nights n
-               where n.crew_id = p_crew), current_date) st)
+               where n.crew_id = p_crew),
+             (select public.week_start(now(), p.timezone) from public.profiles p
+               where p.id = (select auth.uid()))) st)
   )
   select a.code, least(f.value, (a.rule->>'min')::bigint), (a.rule->>'min')::int
   from public.achievements a
@@ -957,7 +990,7 @@ create policy achievement_unlocks_select on public.achievement_unlocks
   for select to authenticated
   using (public.can_see_unlock(tier, profile_id, crew_id));
 
--- D69: a closed night's table is frozen — driving is decided at full time.
+-- D69: a closed night's table is frozen: the "Driving" mark can't change after the whistle.
 drop policy session_attendees_update on public.session_attendees;
 create policy session_attendees_update on public.session_attendees
   for update to authenticated
@@ -976,8 +1009,8 @@ revoke execute on function
   public.award_nights(uuid[], text),
   public.award_streak_weeks(uuid[], uuid[], text),
   public.award_rounds_poured(uuid[], text),
-  public.award_nights_driving(uuid[], text),
-  public.award_week_off(uuid[], text),
+  public.award_nights_driving(uuid[], text, timestamptz),
+  public.award_week_off(uuid[], text, timestamptz),
   public.award_members(uuid[], text),
   public.award_session_size(uuid[], text),
   public.award_full_crew(uuid[], text),
@@ -986,7 +1019,7 @@ revoke execute on function
   public.sweep_achievements(text),
   public.achievements_after_beers(),
   public.achievements_after_attendees(),
-  public.achievements_after_close(),
+  public.settle_drivers(),
   public.achievements_after_members()
   from public, anon, authenticated;
 
@@ -1037,7 +1070,7 @@ insert into public.achievements
   'A night ten weeks running.', 'Ten unbeaten. Frame the form guide.', 40, false,
   '{"text":"10W","metal":"gold","accent":"fire"}', 220, '{"type":"streak_weeks","min":10}'),
 ('GET_THE_DRINKS_IN', 'person', 'giving', 'Get the Drinks In',
-  'You''ve poured 10 rounds for the table.', 'Whose round? Yours, again.', 20, false,
+  'You''ve got a round in on 10 nights.', 'Whose round? Yours, again.', 20, false,
   '{"glyph":"tray","metal":"brass","accent":"gold"}', 310, '{"type":"rounds_poured","min":10}'),
 -- looking after each other
 ('DESIGNATED_DRIVER', 'person', 'care', 'Designated Driver',
@@ -1099,6 +1132,9 @@ select public.sweep_achievements('backfill');
 -- Realtime after the backfill, so none of it is broadcast. The app toasts source='live' only.
 alter publication supabase_realtime add table public.session_combos, public.achievement_unlocks;
 
--- Nightly, after the purge (04:17). Monday's run is the one that notices a week off.
+-- Nightly, after the purge (04:17): what time alone shows (a week off), and repairs.
 select cron.schedule('sweep-achievements', '37 4 * * *',
                      $$select public.sweep_achievements()$$);
+-- Drivers, as their nights settle (two days after the end).
+select cron.schedule('settle-drivers', '*/10 * * * *',
+                     $$select public.settle_drivers()$$);

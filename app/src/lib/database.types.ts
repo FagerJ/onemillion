@@ -427,14 +427,14 @@ isOneToOne: false
                   ]
                 },"session_combos": {
                   Row: {
-                    "achievement_code": string,"beer_id": string | null,"created_at": string,"crew_id": string,"reached_at": string,"session_id": string
+                    "achievement_code": string,"beer_id": string | null,"created_at": string,"crew_id": string,"reached_at": string,"session_id": string,"source": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "achievement_code": string,"beer_id"?: string | null,"created_at"?: string,"crew_id": string,"reached_at": string,"session_id": string
+                    "achievement_code": string,"beer_id"?: string | null,"created_at"?: string,"crew_id": string,"reached_at": string,"session_id": string,"source"?: string
                   }
                   Update: {
-                    "achievement_code"?: string,"beer_id"?: string | null,"created_at"?: string,"crew_id"?: string,"reached_at"?: string,"session_id"?: string
+                    "achievement_code"?: string,"beer_id"?: string | null,"created_at"?: string,"crew_id"?: string,"reached_at"?: string,"session_id"?: string,"source"?: string
                   }
                   Relationships: [
                     {
@@ -526,7 +526,7 @@ isOneToOne: false
                   ]
                 },"driven_nights": {
                   Row: {
-                    "closed_at": string | null,"crew_id": string | null,"guild_id": string | null,"profile_id": string | null,"session_id": string | null
+                    "closed_at": string | null,"crew_id": string | null,"ended_at": string | null,"guild_id": string | null,"profile_id": string | null,"session_id": string | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -588,7 +588,7 @@ isOneToOne: false
 { Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
                            },
 "award_nights_driving":
-{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+{ Args: { "p_now"?: string,"p_profiles": (string)[],"p_source": string }; Returns: undefined
                            },
 "award_rounds_poured":
 { Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
@@ -606,7 +606,7 @@ isOneToOne: false
 { Args: { "p_crews": (string)[],"p_profiles": (string)[],"p_source": string }; Returns: undefined
                            },
 "award_week_off":
-{ Args: { "p_profiles": (string)[],"p_source": string }; Returns: undefined
+{ Args: { "p_now"?: string,"p_profiles": (string)[],"p_source": string }; Returns: undefined
                            },
 "backfill_milestones":
 { Args: Record<PropertyKey, never>; Returns: number
@@ -723,6 +723,9 @@ isOneToOne: false
                            },
 "remove_member":
 { Args: { "p_crew": string,"p_profile": string }; Returns: undefined
+                           },
+"settle_drivers":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "shares_crew_with":
 { Args: { "p_profile": string }; Returns: boolean

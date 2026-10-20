@@ -25,6 +25,12 @@ export const linkError: string | null = new URLSearchParams(window.location.hash
 // like a dropped connection instead, and goes again once the token is fresh.
 const storageKey = `sb-${new URL(apiOrigin).hostname.split('.')[0]}-auth-token`
 
+/** Signs out on this phone only: what auth-js can't do while an expired token can't be
+ *  refreshed (it refreshes before it signs out). The caller reloads. */
+export function forgetSession() {
+  for (const k of [storageKey, `${storageKey}-user`, `${storageKey}-code-verifier`]) localStorage.removeItem(k)
+}
+
 /** The session saved on this phone, whether or not its token has expired. */
 export function savedSession(): Session | null {
   try {

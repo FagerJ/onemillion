@@ -471,20 +471,21 @@ unlocks. Server-authoritative and deterministic.
   `achievement_catalogue()`, which hides a secret until you can see it held),
   `achievement_unlocks` (once per badge and holder, never deleted; `source` is `live`,
   `sweep` or `backfill`, and only `live` toasts) and `session_combos` (one row per night per
-  combo rung, every night: what the banner listens to).
+  combo rung, every night: what the banner listens to, with the same `source`).
 - **Twelve rule types**, one evaluator each, enforced by a CHECK: `session_total`,
   `lifetime_beers`, `alcohol_free_beers`, `nights`, `streak_weeks`, `rounds_poured`,
   `nights_driving`, `week_off`, `members`, `session_size`, `full_crew`, `combo_rungs`. Of the
   table above, `round_size`, `time_of_day`, `distinct_*`, `session_duration` and
   `crossed_milestone` come later.
 - **When.** `beers_30_achievements` (statement-level, after the counter and milestone
-  triggers, so a round is one evaluation), `session_attendees_30_achievements`,
-  `sessions_30_achievements` (full time decides the driver) and
-  `crew_members_30_achievements`; plus `sweep_achievements()` nightly at 04:37 UTC, which
-  notices a week off and repairs anything the live path missed. A badge never costs a beer.
+  triggers, so a round is one evaluation), `session_attendees_30_achievements` and
+  `crew_members_30_achievements`; `settle_drivers()` every 10 minutes, which decides the
+  driver once a night is two days past its end and late taps and take-backs can't change it; and
+  `sweep_achievements()` nightly at 04:37 UTC, which notices a week off (from the Wednesday
+  09:00 after it) and repairs anything the live path missed. A badge never costs a beer.
 - **Reads.** `achievement_catalogue()`, `profile_achievement_progress()` and
-  `crew_achievement_progress()` (progress only for showing up, giving, driving, streaks and
-  the squad: never toward a beer count).
+  `crew_achievement_progress()` (progress only for showing up, giving, driving, the streak
+  you're on and the squad: never toward a beer count).
 
 See [ACHIEVEMENTS.md](ACHIEVEMENTS.md) for the catalogue.
 
@@ -521,9 +522,10 @@ Rounds queue as a unit: one `round_id`, N beers, all-or-nothing on replay.
 - **Time:** a tap sent at once is stamped by the server; one that waited carries its own.
 - **Late taps** (`20261019140000_late_taps.sql`): a closed night accepts a tap from before its
   end for 24 hours; later ones are refused with `hint = 'session_closed'` and shown on the
-  slate.
-- **Opening offline:** the query cache is persisted (IndexedDB), the saved session is used
-  when it can't be refreshed, and no request goes out as `anon` while a session is saved.
+  slate. A beer can be taken back for a day after it was tapped or arrived, whichever is later.
+- **Opening offline:** the query cache is persisted (IndexedDB), whatever a refetch did since;
+  the saved session is used when it can't be refreshed (at once offline, after 1,5 s
+  otherwise), and no request goes out as `anon` while a session is saved.
 - **UI:** a chip (NO SIGNAL · 3 WAITING / 2 NOT SAVED) and the "On the slate" drawer.
 
 ---

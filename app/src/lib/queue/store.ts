@@ -65,11 +65,18 @@ function makeChannel(): Channel | null {
 }
 
 /** The slate as this tab sees it: an in-memory copy that answers at once, written through
- *  to IndexedDB, reloaded when another tab says it changed something. */
-export function createSlate(backend: QueueBackend, channel: Channel | null = makeChannel()) {
+ *  to IndexedDB, reloaded when another tab says it changed something. If IndexedDB refuses
+ *  a read or a write (blocked, broken, the phone full), the copy carries on alone: taps still
+ *  go in while the app is open, but won't survive it closing (isDurable() turns false). */
+export function createSlate(
+  backend: QueueBackend,
+  channel: Channel | null = makeChannel(),
+  opts: { durable?: boolean } = {},
+) {
   let entries: Entry[] = []
   let version = 0 // bumps on every local write
   let isReady = false
+  let durable = opts.durable ?? true
   const byUser = new Map<string, Entry[]>() // stable arrays for useSyncExternalStore
   const listeners = new Set<() => void>()
   const changed = () => {
@@ -77,44 +84,54 @@ export function createSlate(backend: QueueBackend, channel: Channel | null = mak
     listeners.forEach((l) => l())
   }
 
+  // Blocked storage can throw rather than reject (idb-keyval opens the database lazily).
+  const safely = <T>(op: () => Promise<T>) => new Promise<T>((resolve) => resolve(op()))
+
   async function reload(): Promise<void> {
     const v = version
-    const fromDb = (await backend.all()).filter(valid).sort(bySeq)
+    const fromDb = (await safely(backend.all)).filter(valid).sort(bySeq)
+    if (!durable) return // on its own: the copy is the only record, IndexedDB lacks what it refused
     if (v !== version) return reload() // a local write went in meanwhile: read again
     entries = fromDb
     changed()
   }
+  const lost = () => {
+    if (!durable) return
+    durable = false
+    changed()
+  }
   // Blocked storage: start empty; taps still work in memory for this session.
   const ready = reload()
-    .catch(() => {})
+    .catch(lost)
     .then(() => {
       isReady = true
       changed()
     })
-  channel?.addEventListener('message', () => void reload().catch(() => {}))
+  channel?.addEventListener('message', () => void reload().catch(lost))
 
-  const write = (op: Promise<void>) => op.then(() => channel?.postMessage('changed'))
+  const write = (op: () => Promise<void>) => safely(op).then(() => channel?.postMessage('changed'), lost)
 
   return {
     ready,
     isReady: () => isReady,
+    isDurable: () => durable,
     list(userId: string): Entry[] {
       let hit = byUser.get(userId)
       if (!hit) byUser.set(userId, (hit = entries.filter((e) => e.user_id === userId)))
       return hit
     },
-    /** Updates the copy now; the promise settles when IndexedDB has it. */
+    /** Updates the copy now; the promise settles when IndexedDB has it, or has refused it. */
     put(e: Entry): Promise<void> {
       version++
       entries = [...entries.filter((x) => x.id !== e.id), e].sort(bySeq)
       changed()
-      return write(backend.put(e))
+      return write(() => backend.put(e))
     },
     remove(id: string): Promise<void> {
       version++
       entries = entries.filter((x) => x.id !== id)
       changed()
-      return write(backend.del(id))
+      return write(() => backend.del(id))
     },
     subscribe(l: () => void) {
       listeners.add(l)

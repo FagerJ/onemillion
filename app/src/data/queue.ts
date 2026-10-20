@@ -14,19 +14,20 @@ import { findBeers, sendBeers, useLiveBeers, usableSession, voidBeer, type LiveB
 // sent from there, in order, as soon as there's signal. One runner per tab; Web Locks make it
 // one flusher per phone.
 
-function backend() {
+function slate() {
   try {
-    return typeof indexedDB === 'undefined' ? memoryBackend() : idbBackend()
+    if (typeof indexedDB !== 'undefined') return createSlate(idbBackend())
   } catch {
-    return memoryBackend()
+    // reading `indexedDB` throws where site data is blocked
   }
+  return createSlate(memoryBackend(), undefined, { durable: false }) // the warning shows
 }
 
 const webLock = (fn: () => Promise<void>) =>
   navigator.locks?.request ? (navigator.locks.request('omb-queue', fn) as Promise<void>) : fn()
 
 export const queue = createRunner({
-  slate: createSlate(backend()),
+  slate: slate(),
   api: { usableSession, sendBeers, voidBeer, findBeers },
   uuid,
   lock: webLock,
@@ -46,6 +47,7 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return
     let refresh: ReturnType<typeof setTimeout> | undefined
+    let waited = 0 // taps that had to wait, over the passes until the slate is clear
     const stop = queue.start(user.id, {
       // Into the night's cache before it leaves the slate, so the count never dips (D75).
       landed: (e) =>
@@ -68,6 +70,8 @@ export function QueueProvider({ children }: { children: ReactNode }) {
                 ],
             )
           else queryClient.setQueryData<LiveBeer[]>(key, (old) => old?.filter((b) => b.id !== e.target))
+          // a refetch already on its way read the night before this tap: drop it, keep the patch
+          void queryClient.cancelQueries({ queryKey: key, exact: true })
           clearTimeout(refresh)
           refresh = setTimeout(() => {
             void queryClient.invalidateQueries({ queryKey: ['session', e.session_id] })
@@ -78,15 +82,21 @@ export function QueueProvider({ children }: { children: ReactNode }) {
             void queryClient.invalidateQueries({ queryKey: ['milestones', 'global'] })
           }, 300)
         }),
-      settled: ({ landed, failed }) => {
+      settled: ({ landed, failed, done }) => {
+        if (done && !landed.length && !failed.length) {
+          waited = 0 // another window sent the rest
+          return
+        }
+        waited += landed.filter((e) => Date.now() - e.tapped_at > 10_000).length
         if (failed.length) {
+          waited = 0
           toast.error(i18n.t('sync.notSavedToast', { count: failed.length }), {
             action: { label: i18n.t('sync.see'), onClick: () => setOpen(true) },
           })
           if (failed.some((f) => f.failed?.reason === 'closed')) void queryClient.invalidateQueries({ queryKey: ['crew'] })
-        } else {
-          const waited = landed.filter((e) => Date.now() - e.tapped_at > 10_000).length
-          if (waited) toast.success(i18n.t('sync.allIn', { count: waited }))
+        } else if (done && waited) {
+          toast.success(i18n.t('sync.allIn', { count: waited }))
+          waited = 0
         }
       },
     })
@@ -104,6 +114,13 @@ export function QueueProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('pageshow', onShow)
     }
   }, [user, queryClient])
+
+  // Storage that stops saving is said once: the taps still go in, but only while the app is open.
+  const durable = useSyncExternalStore(queue.subscribe, () => queue.snapshot().durable)
+  const signedIn = !!user
+  useEffect(() => {
+    if (signedIn && !durable) toast.warning(i18n.t('sync.notDurable'), { duration: 10_000 })
+  }, [durable, signedIn])
 
   // A refreshed token is the moment a stalled queue can go again.
   const token = session?.access_token

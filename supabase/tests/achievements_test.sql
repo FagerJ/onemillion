@@ -54,12 +54,16 @@ declare
   olle uuid := gen_random_uuid(); nils  uuid := gen_random_uuid();
   hanna uuid := gen_random_uuid(); hugo uuid := gen_random_uuid();
   hedda uuid := gen_random_uuid();   -- only at last week's night: her week off isn't over yet
+  hilda uuid := gen_random_uuid();   -- only at the night two weeks ago: her week off ends this week
+  dora uuid := gen_random_uuid(); dino uuid := gen_random_uuid(); dana uuid := gen_random_uuid();
   outsider uuid := gen_random_uuid();
   big uuid[] := array(select gen_random_uuid() from generate_series(1, 9));
   p uuid;   -- Onsdagar: anna, bjorn, cilla, dag, erik
   q uuid;   -- Elsewhere: olle, nils
   h uuid;   -- History: hanna, hugo, a night a week for eleven weeks
   r uuid;   -- Big table: nine members
+  l uuid;   -- Late: dora, dino, dana; nights from days ago, kept apart so they can't move
+            -- another crew's weeks, whatever time the test runs
   s uuid; s1 uuid; s3 uuid; q4 uuid;
   nights uuid[] := '{}';
   b uuid;
@@ -68,15 +72,18 @@ declare
   k int;
   failed boolean;
   def text;
+  secrets text[];
   monday constant timestamptz :=
     date_trunc('week', now() at time zone 'Europe/Stockholm') at time zone 'Europe/Stockholm';
 begin
   insert into auth.users (id)
-  select x from unnest(array[anna, bjorn, cilla, dag, erik, olle, nils, hanna, hugo, hedda, outsider] || big) x;
+  select x from unnest(array[anna, bjorn, cilla, dag, erik, olle, nils, hanna, hugo, hedda, hilda,
+                             dora, dino, dana, outsider] || big) x;
   insert into profiles (id, display_name, initials) values
     (anna, 'Anna', 'A'), (bjorn, 'Björn', 'B'), (cilla, 'Cilla', 'C'), (dag, 'Dag', 'D'),
     (erik, 'Erik', 'E'), (olle, 'Olle', 'O'), (nils, 'Nils', 'N'), (hanna, 'Hanna', 'H'),
-    (hugo, 'Hugo', 'HU'), (hedda, 'Hedda', 'HE'), (outsider, 'Ute', 'U');
+    (hugo, 'Hugo', 'HU'), (hedda, 'Hedda', 'HE'), (hilda, 'Hilda', 'HI'), (dora, 'Dora', 'DO'),
+    (dino, 'Dino', 'DI'), (dana, 'Dana', 'DA'), (outsider, 'Ute', 'U');
   insert into profiles (id, display_name, initials)
   select x, 'Big ' || o, 'B' || o from unnest(big) with ordinality as t(x, o);
 
@@ -108,7 +115,8 @@ begin
   insert into crews (name, created_by) values ('Elsewhere', olle) returning id into q;
   insert into crew_members (crew_id, profile_id, role) values (q, olle, 'captain'), (q, nils, 'member');
   insert into crews (name, created_by) values ('History', hanna) returning id into h;
-  insert into crew_members (crew_id, profile_id, role) values (h, hanna, 'captain'), (h, hugo, 'member'), (h, hedda, 'member');
+  insert into crew_members (crew_id, profile_id, role)
+    values (h, hanna, 'captain'), (h, hugo, 'member'), (h, hedda, 'member'), (h, hilda, 'member');
   insert into crews (name, created_by) values ('Big table', big[1]) returning id into r;
   insert into crew_members (crew_id, profile_id) select r, x from unnest(big) x;
 
@@ -138,8 +146,9 @@ begin
           and test_helpers.has('ON_FIRE', cilla)) then
     raise exception 'TEST FAIL: ON FIRE did not go to everyone at the table';
   end if;
-  if (test_helpers.unlock_of('ON_FIRE', bjorn)).source <> 'live' then
-    raise exception 'TEST FAIL: a live unlock was not marked live';
+  if (test_helpers.unlock_of('ON_FIRE', bjorn)).source <> 'live'
+     or (select source from session_combos where session_id = s1) <> 'live' then
+    raise exception 'TEST FAIL: a live unlock or combo was not marked live';
   end if;
   -- 8. a debut for everyone at a night once it holds a beer
   if not (test_helpers.has('DEBUT', anna) and test_helpers.has('DEBUT', bjorn) and test_helpers.has('DEBUT', cilla)) then
@@ -202,12 +211,19 @@ begin
   if not test_helpers.has('CLEAR_HEAD', dag) then     -- break: drop the alcohol-free call in the beers trigger
     raise exception 'TEST FAIL: an alcohol-free beer did not unlock Clear Head';
   end if;
-  if test_helpers.has('DESIGNATED_DRIVER', dag) then
-    raise exception 'TEST FAIL: the driver was decided before full time';
-  end if;
   perform test_helpers.full_time(s3);
-  if not test_helpers.has('DESIGNATED_DRIVER', dag) then   -- break: drop sessions_30_achievements
-    raise exception 'TEST FAIL: Dag drove the night and got nothing';
+  -- The night settles two days after its end, when late taps and take-backs can't change it (D68)
+  if test_helpers.has('DESIGNATED_DRIVER', dag) then
+    raise exception 'TEST FAIL: the driver was decided at full time, before late taps could land';
+  end if;
+  perform award_nights_driving(array[dag, erik, cilla], 'live', now() + interval '47 hours 59 minutes');
+  if test_helpers.has('DESIGNATED_DRIVER', dag) then       -- break: + 48 hours → + 24 hours
+    raise exception 'TEST FAIL: the driver was settled inside the late-tap window';
+  end if;
+  perform award_nights_driving(array[dag, erik, cilla], 'live', now() + interval '48 hours');
+  u := test_helpers.unlock_of('DESIGNATED_DRIVER', dag);
+  if u.id is null or u.session_id <> s3 or u.unlocked_at <> now() then
+    raise exception 'TEST FAIL: Dag drove the night and got nothing once it settled';
   end if;
   if test_helpers.has('DESIGNATED_DRIVER', erik) then      -- break: drop "not b.is_alcohol_free"
     raise exception 'TEST FAIL: Erik had a lager and still counted as the driver';
@@ -225,20 +241,94 @@ begin
   perform test_helpers.sign_out();
   if n <> 0 then raise exception 'TEST FAIL: the driver could still be changed after full time'; end if;
 
-  -- ── 14. Rounds poured: ten rounds of two or more ────────────
+  -- ── 11c. The driver is judged by the live beers tapped by the end ─
+  -- Cilla and Erik drive a night that ended an hour ago. Erik's lager was a mistake, taken
+  -- back the morning after; his other one was tapped after the whistle by a phone running
+  -- fast. Everyone else's beers, and a lager for Cilla, arrive as late taps (D74).
+  s := test_helpers.night(p, anna, array[anna, bjorn, cilla, erik], array[cilla, erik], now() - interval '3 hours');
+  insert into beers (session_id, profile_id, added_by, logged_at) values
+    (s, erik, anna, now() - interval '2 hours'),
+    (s, erik, anna, now() - interval '30 minutes');
+  update sessions set status = 'closed', closed_at = now() - interval '1 hour' where id = s;
+  insert into beers (session_id, profile_id, added_by, logged_at) values
+    (s, anna, anna, now() - interval '100 minutes'),
+    (s, cilla, anna, now() - interval '90 minutes');
+  update beers set voided_at = now(), voided_by = anna
+   where session_id = s and logged_at = now() - interval '2 hours';
+  if not exists (select 1 from driven_nights where session_id = s and profile_id = erik) then
+    -- break: count a void only before the end; break: drop "logged_at <= ended_at"
+    raise exception 'TEST FAIL: a mistake taken back, or a tap after the whistle, cost Erik the night';
+  end if;
+  if exists (select 1 from driven_nights where session_id = s and profile_id = cilla) then
+    raise exception 'TEST FAIL: a late tap of a lager for the driver did not count against her';
+  end if;
+  perform award_nights_driving(array[erik, cilla], 'live', now() + interval '47 hours');
+  u := test_helpers.unlock_of('DESIGNATED_DRIVER', erik);
+  if u.id is null or u.session_id <> s or u.unlocked_at <> now() - interval '1 hour' then
+    raise exception 'TEST FAIL: Erik''s night should settle two days after it ended, credited at the end';
+  end if;
+  if test_helpers.has('DESIGNATED_DRIVER', cilla) then
+    raise exception 'TEST FAIL: Cilla had a lager and still counted as the driver';
+  end if;
+  -- …and a beer tapped after the whistle doesn't make a night to drive
+  s := test_helpers.night(p, anna, array[anna, dag], array[dag], now() - interval '3 hours');
+  insert into beers (session_id, profile_id, added_by, logged_at)
+    values (s, anna, anna, now() - interval '30 minutes');
+  update sessions set status = 'closed', closed_at = now() - interval '1 hour' where id = s;
+  if exists (select 1 from driven_nights where session_id = s and profile_id = dag) then
+    raise exception 'TEST FAIL: a beer tapped after the whistle made a night to drive';  -- break: drop it for the others
+  end if;
+
+  -- The job settles nights as they come due, as live unlocks (the slip shows); the nightly
+  -- sweep leaves one that came due a few minutes ago to the job. Dino drove a night that
+  -- ended two days and five minutes ago, Dana one that ended 30 hours ago.
+  insert into crews (name, created_by) values ('Late', dora) returning id into l;
+  insert into crew_members (crew_id, profile_id, role)
+    values (l, dora, 'captain'), (l, dino, 'member'), (l, dana, 'member');
+  s := test_helpers.night(l, dora, array[dora, dino], array[dino], now() - interval '50 hours');
+  insert into beers (session_id, profile_id, added_by, logged_at)
+    values (s, dora, dora, now() - interval '49 hours');
+  update sessions set status = 'closed', closed_at = now() - interval '48 hours 5 minutes' where id = s;
+  b := s;
+  s := test_helpers.night(l, dora, array[dora, dana], array[dana], now() - interval '32 hours');
+  insert into beers (session_id, profile_id, added_by, logged_at)
+    values (s, dora, dora, now() - interval '31 hours');
+  update sessions set status = 'closed', closed_at = now() - interval '30 hours' where id = s;
+  perform sweep_achievements();
+  if test_helpers.has('DESIGNATED_DRIVER', dino) then    -- break: drop the sweep's lag
+    raise exception 'TEST FAIL: the sweep settled a driver before the job could, so no slip shows';
+  end if;
+  perform settle_drivers();
+  u := test_helpers.unlock_of('DESIGNATED_DRIVER', dino);
+  if u.id is null or u.session_id <> b or u.source <> 'live' then   -- break: settle_drivers does nothing
+    raise exception 'TEST FAIL: the job did not settle Dino''s night as a live unlock';
+  end if;
+  if test_helpers.has('DESIGNATED_DRIVER', dana) then      -- break: + 48 hours → + 24 hours
+    raise exception 'TEST FAIL: a night was settled while a late tap from it could still be taken back';
+  end if;
+  perform test_helpers.sign_in(dana);
+  if (select progress from profile_achievement_progress(dana) where code = 'THE_CHAUFFEUR') <> 0 then
+    raise exception 'TEST FAIL: a night not yet settled counted toward the Chauffeur';  -- break: progress at 24 hours
+  end if;
+  perform test_helpers.sign_in(dag);
+  if (select progress from profile_achievement_progress(dag) where code = 'THE_CHAUFFEUR') <> 0 then
+    raise exception 'TEST FAIL: a night still open to late taps counted toward the Chauffeur';  -- break: drop the wait
+  end if;
+  perform test_helpers.sign_out();
+
+  -- ── 14. Get the Drinks In: a round in on ten nights, not ten rounds in one ─
   s := test_helpers.night(p, anna, array[anna, bjorn]);
-  for k in 1 .. 9 loop
+  for k in 1 .. 10 loop
     perform test_helpers.pour(s, array[anna, bjorn], bjorn, true);
   end loop;
-  perform test_helpers.pour(s, array[anna], bjorn, true);                    -- a round of one is a +
-  if test_helpers.has('GET_THE_DRINKS_IN', bjorn) then   -- break: drop "having count(*) >= 2"
-    raise exception 'TEST FAIL: nine rounds and a single counted as ten';
+  if test_helpers.has('GET_THE_DRINKS_IN', bjorn) then   -- break: rank rounds, not nights
+    raise exception 'TEST FAIL: ten rounds in one night got the drinks in';
   end if;
-  perform test_helpers.pour(s, array[anna, bjorn], bjorn, true);
-  if (test_helpers.unlock_of('GET_THE_DRINKS_IN', bjorn)).beer_id is distinct from
-       (select id from beers where session_id = s and added_by = bjorn order by global_seq desc offset 1 limit 1) then
-    raise exception 'TEST FAIL: the tenth round was not credited to its first beer';
+  perform test_helpers.sign_in(bjorn);
+  if (select progress from profile_achievement_progress(bjorn) where code = 'GET_THE_DRINKS_IN') <> 1 then
+    raise exception 'TEST FAIL: ten rounds in one night should be one night toward the badge';  -- break: count(*)
   end if;
+  perform test_helpers.sign_out();
   perform test_helpers.full_time(s);
 
   -- ── 6. 25, 50 and 100 in one night; the whole ladder ───────
@@ -282,12 +372,21 @@ begin
        is distinct from (select id from beers where session_id = s order by global_seq desc limit 1) then
     raise exception 'TEST FAIL: NICE was not credited to the 69th';
   end if;
+  -- …and with no record from the ladder (a milestone that failed to write), the 67th live beer
+  b := (test_helpers.unlock_of('SIX_SEVEN', nils)).beer_id;
+  delete from achievement_unlocks where achievement_code = 'SIX_SEVEN' and profile_id = nils;
+  delete from milestone_events where scope = 'profile' and scope_id = nils and threshold = 67;
+  perform award_lifetime_beers(array[nils], '{}', 'backfill');
+  if (test_helpers.unlock_of('SIX_SEVEN', nils)).beer_id is distinct from b then   -- break: count voided beers
+    raise exception 'TEST FAIL: without its milestone, 67 should still go to the 67th live beer';
+  end if;
   perform test_helpers.full_time(s);
 
   -- ── 11. A night where only the driver had a beer counts for nobody
   s := test_helpers.night(q, olle, array[olle, nils], array[nils]);
   perform test_helpers.pour(s, array[nils], nils, false, true);
   perform test_helpers.full_time(s);
+  perform award_nights_driving(array[nils], 'live', now() + interval '49 hours');
   if (select count(*) from achievement_unlocks where achievement_code = 'DESIGNATED_DRIVER' and profile_id = nils) <> 0 then
     raise exception 'TEST FAIL: driving a night where nobody else drank counted';   -- break: drop the other-beer check
   end if;
@@ -310,13 +409,41 @@ begin
     raise exception 'TEST FAIL: a crew of two all present counted as a full house';
   end if;
 
-  -- ── 9, 10. A night a week for eleven weeks; week −6's beers voided
+  -- ── 7b. A lifetime badge credits the beer the ladder recorded ─
+  -- 66 beers, the 10th taken back, one more, then the 10th restored: 67 again, on the 10th.
+  -- Nothing live sees an un-void; the sweep's repair must agree with the milestone.
+  s := test_helpers.night(r, big[2], array[big[2], big[3]]);
+  perform test_helpers.pour(s, array_fill(big[2], array[66]), big[2]);
+  b := (select id from beers where session_id = s order by global_seq offset 9 limit 1);
+  update beers set voided_at = now(), voided_by = big[2] where id = b;
+  perform test_helpers.pour(s, array[big[2]], big[2]);
+  update beers set voided_at = null, voided_by = null where id = b;
+  if (select beer_id from milestone_events where scope = 'profile' and scope_id = big[2] and threshold = 67)
+     is distinct from b then
+    raise exception 'TEST FAIL: the un-void that made 67 was not the milestone';
+  end if;
+  if test_helpers.has('SIX_SEVEN', big[2]) then
+    raise exception 'TEST FAIL: an un-void unlocked a badge live';
+  end if;
+  perform award_lifetime_beers(array[big[2]], '{}', 'backfill');
+  if (test_helpers.unlock_of('SIX_SEVEN', big[2])).beer_id is distinct from b then   -- break: drop the milestone pick
+    raise exception 'TEST FAIL: the repair credited 67 to another beer than the milestone';
+  end if;
+  perform test_helpers.full_time(s);
+
+  -- ── 9, 10, 14. A night a week for eleven weeks; week −4's beers voided
+  -- Every night Hugo gets a round in, and so does Hanna — but two weeks ago hers was a round
+  -- of one, which is a +. Hilda only came that week.
   foreach k in array array[-11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1] loop
-    s := test_helpers.night(h, hanna, case when k = -1 then array[hanna, hugo, hedda] else array[hanna, hugo] end,
+    s := test_helpers.night(h, hanna,
+                            case k when -1 then array[hanna, hugo, hedda]
+                                   when -2 then array[hanna, hugo, hilda]
+                                   else array[hanna, hugo] end,
                             '{}', monday + make_interval(days => 7 * k + 1, hours => 19));
     nights := nights || s;
-    perform test_helpers.pour(s, array[hanna, hugo], hanna);
-    if k = -6 then
+    perform test_helpers.pour(s, case when k = -2 then array[hanna] else array[hanna, hugo] end, hanna, true);
+    perform test_helpers.pour(s, array[hanna, hugo], hugo, true);
+    if k = -4 then
       update beers set voided_at = now(), voided_by = hanna where session_id = s;
     end if;
     perform test_helpers.full_time(s);
@@ -335,13 +462,49 @@ begin
      or (test_helpers.unlock_of('MONTH_OF_FIXTURES', h)).session_id is distinct from nights[4] then
     raise exception 'TEST FAIL: the crew''s streak badges landed on the wrong weeks';      -- break: k >= min
   end if;
-
-  -- ── 15. A week off is only noticed by the sweep ─────────────
-  if test_helpers.has('CLEAN_SHEET', hanna) then
-    raise exception 'TEST FAIL: a week off was decided live';
+  if (test_helpers.unlock_of('GET_THE_DRINKS_IN', hugo)).beer_id is distinct from
+       (select id from beers where session_id = nights[11] and added_by = hugo order by global_seq limit 1) then
+    raise exception 'TEST FAIL: Hugo''s tenth night with a round (week −1) should get the drinks in';
+  end if;
+  if test_helpers.has('GET_THE_DRINKS_IN', hanna) then     -- break: drop "having count(*) >= 2"
+    raise exception 'TEST FAIL: a round of one counted as a round';
   end if;
 
+  -- Progress is the run you're on, not your best (seven weeks, before week −4's void)
+  perform test_helpers.sign_in(hanna);
+  if (select progress from profile_achievement_progress(hanna) where code = 'FORM_OF_YOUR_LIFE') <> 3 then
+    raise exception 'TEST FAIL: Hanna''s streak should read 3, the run she''s on';   -- break: best_weeks
+  end if;
+  if (select progress from crew_achievement_progress(h) where code = 'MONTH_OF_FIXTURES') <> 3 then
+    raise exception 'TEST FAIL: the crew''s streak should read 3, the run it''s on';  -- break: best_weeks
+  end if;
+  if (select progress from profile_achievement_progress(hanna) where code = 'GET_THE_DRINKS_IN') <> 9 then
+    raise exception 'TEST FAIL: Hanna has a round in on nine nights';
+  end if;
+  perform test_helpers.sign_out();
+
+  -- ── 15. A week off is only noticed by the sweep ─────────────
+  if test_helpers.has('CLEAN_SHEET', hanna) or test_helpers.has('CLEAN_SHEET', hilda) then
+    raise exception 'TEST FAIL: a week off was decided live';
+  end if;
+  -- Hilda was out two weeks ago and missed last week. A Sunday night from last week can
+  -- still be opened on Monday and topped up by late taps until Wednesday 09:00.
+  perform award_week_off(array[hilda], 'sweep', monday + interval '2 days 8 hours 59 minutes');
+  if test_helpers.has('CLEAN_SHEET', hilda) then          -- break: + 16 → + 15
+    raise exception 'TEST FAIL: a week off was decided while a night in it could still come in';
+  end if;
+  perform award_week_off(array[hilda], 'sweep', monday + interval '2 days 9 hours');
+  u := test_helpers.unlock_of('CLEAN_SHEET', hilda);
+  if u.id is null or u.unlocked_at <> monday or u.session_id <> nights[10] then
+    raise exception 'TEST FAIL: Hilda''s week off should land on this Monday, after the night two weeks ago';
+  end if;
+  delete from achievement_unlocks where id = u.id;   -- the sweep below decides it again, by the clock
+
   -- ── 18. The live path and the sweep agree ───────────────────
+  -- Drivers settled above with a clock two days ahead, and by the job minutes before the
+  -- sweep would (it lags by 15): the sweep, on today's clock, can't settle those nights yet.
+  delete from achievement_unlocks
+   where achievement_code = 'DESIGNATED_DRIVER' and unlocked_at + interval '48 hours 15 minutes' > now();
   n := sweep_achievements();
   if exists (select 1 from achievement_unlocks where source = 'sweep' and achievement_code <> 'CLEAN_SHEET') then
     raise exception 'TEST FAIL: the sweep found unlocks the live path missed: %',
@@ -353,8 +516,9 @@ begin
   end if;
   u := test_helpers.unlock_of('CLEAN_SHEET', hanna);
   if u.id is null or u.source <> 'sweep'
-     or u.unlocked_at <> monday - interval '5 weeks' then   -- break: w.week + 14 → + 7
-    raise exception 'TEST FAIL: Hanna''s week off should be credited on the Monday of week −5, got %', u.unlocked_at;
+     or u.unlocked_at <> ((monday at time zone 'Europe/Stockholm') - interval '3 weeks') at time zone 'Europe/Stockholm'
+  then   -- break: w.week + 14 → + 7
+    raise exception 'TEST FAIL: Hanna''s week off should be credited on the Monday of week −3, got %', u.unlocked_at;
   end if;
   if test_helpers.has('CLEAN_SHEET', cilla) then          -- break: drop the empty-week "not exists"
     raise exception 'TEST FAIL: someone out this week got a week off';
@@ -363,13 +527,25 @@ begin
     raise exception 'TEST FAIL: a week that isn''t over yet counted as a week off';
   end if;
   if sweep_achievements() <> 0 then raise exception 'TEST FAIL: the sweep is not idempotent'; end if;
+  if exists (select 1 from session_combos where source <> 'live') then
+    raise exception 'TEST FAIL: the sweep found a combo the live path missed';
+  end if;
 
   create temp table live_set on commit drop as
     select achievement_code, tier, coalesce(profile_id, crew_id) as holder, session_id
     from achievement_unlocks;
+  create temp table live_combos on commit drop as    -- not the beer: a void can move it (D65)
+    select session_id, achievement_code from session_combos;
   delete from achievement_unlocks;
   delete from session_combos;
   perform sweep_achievements('backfill');
+  if exists (select 1 from session_combos where source <> 'backfill') then   -- break: insert 'live'
+    raise exception 'TEST FAIL: a backfilled combo was not marked as one (it would toast)';
+  end if;
+  if exists (select session_id, achievement_code from session_combos except select * from live_combos)
+     or exists (select * from live_combos except select session_id, achievement_code from session_combos) then
+    raise exception 'TEST FAIL: the backfill and the live path reached different combos';
+  end if;
   if exists (select achievement_code, tier, coalesce(profile_id, crew_id), session_id from achievement_unlocks
              except select * from live_set)
      or exists (select * from live_set
@@ -420,18 +596,22 @@ begin
   execute def;
 
   -- ── 22. Who sees what ───────────────────────────────────────
+  secrets := array(select code from achievements where is_secret);
   perform test_helpers.sign_in(outsider);
   if exists (select 1 from achievement_unlocks) or exists (select 1 from session_combos) then
     raise exception 'TEST FAIL: someone in no crew saw unlocks or combos';  -- break: policy using (true)
   end if;
-  if (select title from achievement_catalogue() where code = 'NICE') is not null then
-    raise exception 'TEST FAIL: a secret''s title showed to someone who can''t see it held';
+  if exists (select 1 from achievement_catalogue() where code = any (secrets) or title is not null and is_secret) then
+    raise exception 'TEST FAIL: a secret''s code or title showed to someone who can''t see it held';  -- break: a.code
+  end if;
+  if (select count(*) from achievement_catalogue() where is_secret) <> cardinality(secrets) then
+    raise exception 'TEST FAIL: the secrets should still be there, as question marks';
   end if;
   if exists (select 1 from profile_achievement_progress(anna)) then
     raise exception 'TEST FAIL: an outsider read Anna''s progress';
   end if;
   perform test_helpers.sign_in(anna);
-  if (select title from achievement_catalogue() where code = 'NICE') is not null then
+  if exists (select 1 from achievement_catalogue() where code = 'NICE') then
     raise exception 'TEST FAIL: NICE showed to Anna, whose crew-mates don''t hold it';
   end if;
   if not exists (select 1 from profile_achievement_progress(anna)) then
@@ -477,6 +657,14 @@ begin
   begin perform award_nights(array[nils], 'live');
   exception when insufficient_privilege then failed := true; end;
   if not failed then raise exception 'TEST FAIL: a member called an evaluator'; end if;
+  failed := false;
+  begin perform award_nights_driving(array[nils], 'live', now() + interval '1 year');
+  exception when insufficient_privilege then failed := true; end;
+  if not failed then raise exception 'TEST FAIL: a member settled a night with his own clock'; end if;
+  failed := false;
+  begin perform settle_drivers();
+  exception when insufficient_privilege then failed := true; end;
+  if not failed then raise exception 'TEST FAIL: a member ran the driver job'; end if;
 
   perform test_helpers.sign_out();
   perform set_config('role', 'anon', true);
@@ -491,6 +679,9 @@ begin
        where pubname = 'supabase_realtime' and schemaname = 'public'
          and tablename in ('session_combos', 'achievement_unlocks')) <> 2 then
     raise exception 'TEST FAIL: combos or unlocks are not in the Realtime publication';
+  end if;
+  if (select count(*) from cron.job where jobname in ('sweep-achievements', 'settle-drivers')) <> 2 then
+    raise exception 'TEST FAIL: the nightly sweep or the driver job is not scheduled';
   end if;
 
   raise notice 'ALL ACHIEVEMENT TESTS PASSED';

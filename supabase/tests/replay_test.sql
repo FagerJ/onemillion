@@ -18,6 +18,8 @@ declare
   crew uuid;
   s    uuid;                             -- closed by the whistle partway through
   s2   uuid;                             -- past 09:00, not yet closed by the job
+  s3   uuid;                             -- ended 20 hours ago; a tap from 26 hours ago arrives now
+  back uuid := gen_random_uuid();
   tap  uuid := gen_random_uuid();
   kept uuid := gen_random_uuid();
   late uuid := gen_random_uuid();
@@ -148,6 +150,29 @@ begin
   exception when check_violation then failed := true;
   end;
   if not failed then raise exception 'TEST FAIL: a tap landed more than a day after its night ended'; end if;
+
+  -- ── a late tap can be taken back for a day after it arrived ─
+  perform test_helpers.sign_out();
+  insert into sessions (crew_id, started_at, created_by)
+    values (crew, now() - interval '30 hours', anna) returning id into s3;
+  insert into session_attendees (session_id, profile_id) values (s3, anna), (s3, bjorn);
+  update sessions set status = 'closed', closed_at = now() - interval '20 hours' where id = s3;
+  perform test_helpers.sign_in(anna);
+  insert into public.beers (id, client_uuid, session_id, profile_id, added_by, logged_at)
+    values (back, back::text, s3, bjorn, anna, now() - interval '26 hours');
+  update public.beers set voided_at = now(), voided_by = anna where id = back and voided_at is null;
+  get diagnostics n = row_count;
+  if n <> 1 then   -- break: measure the day from logged_at alone
+    raise exception 'TEST FAIL: a late tap could not be taken back the moment it arrived';
+  end if;
+  -- and when it arrived is the server's to say
+  failed := false;
+  begin
+    insert into public.beers (session_id, profile_id, added_by, logged_at, created_at)
+      values (s3, bjorn, anna, now() - interval '25 hours', now());
+  exception when insufficient_privilege then failed := true;
+  end;
+  if not failed then raise exception 'TEST FAIL: a phone said when its beer arrived'; end if;
 
   -- ── past 09:00 before the job: 09:00 is the end ─────────────
   insert into public.sessions (crew_id, started_at, created_by)

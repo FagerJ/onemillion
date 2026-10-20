@@ -206,10 +206,13 @@ A login belongs to the address it was made on, so anyone who signed in at
 
 - **Advisors** (Supabase → Advisors). Expected, and fine:
   - "SECURITY DEFINER function executable" for signed-in users: D39's membership functions
-    and RLS helpers, plus the two poll functions.
+    and RLS helpers, the two poll functions, and the badge reads (`can_see_unlock`,
+    `achievement_catalogue`, `profile_achievement_progress`, `crew_achievement_progress`;
+    D66).
   - The same for signed-out visitors on `cast_vote` and `poll_results` only (D47).
-  - "RLS enabled, no policy" on `polls` and `poll_votes`: they're reachable only through
-    those two functions.
+  - "RLS enabled, no policy" on `polls` and `poll_votes`, reachable only through those two
+    functions, and on `achievements`, the badge catalogue, read only through
+    `achievement_catalogue()`.
   - "Leaked password protection disabled": checking new passwords against known leaks is a
     paid-plan feature.
 
@@ -221,6 +224,8 @@ A login belongs to the address it was made on, so anyone who signed in at
   - remove a stray vote: `delete from poll_votes where poll_id = 'address' and name = '…';`
 - **The scheduled jobs:** `select jobname, status, start_time from cron.job_run_details
   order by start_time desc limit 10;` in the SQL editor. `close-stale-sessions` runs every
-  5 minutes, `purge-lonely-sessions` at 04:17 UTC.
+  5 minutes, `settle-drivers` every 10, `purge-lonely-sessions` at 04:17 UTC and
+  `sweep-achievements` at 04:37 UTC. A badge evaluator that fails logs a warning
+  ("achievements skipped …") instead of failing a beer: search the Postgres logs for it.
 - **Logs:** Supabase → Logs for the database and auth; the deployment page on Vercel for
   builds.

@@ -2,19 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ApiError, BeerInsert, Entry, Found } from './core'
 import { mergeTally } from './core'
 import { createRunner, type QueueApi, type Report } from './runner'
-import { createSlate, memoryBackend } from './store'
+import { createSlate, memoryBackend, type QueueBackend } from './store'
 
 const NIGHT = { id: 'night-1', crew_id: 'crew' }
 const T0 = Date.parse('2026-10-20T20:00:00Z')
 
 type Call = { kind: 'beers'; rows: BeerInsert[] } | { kind: 'void'; id: string } | { kind: 'find'; ids: string[] }
 
-function setup(api: Partial<QueueApi> = {}, opts: { user?: string } = {}) {
+function setup(api: Partial<QueueApi> = {}, opts: { user?: string; backend?: QueueBackend } = {}) {
   let clock = T0
   let n = 0
   const calls: Call[] = []
   const server = new Map<string, { voided: boolean; logged_at: string }>()
-  const slate = createSlate(memoryBackend(), null)
+  const slate = createSlate(opts.backend ?? memoryBackend(), null)
   const full: QueueApi = {
     usableSession: async () => ({ userId: opts.user ?? 'me' }),
     sendBeers: async (rows) => {
@@ -33,7 +33,8 @@ function setup(api: Partial<QueueApi> = {}, opts: { user?: string } = {}) {
       calls.push({ kind: 'find', ids })
       const rows: Found[] = ids.flatMap((id) => {
         const b = server.get(id)
-        return b ? [{ id, voided_at: b.voided ? new Date(clock).toISOString() : null, logged_at: b.logged_at }] : []
+        const voided_at = b?.voided ? new Date(clock).toISOString() : null
+        return b ? [{ id, voided_at, logged_at: b.logged_at, created_at: b.logged_at }] : []
       })
       return { error: null, rows }
     },
@@ -55,6 +56,16 @@ function setup(api: Partial<QueueApi> = {}, opts: { user?: string } = {}) {
     entries: () => slate.list('me'),
   }
 }
+
+const serverBeer = (id: string, profile_id: string) => ({
+  id,
+  profile_id,
+  added_by: 'me',
+  round_id: null,
+  logged_at: new Date(T0).toISOString(),
+  is_alcohol_free: false,
+  pending: false,
+})
 
 const flush = async () => {
   for (let i = 0; i < 20; i++) await Promise.resolve()
@@ -259,10 +270,112 @@ describe('the runner', () => {
     t.stop()
     t.runner.start('me', {
       landed: () => order.push(`landed:${t.entries().length}`),
-      settled: (r) => order.push(`settled:${r.landed.length}`),
+      settled: (r) => order.push(`settled:${r.landed.length}:${r.done}`),
     })
+    await flush()
+    order.length = 0 // the pass on start found nothing to send
     t.runner.pour(NIGHT, ['anna', 'bjorn'], true)
     await flush()
-    expect(order).toEqual(['landed:1', 'settled:1'])
+    expect(order).toEqual(['landed:1', 'settled:1:true'])
+  })
+
+  it('says a pass is done only when nothing is left waiting', async () => {
+    let open = false
+    let dropped = false
+    const t = setup({
+      usableSession: async () => (open ? { userId: 'me' } : null),
+      sendBeers: async (rows) => {
+        t.calls.push({ kind: 'beers', rows })
+        if (dropped) return { status: 0 } as ApiError
+        rows.forEach((r) => t.server.set(r.id, { voided: false, logged_at: new Date(T0).toISOString() }))
+        return null
+      },
+      voidBeer: async (id) => {
+        t.calls.push({ kind: 'void', id })
+        dropped = true // the signal goes again right after the void
+        return { error: null, count: 1 }
+      },
+    })
+    await flush()
+    // offline: a +, a − of a beer the server already has, and another +
+    t.server.set('earlier', { voided: false, logged_at: new Date(T0).toISOString() })
+    t.runner.pour(NIGHT, ['anna'], false)
+    t.runner.takeBack(NIGHT, [serverBeer('earlier', 'anna')], 'anna')
+    t.runner.pour(NIGHT, ['bjorn'], false)
+    open = true
+    await t.runner.kick(true)
+    await flush()
+    const last = t.reports.at(-1)
+    expect(last?.landed).toHaveLength(2)
+    expect(last?.done).toBe(false) // break: report.done = true on every exit
+    expect(t.entries()).toHaveLength(1)
+  })
+
+  it('reports a pass that finds the slate already cleared, so a stale count can be dropped', async () => {
+    const t = setup()
+    await flush()
+    t.reports.length = 0
+    await t.runner.kick(true)
+    await flush()
+    expect(t.reports).toEqual([{ landed: [], failed: [], done: true }]) // break: report only what moved
+  })
+
+  it('turns a − on a tap that is being sent into a void, sent after it', async () => {
+    let release!: () => void
+    const t = setup({
+      sendBeers: async (rows) => {
+        t.calls.push({ kind: 'beers', rows })
+        await new Promise<void>((r) => (release = r))
+        rows.forEach((r) => t.server.set(r.id, { voided: false, logged_at: new Date(T0).toISOString() }))
+        return null
+      },
+    })
+    await flush()
+    t.runner.pour(NIGHT, ['anna'], false)
+    await flush()
+    expect(t.calls.filter((c) => c.kind === 'beers')).toHaveLength(1) // in flight
+    expect(t.runner.takeBack(NIGHT, mergeTally([], t.entries(), NIGHT.id), 'anna')).toBe(true)
+    expect(t.entries().map((e) => e.kind)).toEqual(['beers', 'void']) // break: stamp sent_at after the await
+    release()
+    await flush()
+    expect(t.calls.map((c) => c.kind)).toEqual(['beers', 'void'])
+    expect(t.entries()).toHaveLength(0)
+  })
+
+  it('crosses off a + taken back while the session was being checked, without sending it', async () => {
+    let release!: (v: { userId: string }) => void
+    let first = true
+    const t = setup({
+      usableSession: () => {
+        if (!first) return Promise.resolve({ userId: 'me' })
+        first = false
+        return new Promise((r) => (release = r))
+      },
+    })
+    await flush()
+    t.runner.pour(NIGHT, ['anna'], false)
+    await flush()
+    expect(t.runner.takeBack(NIGHT, mergeTally([], t.entries(), NIGHT.id), 'anna')).toBe(true)
+    expect(t.entries()).toHaveLength(0)
+    release({ userId: 'me' })
+    await flush()
+    expect(t.calls).toHaveLength(0) // break: send the batch read before the session check
+  })
+
+  it('keeps sending taps when the phone cannot save them', async () => {
+    const full = () => Promise.reject(new DOMException('full', 'QuotaExceededError'))
+    const broken: QueueBackend = { all: async () => [], put: full, del: full }
+    let open = false
+    const t = setup({ usableSession: async () => (open ? { userId: 'me' } : null) }, { backend: broken })
+    await flush()
+    expect(t.runner.pour(NIGHT, ['anna'], false)).toBe(true)
+    await flush()
+    expect(t.entries()).toHaveLength(1) // break: withdraw a tap whose write failed
+    expect(t.runner.snapshot().durable).toBe(false)
+    open = true
+    await t.runner.kick(true)
+    await flush()
+    expect(t.calls.filter((c) => c.kind === 'beers')).toHaveLength(1)
+    expect(t.entries()).toHaveLength(0)
   })
 })

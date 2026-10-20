@@ -210,7 +210,8 @@ begin
   perform test_helpers.sign_out();
   select count(*) into n from public.beers where id = b and voided_at is null;
   if n <> 1 then raise exception 'TEST FAIL: an outsider voided a beer'; end if;
-  update public.beers set logged_at = now() - interval '25 hours' where id = b;
+  update public.beers set logged_at = now() - interval '25 hours', created_at = now() - interval '25 hours'
+   where id = b;
 
   perform test_helpers.sign_in(anna);
   update public.beers set voided_at = now(), voided_by = anna where id = b;
@@ -218,7 +219,7 @@ begin
   perform test_helpers.sign_out();
   select count(*) into n from public.beers where id = b and voided_at is null;
   if n <> 1 then raise exception 'TEST FAIL: a beer older than 24 hours was voided'; end if;
-  update public.beers set logged_at = now() where id = b;
+  update public.beers set logged_at = now(), created_at = now() where id = b;
 
   -- ── captains (B4) ───────────────────────────────────────────
   perform test_helpers.sign_in(bjorn);

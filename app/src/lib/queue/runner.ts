@@ -31,7 +31,9 @@ export type QueueApi = {
   findBeers(ids: string[]): Promise<{ error: ApiError | null; rows: Found[] }>
 }
 export type Phase = 'idle' | 'sending' | 'waiting' | 'offline' | 'no-auth'
-export type Report = { landed: Entry[]; failed: Entry[] }
+/** One pass of the flusher, reported when it moved something or found nothing left to send
+ *  (`done`). */
+export type Report = { landed: Entry[]; failed: Entry[]; done: boolean }
 export type Hooks = { landed?(e: Entry): void; settled?(r: Report): void }
 type Step = 'next' | 'network' | 'auth' | 'retry'
 type Night = { id: string; crew_id: string }
@@ -57,7 +59,7 @@ export function createRunner(d: {
   let running = false
   let again = false
   const listeners = new Set<() => void>()
-  let snap: { entries: Entry[]; phase: Phase; ready: boolean } | null = null
+  let snap: { entries: Entry[]; phase: Phase; ready: boolean; durable: boolean } | null = null
   const notify = () => {
     snap = null
     listeners.forEach((l) => l())
@@ -91,11 +93,12 @@ export function createRunner(d: {
     clearTimeout(timer)
     if (!userId) return
     if (d.online && !d.online()) return setPhase('offline') // the 'online' event kicks us
-    const report: Report = { landed: [], failed: [] }
+    const report: Report = { landed: [], failed: [], done: false }
     try {
       for (;;) {
         if (!nextBatch(d.slate.list(userId))) {
           failures = 0
+          report.done = true
           return setPhase('idle')
         }
         const me = await d.api.usableSession()
@@ -107,7 +110,7 @@ export function createRunner(d: {
         if (step !== 'next') return wait(step)
       }
     } finally {
-      if (report.landed.length || report.failed.length) hooks.settled?.(report)
+      if (report.landed.length || report.failed.length || report.done) hooks.settled?.(report)
     }
   }
 
@@ -225,9 +228,8 @@ export function createRunner(d: {
       }
     },
     kick,
-    /** A tap: on the slate at once, sent when it can be. Resolves false if this phone
-     *  couldn't keep it (storage full or blocked). */
-    pour(night: Night, profileIds: string[], round: boolean, alcoholFree = false): Promise<boolean> | false {
+    /** A tap: on the slate at once, sent when it can be. */
+    pour(night: Night, profileIds: string[], round: boolean, alcoholFree = false): boolean {
       if (!userId) return false
       const t = now()
       const e = beerEntry({
@@ -241,15 +243,9 @@ export function createRunner(d: {
         seq: nextSeq(d.slate.list(userId), t),
         uuid: d.uuid,
       })
-      const saved = d.slate.put(e).then(
-        () => true,
-        () => {
-          void d.slate.remove(e.id)
-          return false
-        },
-      )
+      void d.slate.put(e)
       void kick()
-      return saved
+      return true
     },
     takeBack(night: Night, tally: TallyBeer[], profileId: string): boolean {
       if (!userId) return false
@@ -284,7 +280,12 @@ export function createRunner(d: {
       return () => void listeners.delete(l)
     },
     snapshot() {
-      return (snap ??= { entries: userId ? d.slate.list(userId) : [], phase, ready: d.slate.isReady() })
+      return (snap ??= {
+        entries: userId ? d.slate.list(userId) : [],
+        phase,
+        ready: d.slate.isReady(),
+        durable: d.slate.isDurable(),
+      })
     },
   }
 }

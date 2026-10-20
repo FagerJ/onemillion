@@ -230,10 +230,19 @@ describe('settleRefusal and settleVoid', () => {
   })
 
   it('reads a void that changed nothing', () => {
+    const ago = (h: number) => new Date(T0 - h * 3600_000).toISOString()
+    const found = (logged: number, created = logged, voided: string | null = null) => ({
+      id: 'x',
+      voided_at: voided,
+      logged_at: ago(logged),
+      created_at: ago(created),
+    })
     expect(settleVoid(null, T0)).toBeNull()
-    expect(settleVoid({ id: 'x', voided_at: '2026-10-20T19:00:00Z', logged_at: '2026-10-20T18:00:00Z' }, T0)).toBeNull()
-    expect(settleVoid({ id: 'x', voided_at: null, logged_at: new Date(T0 - 25 * 3600_000).toISOString() }, T0)).toBe('too-late')
-    expect(settleVoid({ id: 'x', voided_at: null, logged_at: new Date(T0 - 3600_000).toISOString() }, T0)).toBe('refused')
+    expect(settleVoid(found(2, 2, ago(1)), T0)).toBeNull()
+    expect(settleVoid(found(25), T0)).toBe('too-late')
+    expect(settleVoid(found(1), T0)).toBe('refused')
+    // a late tap: tapped 25 hours ago, arrived an hour ago, so still inside its day
+    expect(settleVoid(found(25, 1), T0)).toBe('refused')
   })
 })
 
