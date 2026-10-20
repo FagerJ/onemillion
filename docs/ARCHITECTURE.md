@@ -509,6 +509,23 @@ when you get signal back in the taxi. That's fine — arguably better.
 
 Rounds queue as a unit: one `round_id`, N beers, all-or-nothing on replay.
 
+### 7.1 As built (C8, [D70](DECISIONS.md#d70--the-queue-holds-beers-and-take-backs-everything-else-needs-signal)–[D77](DECISIONS.md#d77--vitest-for-the-apps-pure-logic))
+
+- **The slate** (`app/src/lib/queue/`): every `+`, `+ ROUND` and `−` is an IndexedDB record
+  first, mirrored in memory; the tally is the server's beers plus the slate, each beer once
+  (`mergeTally`). Kick-off, joining, adding someone, driving and full time need signal.
+- **Replay** (`runner.ts`): strictly in order, one flusher per phone (Web Locks), batches sent
+  as `INSERT … ON CONFLICT (client_uuid) DO NOTHING` with `id = client_uuid`; a `−` names one
+  beer. Only an answer that names the tap is final, and a refusal is checked against the
+  server before it's believed.
+- **Time:** a tap sent at once is stamped by the server; one that waited carries its own.
+- **Late taps** (`20261019140000_late_taps.sql`): a closed night accepts a tap from before its
+  end for 24 hours; later ones are refused with `hint = 'session_closed'` and shown on the
+  slate.
+- **Opening offline:** the query cache is persisted (IndexedDB), the saved session is used
+  when it can't be refreshed, and no request goes out as `anon` while a session is saved.
+- **UI:** a chip (NO SIGNAL · 3 WAITING / 2 NOT SAVED) and the "On the slate" drawer.
+
 ---
 
 ## 8. Security & fairness

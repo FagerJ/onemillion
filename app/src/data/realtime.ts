@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { celebrate } from '@/components/celebrate/bus'
+import { queue } from '@/data/queue'
 import type { ComboRow, UnlockRow } from '@/data/queries'
 import { supabase } from '@/lib/supabase'
 
@@ -13,11 +14,22 @@ export function useCrewRealtime(crewId: string | undefined) {
 
   useEffect(() => {
     if (!crewId) return
+    // A replayed batch from the queue is many events at once: one refetch for all of them.
+    let t: ReturnType<typeof setTimeout> | undefined
     const refreshCrew = () => {
-      void queryClient.invalidateQueries({ queryKey: ['crew', crewId] })
-      void queryClient.invalidateQueries({ queryKey: ['session'] })
-      void queryClient.invalidateQueries({ queryKey: ['profile'] })
+      clearTimeout(t)
+      t = setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ['crew', crewId] })
+        void queryClient.invalidateQueries({ queryKey: ['session'] })
+        void queryClient.invalidateQueries({ queryKey: ['profile'] })
+      }, 150)
     }
+    // Events from before the channel joined are never sent: the crew may have changed since
+    // its data was fetched, or since the snapshot the app opened on (D76). So every join
+    // refetches the crew once, and a rejoin after a drop also nudges the queue: it is the
+    // surest sign the signal is back (C8).
+    let joined = false
+    let dropped = false
     const filter = `crew_id=eq.${crewId}`
     const channel = supabase
       .channel(`crew:${crewId}`)
@@ -52,8 +64,16 @@ export function useCrewRealtime(crewId: string | undefined) {
         })
         if (row.source === 'live') celebrate({ kind: 'unlock', row })
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          refreshCrew()
+          if (joined && dropped) void queue.kick(true)
+          joined = true
+          dropped = false
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') dropped = true
+      })
     return () => {
+      clearTimeout(t)
       void supabase.removeChannel(channel)
     }
   }, [crewId, queryClient])

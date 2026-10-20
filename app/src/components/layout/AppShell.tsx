@@ -2,11 +2,13 @@ import { CircleUser, House, Plus, ScrollText, Users } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import { SyncChip } from '@/components/brand/SyncChip'
 import { Celebrations } from '@/components/celebrate/Celebrations'
 import { CelebrationHost } from '@/components/celebrate/MilestoneTakeover'
 import { useMyCrew, useOpenNight } from '@/data/queries'
 import { useCrewRealtime } from '@/data/realtime'
 import { cn } from '@/lib/utils'
+import { Slate } from './Slate'
 
 export function AppShell() {
   const { data: mine } = useMyCrew()
@@ -31,6 +33,16 @@ export function AppShell() {
         <Dock live={!!night} />
         {/* combos and badges (G4): inside the host, so they wait for its takeover */}
         <Celebrations crewId={mine.crew.id} crewName={mine.crew.name} />
+        {/* the slate (C8): a live night has its own chip row; everywhere else, kick-off
+            included, it floats top right */}
+        {!(pathname === '/night' && night) && (
+          <div className="pointer-events-none fixed inset-x-0 top-[max(env(safe-area-inset-top),12px)] z-40">
+            <div className="mx-auto flex max-w-[480px] justify-end px-4">
+              <SyncChip className="pointer-events-auto" />
+            </div>
+          </div>
+        )}
+        <Slate crewId={mine.crew.id} />
       </div>
     </CelebrationHost>
   )

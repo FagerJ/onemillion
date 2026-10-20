@@ -8,6 +8,17 @@ import { Cap } from '@/components/brand/Cap'
 import { CountUp } from '@/components/brand/CountUp'
 import { Button } from '@/components/ui/button'
 import { InstallCard } from '@/components/layout/InstallOffer'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import {
   useBadgeCatalogue,
@@ -19,6 +30,7 @@ import {
 } from '@/data/queries'
 import { fmt } from '@/lib/format'
 import { canReset, resetApp } from '@/lib/pwa'
+import { useQueue } from '@/data/queue'
 import { rungName } from '@/lib/milestones'
 import { supabase } from '@/lib/supabase'
 import { ProfileForm } from './setup/ProfileForm'
@@ -90,9 +102,7 @@ export function Me() {
             </div>
           </DrawerContent>
         </Drawer>
-        <Button variant="ghost" size="lg" onClick={() => supabase.auth.signOut()}>
-          <LogOut /> {t('me.signOut')}
-        </Button>
+        <SignOut />
       </div>
 
       {/* which deploy this phone runs: how an update is checked on a real device */}
@@ -116,5 +126,41 @@ function Big({ label, value, unit, gold, hot }: { label: string; value: number; 
         {unit && <span className={hot && value > 0 ? 'text-[18px] text-fire' : 'text-[18px] text-foam/35'}>{unit}</span>}
       </p>
     </div>
+  )
+}
+
+/** Taps still on the slate stay on this phone, keyed to the account, and go in at its next
+ *  sign-in, so signing out with some waiting asks first (C8). */
+function SignOut() {
+  const { t } = useTranslation()
+  const { waiting } = useQueue()
+  const signOut = () => void supabase.auth.signOut()
+  if (waiting.length === 0) {
+    return (
+      <Button variant="ghost" size="lg" onClick={signOut}>
+        <LogOut /> {t('me.signOut')}
+      </Button>
+    )
+  }
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="lg">
+          <LogOut /> {t('me.signOut')}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('sync.signOutTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('sync.signOutBody', { count: waiting.length })}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction variant="destructive" onClick={signOut}>
+            {t('sync.signOutAnyway')}
+          </AlertDialogAction>
+          <AlertDialogCancel variant="ghost">{t('common.cancel')}</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

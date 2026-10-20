@@ -1,4 +1,4 @@
-import { Car, Eye, Flag, Leaf, Minus, Plus, UserPlus } from 'lucide-react'
+import { Car, Eye, Flag, Leaf, Minus, Plus, UserPlus, WifiOff } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 import { useAuth } from '@/auth/AuthProvider'
 import { Cap, CapStack } from '@/components/brand/Cap'
 import { CountUp } from '@/components/brand/CountUp'
-import { LiveBadge } from '@/components/brand/LiveBadge'
+import { LiveBadge, useNow } from '@/components/brand/LiveBadge'
+import { SyncChip } from '@/components/brand/SyncChip'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,25 +29,23 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  makeBeers,
   useAddAttendees,
   useAttendees,
   useBadgeCatalogue,
   useCloseNight,
   useKickOff,
-  useLiveBeers,
-  useLogBeers,
   useMembers,
   useMyCrew,
   useOpenNight,
   useSessionCombos,
   useSetInRounds,
-  useTakeBack,
   type Attendee,
   type Member,
   type Session,
 } from '@/data/queries'
+import { useNightTally, useQueue, useSlate } from '@/data/queue'
 import { buzz } from '@/lib/haptics'
+import { useOnline } from '@/lib/pwa'
 import { cn } from '@/lib/utils'
 
 export function Night() {
@@ -64,6 +63,7 @@ function KickOff({ crewId }: { crewId: string }) {
   const { user } = useAuth()
   const { data: members = [] } = useMembers(crewId)
   const kickOff = useKickOff(crewId)
+  const online = useOnline()
   const [picked, setPicked] = useState<Set<string>>(() => new Set([user!.id]))
 
   const toggle = (id: string) => {
@@ -115,7 +115,7 @@ function KickOff({ crewId }: { crewId: string }) {
         <Button
           size="xl"
           className="w-full"
-          disabled={kickOff.isPending}
+          disabled={kickOff.isPending || !online}
           onClick={() => {
             buzz([10, 40, 10])
             kickOff.mutate([...picked], { onError: () => toast.error(t('common.somethingWrong')) })
@@ -123,6 +123,8 @@ function KickOff({ crewId }: { crewId: string }) {
         >
           {t('night.start', { count: picked.size })}
         </Button>
+        {/* a night is shared state: it starts with signal; after that, taps work without (D70) */}
+        {!online && <SignalHint>{t('sync.kickOffOffline')}</SignalHint>}
       </StickyAction>
     </div>
   )
@@ -134,13 +136,18 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { data: attendees = [] } = useAttendees(night.id)
-  const { data: beers = [] } = useLiveBeers(night.id)
+  // the server's beers plus the taps still on this phone's slate (C8, D75)
+  const { beers, waitingFor, ready } = useNightTally(night)
+  const q = useQueue()
+  const slate = useSlate()
+  const online = useOnline()
   const { data: combos = [] } = useSessionCombos(night.id)
   const { data: catalogue = [] } = useBadgeCatalogue()
-  const log = useLogBeers(night.id, night.crew_id)
-  const takeBack = useTakeBack(night.id)
   const checkIn = useAddAttendees(night.id)
   const [pours, setPours] = useState(0)
+  // 09:00 can pass while this phone has no signal to hear the night close
+  const now = useNow(15_000)
+  const over = now >= Date.parse(night.closes_at)
 
   const counts = useMemo(() => {
     const m = new Map<string, number>()
@@ -153,39 +160,42 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
   // Only people at the table may log (D39). Someone else may have started the night,
   // so a crew member who isn't here yet watches until they check in.
   const here = attendees.some((a) => a.profile_id === user!.id)
-  const refused = (e: unknown) => (e as { code?: string } | null)?.code === '42501'
-  const failed = (e: unknown) => toast.error(t(refused(e) ? 'night.notAtTable' : 'night.failed'))
   const closes = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(night.closes_at))
 
   // only the rungs tonight has reached, never how far off the next one is (D68)
   const comboTitle = (code: string) => catalogue.find((a) => a.code === code)?.title ?? code
 
+  // Onto the slate first, so a tap counts with or without signal; the queue sends it (D70).
   const pour = (ids: string[], round = false, alcoholFree = false) => {
-    if (ids.length === 0 || alone || !here) return
+    if (ids.length === 0 || alone || !here || over) return
     buzz(round ? [12, 30, 12, 30, 12] : 12)
-    log.mutate(
-      { profileIds: ids, rows: makeBeers(ids, user!.id, round, alcoholFree) },
-      { onError: failed },
-    )
+    const saved = q.pour(night, ids, round, alcoholFree)
+    if (saved) void saved.then((ok) => ok || toast.error(t('sync.storageFull')))
   }
 
   const undo = (profileId: string) => {
-    const latest = [...beers].reverse().find((b) => b.profile_id === profileId)
-    if (!latest) return
-    buzz(6)
-    takeBack.mutate(latest, { onError: failed })
+    if (q.takeBack(night, beers, profileId)) buzz(6)
   }
 
   return (
     <div className="pb-32">
       <div className="flex items-center justify-between">
         <LiveBadge startedAt={night.started_at} />
-        {here && <FullTime crewId={crewId} sessionId={night.id} />}
+        {here && <FullTime crewId={crewId} sessionId={night.id} disabled={!online} />}
+      </div>
+      {/* its own row: three things don't fit beside each other at 375 px */}
+      <div className="mt-3 flex min-h-0 justify-center empty:hidden">
+        <SyncChip />
       </div>
 
       <section className="relative mt-5 text-center">
         <p className="kicker">{t('night.tonight')}</p>
-        <CountUp value={beers.length} className="display mt-1 block text-[clamp(96px,32vw,132px)] text-foam tabular [text-shadow:0_0_60px_rgb(245_178_58/0.25)]" />
+        {/* waits for the slate, so the count doesn't climb as queued taps load */}
+        {ready ? (
+          <CountUp value={beers.length} className="display mt-1 block text-[clamp(96px,32vw,132px)] text-foam tabular [text-shadow:0_0_60px_rgb(245_178_58/0.25)]" />
+        ) : (
+          <span aria-hidden className="display mt-1 block text-[clamp(96px,32vw,132px)] text-transparent">0</span>
+        )}
         <div className="mt-2 flex items-center justify-center gap-3">
           <CapStack people={attendees.map((a) => a.profile)} size="xs" max={8} />
           <span className="text-[12px] font-semibold text-foam/40">{t('night.closesAt', { time: closes })}</span>
@@ -213,6 +223,10 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
         <p className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-foam/10 bg-foam/5 px-4 py-3 text-center text-[14px] text-foam/70">
           <Eye className="size-4 shrink-0" /> {t('night.watching')}
         </p>
+      ) : over ? (
+        <p className="mt-5 rounded-2xl border border-fire/30 bg-fire/10 px-4 py-3 text-center text-[14px] text-fire">
+          {t('sync.nightOver', { time: closes })}
+        </p>
       ) : (
         alone && (
           <p className="mt-5 rounded-2xl border border-gold/25 bg-gold/8 px-4 py-3 text-center text-[14px] text-gold">
@@ -228,9 +242,11 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
             attendee={a}
             sessionId={night.id}
             count={counts.get(a.profile_id) ?? 0}
+            waiting={slate.visible ? (waitingFor.get(a.profile_id) ?? 0) : 0}
             me={a.profile_id === user!.id}
-            disabled={alone || !here}
+            disabled={alone || !here || over}
             canEdit={here}
+            online={online}
             onPlus={() => pour([a.profile_id])}
             onAlcoholFree={() => pour([a.profile_id], false, true)}
             onMinus={() => undo(a.profile_id)}
@@ -240,7 +256,7 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
 
       {here && (
         <div className="mt-4 flex justify-center">
-          <AddSomeone crewId={crewId} sessionId={night.id} present={attendees} />
+          <AddSomeone crewId={crewId} sessionId={night.id} present={attendees} disabled={!online} />
         </div>
       )}
 
@@ -249,7 +265,7 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
           <Button
             size="xl"
             className="w-full"
-            disabled={checkIn.isPending}
+            disabled={checkIn.isPending || !online}
             onClick={() => {
               buzz([10, 40, 10])
               checkIn.mutate([user!.id], { onError: () => toast.error(t('common.somethingWrong')) })
@@ -260,7 +276,7 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
         ) : (
           <button
             type="button"
-            disabled={alone || inRounds.length === 0}
+            disabled={alone || over || inRounds.length === 0}
             onClick={() => {
               setPours((p) => p + 1)
               pour(
@@ -285,8 +301,18 @@ function LiveNight({ night, crewId }: { night: Session; crewId: string }) {
             </span>
           </button>
         )}
+        {/* taps wait on the slate; joining, adding, driving and full time need the server */}
+        {!online && <SignalHint>{t('sync.needsSignal')}</SignalHint>}
       </StickyAction>
     </div>
+  )
+}
+
+function SignalHint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-2 flex items-center justify-center gap-1.5 text-[12px] text-foam/45">
+      <WifiOff className="size-3.5" aria-hidden /> {children}
+    </p>
   )
 }
 
@@ -294,9 +320,11 @@ function DrinkerRow({
   attendee,
   sessionId,
   count,
+  waiting,
   me,
   disabled,
   canEdit,
+  online,
   onPlus,
   onAlcoholFree,
   onMinus,
@@ -304,10 +332,14 @@ function DrinkerRow({
   attendee: Attendee
   sessionId: string
   count: number
+  /** this person's beers still on the slate, shown while the slate is worth showing */
+  waiting: number
   me: boolean
   disabled: boolean
   /** at the table: may void beers and mark drivers */
   canEdit: boolean
+  /** the driver toggle changes who a round includes on every phone: signal only (D70) */
+  online: boolean
   onPlus: () => void
   /** a beer on the tally like any other (D9), just without the alcohol */
   onAlcoholFree: () => void
@@ -330,9 +362,11 @@ function DrinkerRow({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem
+            disabled={!online}
             onSelect={() => setInRounds.mutate({ profileId: attendee.profile_id, inRounds: !attendee.in_rounds })}
           >
             <Car /> {attendee.in_rounds ? t('night.skipRounds') : t('night.backInRounds')}
+            {!online && ` · ${t('sync.needsSignal')}`}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={disabled} onSelect={onAlcoholFree}>
             <Leaf /> {t('night.alcoholFree')}
@@ -350,7 +384,7 @@ function DrinkerRow({
         <Minus className="size-4" strokeWidth={3} />
       </button>
 
-      <span className="relative w-11 overflow-hidden text-center">
+      <span className="relative w-11 overflow-visible text-center">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={count}
@@ -363,6 +397,13 @@ function DrinkerRow({
             {count}
           </motion.span>
         </AnimatePresence>
+        {waiting > 0 && (
+          <span
+            role="img"
+            aria-label={t('sync.rowWaiting', { count: waiting })}
+            className="absolute -bottom-1.5 left-1/2 size-1.5 -translate-x-1/2 animate-live rounded-full bg-gold"
+          />
+        )}
       </span>
 
       <PlusButton onTap={onPlus} disabled={disabled} label={t('night.oneMore', { name: p.display_name })} />
@@ -415,7 +456,17 @@ function Spray() {
   )
 }
 
-function AddSomeone({ crewId, sessionId, present }: { crewId: string; sessionId: string; present: Attendee[] }) {
+function AddSomeone({
+  crewId,
+  sessionId,
+  present,
+  disabled,
+}: {
+  crewId: string
+  sessionId: string
+  present: Attendee[]
+  disabled: boolean
+}) {
   const { t } = useTranslation()
   const { data: members = [] } = useMembers(crewId)
   const add = useAddAttendees(sessionId)
@@ -427,7 +478,7 @@ function AddSomeone({ crewId, sessionId, present }: { crewId: string; sessionId:
   return (
     <Drawer open={open} onOpenChange={(o) => (setOpen(o), setPicked(new Set()))}>
       <DrawerTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" disabled={disabled}>
           <UserPlus /> {t('night.addSomeone')}
         </Button>
       </DrawerTrigger>
@@ -484,13 +535,14 @@ function AddSomeone({ crewId, sessionId, present }: { crewId: string; sessionId:
   )
 }
 
-function FullTime({ crewId, sessionId }: { crewId: string; sessionId: string }) {
+function FullTime({ crewId, sessionId, disabled }: { crewId: string; sessionId: string; disabled: boolean }) {
   const { t } = useTranslation()
   const close = useCloseNight(crewId)
+  const q = useQueue()
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" disabled={disabled}>
           <Flag /> {t('night.fullTime')}
         </Button>
       </AlertDialogTrigger>
@@ -502,7 +554,11 @@ function FullTime({ crewId, sessionId }: { crewId: string; sessionId: string }) 
         <AlertDialogFooter>
           <AlertDialogAction
             variant="destructive"
-            onClick={() => close.mutate(sessionId, { onError: () => toast.error(t('common.somethingWrong')) })}
+            onClick={async () => {
+              // the whistle waits (up to 5 s) for this phone's last taps to go in
+              await q.settle(sessionId, 5_000)
+              close.mutate(sessionId, { onError: () => toast.error(t('common.somethingWrong')) })
+            }}
           >
             {t('night.fullTimeConfirm')}
           </AlertDialogAction>

@@ -3,7 +3,7 @@
 A social beer-logging app for a group of friends, built around one shared goal:
 1.000.000 beers. See `README.md` for the concepts and `docs/` for the design.
 
-**Read first:** `docs/DECISIONS.md` (69 ADRs — what's settled and why), `docs/ROADMAP.md`
+**Read first:** `docs/DECISIONS.md` (77 ADRs — what's settled and why), `docs/ROADMAP.md`
 (v0 scope + the irreversibility analysis), `docs/DEPLOY.md` (production: what runs where,
 how changes go live), `docs/QUESTIONS.md` (the owner's answers, and what's still open).
 `docs/history/SESSION-HANDOFF.md` keeps the design session's memory — what was reversed
@@ -32,7 +32,7 @@ and why, which recommendations are baked into the schema.
   the tables, columns, functions, policies, triggers and constraints in place. **It is now
   where every function and policy that touches a crew is defined** — the earlier files
   below still show the `party` versions they created, which that migration replaced.
-- **Design: done.** 69 decisions recorded. Architecture, roadmap, achievement catalogue,
+- **Design: done.** 77 decisions recorded. Architecture, roadmap, achievement catalogue,
   user journeys and story map all written. A parked draft of 150 more achievements, split
   into guild, crew and person tiers, is in `docs/ACHIEVEMENT-TIERS.md`.
 - **Schema: written and tested.** `supabase/migrations/20261002120000_schema.sql` — the five
@@ -71,7 +71,13 @@ and why, which recommendations are baked into the schema.
   by `sweep_achievements()` (pg_cron). The app: `components/celebrate/Celebrations.tsx`
   (banners and slips, waiting for any milestone takeover), `components/badges/` (the grids),
   `components/brand/BadgeArt.tsx`.
-- **Not started:** the offline queue.
+- **Offline queue** (C8, D70–D77). Taps go on a slate in IndexedDB (`app/src/lib/queue/`,
+  pure and unit-tested; `app/src/data/queue.ts` wires it) and replay in order as
+  `ON CONFLICT (client_uuid) DO NOTHING`. `supabase/migrations/20261019140000_late_taps.sql`
+  is now where `stamp_beer_from_session()` is defined: a closed night takes a tap from before
+  its end for 24 hours. The query cache is persisted (`data/persist.ts`), so the app opens
+  offline on what it last saw.
+- **Not started:** guilds (parked), push, venues, the weekly recap.
 - **`main` is production.** Friends use it, so it must always run: do new work on a branch
   and merge when it's tested. A push to `main` deploys.
 
@@ -128,6 +134,7 @@ The app (see `docs/LOCAL-SETUP.md` § 4):
 npm --prefix app run dev              # http://localhost:5173 — demo logins in supabase/seed.sql
 npm --prefix app run build            # type-check + build
 npm --prefix app run lint
+npm --prefix app test                 # vitest: the offline queue's rules
 ```
 
 Local email (sign-up confirmations, magic links, resets) lands in Mailpit at
@@ -158,6 +165,10 @@ Linux-only (`useradd`, `su`), so it won't run here. See `docs/LOCAL-SETUP.md`.
   round test fails if that changes). Anything that jumps a total — `recompute_stats()`, a
   new low rung — skips crossings: run `select backfill_milestones();` afterwards. Replayed
   rows are `backfilled` and never celebrate.
+- **Taps never go straight to `beers` from a screen.** They go through the queue
+  (`useQueue().pour/takeBack`), which owns `client_uuid`, order and replay; the tally comes
+  from `useNightTally`. A query whose cached shape changes needs the persister's `BUSTER`
+  bumped (`data/persist.ts`), or phones restore the old shape.
 - **Badges are written live and by the sweep, with the same SQL.** A live unlock has
   `source = 'live'` and is the only kind that toasts. After changing an evaluator or a rule,
   `select sweep_achievements();` brings history up to date quietly. A failing evaluator

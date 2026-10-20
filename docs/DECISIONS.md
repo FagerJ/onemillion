@@ -25,6 +25,138 @@ with two or more attendees and zero beers is **kept** — it is the record of wh
 
 ---
 
+### D77 — vitest for the app's pure logic
+**Decided.** `vitest` in the Node environment, `npm --prefix app test`, files `src/**/*.test.ts`,
+with `fake-indexeddb` for the storage test. It tests `lib/queue/*`; any later pure module can
+join.
+
+*Why:* the queue's correctness lives in pure functions — the merged tally, take-backs,
+batching, which answers are final, backoff — and a browser can't pin those reliably. Each rule
+was broken once on purpose and a test failed.
+
+*Cost:* a second test runner beside the SQL tests, with no CI to run it: a local habit, like
+`run-supabase.sh`.
+
+---
+
+### D76 — The app opens offline on what it last saw *(amends D51)*
+**Decided.** The query cache is kept on the phone (IndexedDB, through TanStack's persister):
+only answers that came from the server, nothing about auth, for 36 hours, with a buster to bump
+when a cached shape changes. If the access token can't be refreshed for lack of signal, the app
+opens on the session saved on the phone instead of waiting on the splash. And no request to the
+API goes out with the publishable key while a session is saved: it fails like a dropped
+connection. When the Realtime channel joins, the crew's data is refetched once, so nothing that
+changed while it was away is missed.
+
+*Why:* a home-screen app is reloaded often, and a pub has no signal; without this the phone
+opens on "No signal" with the night out of reach. The guard matters on its own: supabase-js
+falls back to the publishable key when a refresh fails, RLS answers that with empty lists, and
+the gates would read them as "no crew" and the queue as a refusal.
+
+*Cost:*
+- What the phone last saw sits in IndexedDB until sign-out clears it.
+- Offline, screens show stale numbers, said only by the chip.
+- The buster must be bumped when a persisted query's data changes shape.
+
+---
+
+### D75 — The tally is the server's beers plus the slate; celebrations only come from the server
+**Decided.** The night's count is the server's live beers, minus any a queued `−` names, plus
+queued beers the server doesn't have yet, each beer once by id. A tap that lands is written into
+the night's cache before it leaves the slate, so the count never dips. Nothing celebrates from
+the local count: milestones, combos and badges arrive as server events.
+
+*Why:* optimistic cache patches can't survive a reload or see another tab. A merge of two sources
+of truth can't drift, and it is tested.
+
+*Cost:* offline, your tally is your taps plus what the phone last fetched; other phones' offline
+taps appear when they reconnect. Two offline phones logging the same round count it twice, and
+`−` fixes it.
+
+---
+
+### D74 — A closed night still takes a tap from before its end, for 24 hours *(amends D41)*
+**Decided.** `stamp_beer_from_session()` (migration `late_taps`) accepts a beer into a night
+that has ended when it was tapped before the end and arrives within 24 hours of it. The end is
+the whistle if it came before 09:00, otherwise 09:00. A live night behaves as before. A tap
+after the end is still refused, now with `hint = 'session_closed'`; nobody new can sit down.
+
+*Why:* one phone in the cellar, another blows the whistle at 01:00, and the first phone's last
+taps would otherwise be refused forever. 24 hours matches D16's take-back window, and inside it a
+lost-answer replay after the close is a no-op instead of a false failure.
+
+*Cost:*
+- For a day after a night, anyone who was at the table can add beers timed inside it — the same
+  power they had during the night.
+- Counters, milestones and combos can move after the whistle: D8's "celebration in the taxi",
+  possibly the next morning.
+
+---
+
+### D73 — A tap that waited keeps its own time; one sent at once is stamped by the server
+**Decided.** A tap sent on its first try within 30 seconds leaves `logged_at` out, so the
+server's `now()` applies, as before. Any tap that waited sends the time it was tapped, by the
+phone's clock. A server-stamped tap refused because the night just closed is sent once more with
+its own time.
+
+*Why:* D8 wants a queued tap's real time, but RLS refuses a `logged_at` more than five minutes in
+the future; always sending the phone's clock would break every online tap on a phone running
+fast.
+
+*Cost:* two sources of time; order within a night can be off by network latency and, for queued
+taps, by clock skew.
+
+---
+
+### D72 — Replay goes in order, one flusher per phone, batched; a replay is a no-op; a refusal is checked before it's believed
+**Decided.** Taps go strictly in the order they were made; a `−` is sent alone, after what came
+before it. Runs of taps for one night go in one request (up to 25 taps or 100 beers) as
+`INSERT … ON CONFLICT (client_uuid) DO NOTHING`, with each beer's id set to its `client_uuid`,
+so a replay changes nothing and needs no UPDATE grant. A `−` names one beer and voids it only if
+it's still live. Web Locks keep one flusher per phone across tabs. Only an answer that names the
+tap is final; a network error, an expired token, "permission denied", 5xx and the like keep it
+and back off (2 s, doubling, up to a minute). Before a refusal is believed, the beers are looked
+up: if they're there, the answer was lost and they landed. Sending starts on a tap, on `online`,
+on returning to the app, on a fresh token and when Realtime rejoins.
+
+*Why:* order makes "void after insert" true by construction; batching matters on one bar of 3G;
+checking refusals closes the gap where triggers run before the duplicate check.
+
+*Cost:* a server error that fails the same tap every time blocks the queue behind it, on
+purpose: the chip says "waiting" and the server gets fixed, rather than beers being thrown away.
+
+---
+
+### D71 — The slate lives in IndexedDB, one record per tap, mirrored in memory
+**Decided.** Each tap is one IndexedDB record (database `omb-queue`), carrying its account. Each
+tab keeps an in-memory copy that answers at once and writes through; a `BroadcastChannel` tells
+other tabs to reload theirs. An installed app asks the browser to keep its storage.
+
+*Why:* surviving a killed app is the queue's whole job, and a committed IndexedDB write does; a
+localStorage write can be lost if the app dies a moment later. The memory copy keeps the tally and
+`−` synchronous, so three quick `−` taps pick three different beers.
+
+*Cost:* one small dependency (idb-keyval). Safari clears an unused tab's storage after a week;
+home-screen apps are exempt. A Safari tab and the iPhone app keep separate slates.
+
+---
+
+### D70 — The queue holds beers and take-backs; everything else needs signal
+**Decided** (owner, 2026-10-19: "Go for 1,2,3,4,5!", the offline queue fifth). `+`, `+ ROUND`
+(one entry, all or nothing) and `−` go on the slate and work with no signal. Kick-off, joining
+the table, adding someone, the driver toggle and full time need signal: offline they're disabled
+with "Needs signal". Full time waits up to five seconds for this phone's taps first.
+
+*Why:* a beer or a void is a fact about one row that `client_uuid` makes safe to send twice. The
+others change what other phones depend on — a second open night, the two-attendee rule, who a
+round includes, a night closed while others still log — and making those replayable is a sync
+engine, not a queue.
+
+*Cost:* if nobody at the table has signal before the night starts, nobody can log; the kick-off
+screen says to start while you still have a bar.
+
+---
+
 ### D69 — A closed night's table is frozen
 **Decided.** The `session_attendees_update` policy now also requires the night to be open:
 after full time nobody can switch someone in or out of the rounds.
@@ -363,6 +495,9 @@ unused.
 ---
 
 ### D51 — The worker never touches Supabase, and opening offline waits on the splash
+*Amended by [D76](#d76--the-app-opens-offline-on-what-it-last-saw-amends-d51): the app now opens
+offline on what it last saw, and on the session saved on the phone.*
+
 **Decided.** The worker ignores anything that isn't a GET to its own address: Supabase's
 API, Auth and Storage, Google, everything else. Realtime is a WebSocket, which workers never
 see. Nothing is cached at runtime. Opening with no signal therefore gives the app but no
@@ -651,7 +786,10 @@ opening fixes that without changing live nights. The safety net matters because 
 job would otherwise block the party's next night.
 
 *Cost:* an offline tap (`C8`) that syncs after closing time is refused like any late beer —
-the offline queue has to decide what to tell the user. A night logged after the fact can
+the offline queue has to decide what to tell the user. *Answered by
+[D74](#d74--a-closed-night-still-takes-a-tap-from-before-its-end-for-24-hours-amends-d41): a tap
+from before the end is accepted for 24 hours; one from after it is refused and the user is
+shown why.* A night logged after the fact can
 stay open up to 27 hours after it was opened. Cron runs in UTC; the purge is at 04:17 UTC.
 
 *Verified:* `supabase/tests/lifecycle_test.sql` — closing time without the job, the safety

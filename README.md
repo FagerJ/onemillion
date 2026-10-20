@@ -133,7 +133,7 @@ or create your own account and join with the invite code **`SKAL42`**.
 - ✅ Hosted, at [onemillion.fager.tech](https://onemillion.fager.tech), with [release notes and questions](https://news.onemillion.fager.tech) beside it
 - ✅ Installs to the home screen as an app, and opens with no signal
 - ✅ The game layer: milestone takeovers and the Golden Goal, combos, 25 badges
-- ⏳ The offline queue, for taps in a pub with no signal
+- ✅ Taps with no signal: they wait on the phone and go in when it's back
 - 💤 Guilds — designed for, deliberately parked
 
 ## Words

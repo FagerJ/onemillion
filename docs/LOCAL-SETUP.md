@@ -80,7 +80,14 @@ as "Network"). The app points itself at the PC's database automatically. The fir
 Windows asks whether Node.js may accept connections — allow it for private networks.
 Installing it as an app needs HTTPS, which only the live version has.
 
-`npm --prefix app run build` type-checks and builds; `npm --prefix app run lint` lints.
+`npm --prefix app run build` type-checks and builds; `npm --prefix app run lint` lints;
+`npm --prefix app test` runs the unit tests (vitest; the offline queue's rules).
+
+To try the offline queue locally, stop the API instead of the network: `docker stop
+supabase_kong_onemillion` makes every request fail like a dropped connection, and
+`docker start supabase_kong_onemillion` brings it back. To try a token expiring while
+offline, set `jwt_expiry = 120` in `supabase/config.toml` for a while (don't commit it) and
+restart the stack.
 
 ### The installed app and its service worker
 

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { CapStack } from '@/components/brand/Cap'
 import { LiveBadge } from '@/components/brand/LiveBadge'
 import { Button } from '@/components/ui/button'
-import { useAttendees, useLiveBeers, type Session } from '@/data/queries'
+import { useAttendees, type Session } from '@/data/queries'
+import { useNightTally } from '@/data/queue'
 import { fmt } from '@/lib/format'
 
 export function TonightCard({ night }: { night: Session | null | undefined }) {
@@ -28,7 +29,7 @@ export function TonightCard({ night }: { night: Session | null | undefined }) {
 function LiveNightCard({ night }: { night: Session }) {
   const { t } = useTranslation()
   const { data: attendees = [] } = useAttendees(night.id)
-  const { data: beers = [] } = useLiveBeers(night.id)
+  const { beers } = useNightTally(night) // with this phone's taps still on the slate
   return (
     <Link
       to="/night"

@@ -2,8 +2,8 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 import { useAuth } from '@/auth/AuthProvider'
 import type { Database, Tables, TablesInsert } from '@/lib/database.types'
 import type { MilestoneEvent } from '@/lib/milestones'
+import type { ApiError, BeerInsert, Found } from '@/lib/queue/core'
 import { apiOrigin, publishableKey, supabase } from '@/lib/supabase'
-import { uuid } from '@/lib/uuid'
 
 // Every read and write the screens make. Reads go straight at the tables and the
 // read functions; RLS decides what comes back (D39). Crew-scoped keys all start
@@ -338,87 +338,56 @@ export function useSetInRounds(sessionId: string) {
   })
 }
 
-/**
- * Logs one beer per profile id — one for `+`, everyone at once for `+ ROUND` (a
- * shared round_id). The tally moves before the network answers; a refusal puts it
- * back. client_uuid makes a retried tap count once (D8).
- */
-export function useLogBeers(sessionId: string, crewId: string) {
-  const queryClient = useQueryClient()
-  const key = ['session', sessionId, 'beers']
-  return useMutation({
-    mutationFn: async (v: { profileIds: string[]; rows: LiveBeer[] }) =>
-      must(
-        await supabase.from('beers').insert(
-          stamped<'beers'>(v.rows.map((b) => ({
-            session_id: sessionId,
-            profile_id: b.profile_id,
-            added_by: b.added_by,
-            round_id: b.round_id,
-            is_alcohol_free: b.is_alcohol_free,
-            client_uuid: b.id,
-          }))),
-        ),
-      ),
-    onMutate: async (v) => {
-      await queryClient.cancelQueries({ queryKey: key })
-      const before = queryClient.getQueryData<LiveBeer[]>(key)
-      queryClient.setQueryData<LiveBeer[]>(key, (old = []) => [...old, ...v.rows])
-      return { before }
-    },
-    onError: (_e, _v, ctx) => queryClient.setQueryData(key, ctx?.before),
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
-      void queryClient.invalidateQueries({ queryKey: ['global'] })
-      // the tapper's own phone sees a Golden Goal even when Realtime is slow (D59)
-      void queryClient.invalidateQueries({ queryKey: ['crew', crewId, 'milestones'] })
-      void queryClient.invalidateQueries({ queryKey: ['milestones', 'global'] })
-    },
-  })
+// ── the offline queue's requests (C8, D72) ────────────────────
+// Taps go through the queue (data/queue.ts), never straight from a screen: these are the
+// four calls its runner makes.
+
+const apiError = (r: {
+  error: { code?: string; message?: string; hint?: string | null } | null
+  status: number
+}): ApiError | null => (r.error ? { status: r.status, code: r.error.code, message: r.error.message, hint: r.error.hint } : null)
+
+const timeout = (ms: number): AbortSignal => {
+  if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms)
+  const c = new AbortController()
+  setTimeout(() => c.abort(), ms)
+  return c.signal
 }
 
-export function makeBeers(profileIds: string[], addedBy: string, round = false, alcoholFree = false): LiveBeer[] {
-  const roundId = round ? uuid() : null
-  const now = new Date().toISOString()
-  return profileIds.map((profile_id) => ({
-    id: uuid(),
-    profile_id,
-    added_by: addedBy,
-    round_id: roundId,
-    logged_at: now,
-    is_alcohol_free: alcoholFree,
-  }))
+/** One request for a run of taps. A row the server already has is skipped, so sending twice
+ *  is harmless; DO NOTHING needs no UPDATE grant. missing=default: a fresh tap leaves out
+ *  logged_at and gets now() (D73). */
+export async function sendBeers(rows: BeerInsert[]): Promise<ApiError | null> {
+  return apiError(
+    await supabase
+      .from('beers')
+      .upsert(stamped<'beers'>(rows), { onConflict: 'client_uuid', ignoreDuplicates: true, defaultToNull: false })
+      .abortSignal(timeout(15_000)),
+  )
 }
 
-/** "−": voids that person's most recent live beer tonight (D28). */
-export function useTakeBack(sessionId: string) {
-  const { user } = useAuth()
-  const queryClient = useQueryClient()
-  const key = ['session', sessionId, 'beers']
-  return useMutation({
-    mutationFn: async (beer: LiveBeer) => {
-      // A beer still in flight has only its client_uuid; match on that too.
-      const updated = must(
-        await supabase
-          .from('beers')
-          .update({ voided_at: new Date().toISOString(), voided_by: user!.id })
-          .or(`id.eq.${beer.id},client_uuid.eq.${beer.id}`)
-          .select('id'),
-      )
-      if (updated.length === 0) throw new Error('nothing to take back')
-    },
-    onMutate: async (beer) => {
-      await queryClient.cancelQueries({ queryKey: key })
-      const before = queryClient.getQueryData<LiveBeer[]>(key)
-      queryClient.setQueryData<LiveBeer[]>(key, (old = []) => old.filter((b) => b.id !== beer.id))
-      return { before }
-    },
-    onError: (_e, _v, ctx) => queryClient.setQueryData(key, ctx?.before),
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
-      void queryClient.invalidateQueries({ queryKey: ['global'] })
-    },
-  })
+/** "−" as the queue sends it: that one beer, only if it's still live, at the tap's time. */
+export async function voidBeer(id: string, at: string, by: string) {
+  const r = await supabase
+    .from('beers')
+    .update({ voided_at: at, voided_by: by })
+    .eq('id', id)
+    .is('voided_at', null)
+    .select('id')
+    .abortSignal(timeout(15_000))
+  return { error: apiError(r), count: r.data?.length ?? 0 }
+}
+
+export async function findBeers(ids: string[]) {
+  const r = await supabase.from('beers').select('id, voided_at, logged_at').in('id', ids).abortSignal(timeout(15_000))
+  return { error: apiError(r), rows: (r.data ?? []) as Found[] }
+}
+
+/** A session good enough to send with, refreshed if it had expired; null without signal. */
+export async function usableSession(): Promise<{ userId: string } | null> {
+  const { data } = await supabase.auth.getSession()
+  const s = data.session
+  return s && (s.expires_at ?? 0) * 1000 > Date.now() + 5_000 ? { userId: s.user.id } : null
 }
 
 export function useCloseNight(crewId: string) {

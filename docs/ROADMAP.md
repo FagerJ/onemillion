@@ -58,7 +58,7 @@ with the full `jsonb` vocabulary later; unlocks already recorded stay valid.
 | ✅ C3 | **Logger** — `+` per person, `+ ROUND`, `−` to correct | L | detail sheet (volume/ABV/type/photo) |
 | ✅ C10 | Session start + manual close; 09:00-next-morning auto-close ([D32](DECISIONS.md#d32--sessions-auto-close-at-0900-the-morning-after-in-the-creators-timezone-supersedes-d27)); purge of single-attendee sessions ([D36](DECISIONS.md#d36--single-attendee-sessions-are-purged-after-7-days)) | S | — |
 | ✅ C11 | **Realtime tally** — everyone at the table watches it climb | M | — |
-| C8 | **Offline write queue** + idempotent replay *(pulled in, D35)* | L | — |
+| ✅ C8 | **Offline write queue** + idempotent replay *(pulled in, D35)*: the slate, late taps, opening offline ([D70](DECISIONS.md#d70--the-queue-holds-beers-and-take-backs-everything-else-needs-signal)–[D77](DECISIONS.md#d77--vitest-for-the-apps-pure-logic)) | L | Background Sync |
 | ✅ C4 | Counter roll-ups: `crew_stats`, `global_stats`, `profile_stats` | M | `guild_stats` |
 | ✅ C9 | Milestone ladder table + seed ([D54](DECISIONS.md#d54--the-ladder-lives-in-the-database-with-the-scopes-each-rung-applies-to)) | S | guild scope |
 | ✅ C12 | `milestone_events` — crossing attribution, the Golden Goal and the assist ([D55](DECISIONS.md#d55--a-rung-is-crossed-once-per-scope-for-good)–[D58](DECISIONS.md#d58--history-is-replayed-once-and-flagged-replayed-crossings-never-celebrate)) | S | — |
