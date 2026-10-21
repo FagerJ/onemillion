@@ -5,9 +5,10 @@
 -- a guild later — and nothing ever deletes one: a void doesn't revoke (D16, D28).
 --
 -- Unlocks are written two ways, by the same SQL:
---   * live  — AFTER triggers on beers, session_attendees, sessions and crew_members call
---             the evaluators that event can move, scoped to the people, crews and nights
---             involved. A round is one statement, so it is evaluated once.
+--   * live  — AFTER triggers on beers, session_attendees and crew_members call the
+--             evaluators that event can move, scoped to the people, crews and nights
+--             involved. A round is one statement, so it is evaluated once. The driver waits
+--             for settle_drivers(), a job, two days after the night ends.
 --   * sweep — sweep_achievements() runs every evaluator over all history. pg_cron runs
 --             it nightly (that's how a week off is noticed, and how a retuned threshold
 --             reaches old nights); this migration runs it once as the backfill.

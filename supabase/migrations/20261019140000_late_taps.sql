@@ -26,8 +26,8 @@
 -- a phone can't stretch it.
 --
 -- stamp_beer_from_session() is replaced in place: its trigger, beers_01_stamp_parents,
--- stays attached and still runs first. Not SECURITY DEFINER, as before — the lookup runs under the caller's RLS, and a
--- night they can't see is "not open".
+-- stays attached and still runs first. Not SECURITY DEFINER, as before — the lookup runs
+-- under the caller's RLS, and a night they can't see is "not open".
 
 create or replace function public.stamp_beer_from_session()
 returns trigger

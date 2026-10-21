@@ -55,10 +55,14 @@ GitHub identity — it did for Matro. This clone commits as
      bcyoiobsgtltrvpszyls`, `npx supabase db push`.
 3. If the tables the app sees changed, regenerate `app/src/lib/database.types.ts`.
 
-The first five migrations went in through the MCP and were renamed to their file versions
-afterwards, so `supabase migration list` shows local and production in step. A schema
-fingerprint — functions, policies, grants, triggers, constraints, indexes, cron jobs,
-publication — matched the local database section for section.
+Every migration so far went in through the MCP and was renamed to its file version
+afterwards, so `supabase migration list` shows local and production in step. To check a
+deploy, run `supabase/fingerprint.sql` on both — locally with `docker exec -i
+supabase_db_onemillion psql -U postgres < supabase/fingerprint.sql`, in production through the
+MCP or the SQL editor. It hashes the schema section by section (functions, policies, views,
+triggers, constraints, indexes, columns, grants, RLS, cron jobs, publication, the badge
+catalogue, the milestone ladder); every line must match. It last did on 2026-10-21, after
+the milestones, achievements and late-taps migrations.
 
 ## How a deploy reaches a phone
 
